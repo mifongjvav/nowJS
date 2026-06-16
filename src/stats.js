@@ -8,19 +8,21 @@ window.maxCombo = 0;
 window.hitCount = 0;
 window.missCount = 0;
 
-const scoreText = new PIXI.Text({
-    text: "Score: 0",
-    style: { fontSize: 36 * SCALE, fill: 0xffcc00 },
+const hitText = new PIXI.Text({
+    text: "Hit: 0",
+    style: { fontSize: 36 * SCALE, fill: 0xffcc00, fontWeight: "bold" },
 });
-scoreText.x = 20 * SCALE;
-scoreText.y = 20 * SCALE;
-app.stage.addChild(scoreText);
+hitText.x = 20 * SCALE;
+hitText.y = 20 * SCALE;
+app.stage.addChild(hitText);
 
-let currentScore = 0;
-window.addScore = (points) => {
-    currentScore += points;
-    scoreText.text = `Score: ${currentScore}`;
-};
+const missCountText = new PIXI.Text({
+    text: "Miss: 0",
+    style: { fontSize: 36 * SCALE, fill: 0xff3333, fontWeight: "bold" },
+});
+missCountText.x = 20 * SCALE;
+missCountText.y = 20 * SCALE + 42 * SCALE;
+app.stage.addChild(missCountText);
 
 const comboText = new PIXI.Text({
     text: "0x",
@@ -30,23 +32,25 @@ comboText.anchor.set(0.5);
 comboText.visible = false;
 app.stage.addChild(comboText);
 
-const missText = new PIXI.Text({
+const missPopup = new PIXI.Text({
     text: "miss!",
     style: { fontSize: 64 * SCALE, fill: 0xff3333, fontWeight: "bold" },
 });
-missText.anchor.set(0.5);
-missText.visible = false;
-app.stage.addChild(missText);
+missPopup.anchor.set(0.5);
+missPopup.visible = false;
+app.stage.addChild(missPopup);
 
 let comboCurrentScale = 1;
 let missCurrentScale = 1;
 
 export function updateStatsDisplay() {
+    hitText.text = `Hit: ${window.hitCount}`;
+    missCountText.text = `Miss: ${window.missCount}`;
     comboText.text = `${window.combo}x`;
     if (window.combo > 0) {
         comboCurrentScale = 1.5;
         comboText.visible = true;
-        missText.visible = false;
+        missPopup.visible = false;
     } else {
         comboText.visible = false;
     }
@@ -54,7 +58,7 @@ export function updateStatsDisplay() {
 
 export function showMiss() {
     comboText.visible = false;
-    missText.visible = true;
+    missPopup.visible = true;
     missCurrentScale = 1.5;
 }
 
@@ -63,8 +67,8 @@ export function updateComboPosition() {
     if (player) {
         comboText.x = player.x + 50 * SCALE;
         comboText.y = player.y - 150 * SCALE;
-        missText.x = player.x + 50 * SCALE;
-        missText.y = player.y - 150 * SCALE;
+        missPopup.x = player.x + 50 * SCALE;
+        missPopup.y = player.y - 150 * SCALE;
     }
 }
 
@@ -78,9 +82,9 @@ export function animateComboScale() {
     }
     if (missCurrentScale > 1.01) {
         missCurrentScale += (1 - missCurrentScale) * 0.12;
-        missText.scale.set(missCurrentScale);
+        missPopup.scale.set(missCurrentScale);
     } else {
         missCurrentScale = 1;
-        missText.scale.set(1);
+        missPopup.scale.set(1);
     }
 }
