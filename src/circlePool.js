@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 import { BlurFilter } from "pixi.js";
 import { sound } from "@pixi/sound";
 import { updateStatsDisplay, showMiss } from "./stats.js";
+import { playCatchSound } from "./audio.js";
 
 const app = window.app;
 const HEIGHT = window.gameHeight;
@@ -170,7 +171,15 @@ class CirclePool {
     }
 
     performHit(circle) {
-        sound.play("catch");
+        const player = window.player;
+        const playfieldWidth = 512 * window.gameScale;
+        const leftBound = (window.gameWidth - playfieldWidth) / 2;
+        playCatchSound(
+            player.x,
+            130 * window.gameScale,
+            leftBound,
+            playfieldWidth,
+        );
         window.hitCount++;
         window.combo++;
         if (window.combo > window.maxCombo) {
