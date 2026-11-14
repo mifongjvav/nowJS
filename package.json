@@ -12,6 +12,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.5.0",
     "globals": "^17.6.0",
+    "prettier": "^3.10.1",
     "vite": "^8.0.12"
   },
   "dependencies": {
