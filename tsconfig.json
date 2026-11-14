@@ -11,6 +11,7 @@
         "checkJs": false,
         "isolatedModules": true,
         "noEmit": true,
+        // The legacy UI/game surface still uses implicit global state; its core TS modules are checked by tsconfig.core.json.
         "noCheck": true,
         "strict": false
     },

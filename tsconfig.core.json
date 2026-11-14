@@ -1,0 +1,17 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noCheck": false,
+        "strict": false
+    },
+    "include": [
+        "src/domain.ts",
+        "src/globals.d.ts",
+        "src/osuParser.ts",
+        "src/storyboard.ts",
+        "src/vendor/pixi.d.ts",
+        "src/i18n/index.ts",
+        "src/i18n/locales/en-us.ts",
+        "src/i18n/locales/zh-cn.ts"
+    ]
+}

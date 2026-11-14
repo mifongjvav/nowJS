@@ -18,4 +18,4 @@ export const MD3_COLORS = {
     onSurfaceVariant: 0xbfc8ca,
     outlineVariant: 0x3f494b,
     scrim: 0x000000,
-};
+} as const satisfies Record<string, number>;

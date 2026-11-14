@@ -1,6 +1,13 @@
 export const OSU_PLAYFIELD_WIDTH = 512;
 
-export function getPlayfield() {
+export interface Playfield {
+    left: number;
+    width: number;
+    right: number;
+    center: number;
+}
+
+export function getPlayfield(): Playfield {
     const scale = window.gameScale || 1;
     const width = OSU_PLAYFIELD_WIDTH * scale;
     const left = ((window.gameWidth || 1280) - width) / 2;
@@ -12,7 +19,7 @@ export function getPlayfield() {
     };
 }
 
-export function osuXToScreen(x) {
+export function osuXToScreen(x: number): number {
     const field = getPlayfield();
     const clamped = Math.min(OSU_PLAYFIELD_WIDTH, Math.max(0, x));
     return field.left + (clamped / OSU_PLAYFIELD_WIDTH) * field.width;

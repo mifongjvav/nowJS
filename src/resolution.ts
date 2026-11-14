@@ -1,6 +1,7 @@
 import "./vendor/mdui.js";
 import { injectBaseStyles } from "./styles.ts";
 import { i18n } from "./i18n/index.ts";
+import type { Resolution } from "./domain.ts";
 import {
     playUiDialogClose,
     playUiDialogOpen,
@@ -13,12 +14,18 @@ export const RESOLUTIONS = {
     "1080p": { width: 1920, height: 1080 },
     "2k": { width: 2560, height: 1440 },
     "4k": { width: 3840, height: 2160 },
-};
+} as const satisfies Record<string, Resolution>;
+
+export type ResolutionKey = keyof typeof RESOLUTIONS;
+
+function isResolutionKey(value: string): value is ResolutionKey {
+    return Object.hasOwn(RESOLUTIONS, value);
+}
 
 const DIALOG_ID = "now-resolution-dialog";
 const TITLE_ID = "now-resolution-title";
 
-function escapeHtml(value) {
+function escapeHtml(value: unknown): string {
     return String(value).replace(
         /[&<>"']/g,
         (character) =>
@@ -200,14 +207,17 @@ function injectResolutionStyles() {
     document.head.appendChild(style);
 }
 
-export function showResolutionSelector() {
+export function showResolutionSelector(): Promise<Resolution> {
     injectBaseStyles();
     injectResolutionStyles();
 
     return new Promise((resolve) => {
-        const savedKey = localStorage.getItem("gameResolution") || "1080p";
-        let selectedKey = RESOLUTIONS[savedKey] ? savedKey : "1080p";
-        let choice = null;
+        const storedKey = localStorage.getItem("gameResolution") || "";
+        const savedKey: ResolutionKey = isResolutionKey(storedKey)
+            ? storedKey
+            : "1080p";
+        let selectedKey: ResolutionKey = savedKey;
+        let choice: ResolutionKey | null = null;
         let settled = false;
 
         const dialog = document.createElement("mdui-dialog");
@@ -283,9 +293,10 @@ export function showResolutionSelector() {
         const grid = dialog.querySelector(".now-resolution-grid");
         grid.setAttribute("aria-label", i18n.resolution.aria);
 
-        const cards = [];
+        const cards: Array<{ key: ResolutionKey; card: HTMLElement }> = [];
 
-        Object.entries(RESOLUTIONS).forEach(([key, item]) => {
+        (Object.keys(RESOLUTIONS) as ResolutionKey[]).forEach((key) => {
+            const item = RESOLUTIONS[key];
             const label = i18n.resolution[key].label;
             const note = i18n.resolution[key].note;
             const card = document.createElement("mdui-card");
@@ -346,8 +357,7 @@ export function showResolutionSelector() {
         };
 
         dialog.addEventListener("closed", () => {
-            const key = choice && RESOLUTIONS[choice] ? choice : savedKey;
-            resolve(RESOLUTIONS[key] || RESOLUTIONS["1080p"]);
+            resolve(RESOLUTIONS[choice ?? savedKey]);
             dialog.remove();
         });
 
@@ -369,7 +379,7 @@ export function showResolutionSelector() {
     });
 }
 
-export function getSavedResolution() {
+export function getSavedResolution(): Resolution {
     const saved = localStorage.getItem("gameResolution") || "1080p";
-    return RESOLUTIONS[saved] || RESOLUTIONS["1080p"];
+    return isResolutionKey(saved) ? RESOLUTIONS[saved] : RESOLUTIONS["1080p"];
 }

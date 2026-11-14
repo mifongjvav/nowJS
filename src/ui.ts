@@ -19,10 +19,27 @@ import {
     playUiHover,
     playUiSelect,
 } from "./audio.ts";
+import type {
+    DifficultySummary,
+    GameChart,
+    GameResults,
+    PresetChart,
+} from "./domain.ts";
 
 injectBaseStyles();
 
-const callbacks = {
+interface UICallbacks {
+    start: () => void;
+    importFiles: (files: File[]) => void;
+    preset: (preset: PresetChart) => void;
+    seekStart: () => boolean;
+    seekEnd: (progress: number) => void;
+    resume: () => void;
+    restart: () => void;
+    exit: () => void;
+}
+
+const callbacks: UICallbacks = {
     start: () => {},
     importFiles: () => {},
     preset: () => {},
@@ -33,11 +50,11 @@ const callbacks = {
     exit: () => {},
 };
 
-export function setUICallbacks(next) {
+export function setUICallbacks(next: Partial<UICallbacks>): void {
     Object.assign(callbacks, next);
 }
 
-export function setPresetCharts(presets) {
+export function setPresetCharts(presets: readonly PresetChart[]): void {
     presetGrid.replaceChildren();
 
     for (const preset of presets || []) {
@@ -510,7 +527,7 @@ function setCover(chart) {
     }
 }
 
-export function setSong(chart) {
+export function setSong(chart: GameChart | null): void {
     currentSong = chart || null;
 
     if (!currentSong) {
@@ -586,7 +603,7 @@ export function hidePause() {
     pauseDialog.open = false;
 }
 
-export function showResults(chart, stats) {
+export function showResults(chart: GameChart | null, stats: GameResults): void {
     const accuracy = stats.accuracy;
     let grade = "D";
     if (stats.total === 0) grade = "SS";
@@ -761,7 +778,9 @@ hudProgress.addEventListener("keydown", (event) => {
     callbacks.seekEnd(scrubbingProgress);
 });
 
-export function pickDifficulty(list) {
+export function pickDifficulty(
+    list: DifficultySummary[],
+): Promise<number | null> {
     return new Promise((resolve) => {
         difficultyResolver = resolve;
         difficultyList.innerHTML = "";

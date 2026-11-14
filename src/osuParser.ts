@@ -1,9 +1,23 @@
 import { strFromU8, unzipSync } from "./vendor/fflate.js";
+import type {
+    ArchiveFile,
+    ArchivedBeatmap,
+    CatchNote,
+    CompiledCatchChart,
+    OsuArchive,
+    OsuEvents,
+    OsuHitObject,
+    ParsedBeatmap,
+    TimingPoint,
+} from "./domain.ts";
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function splitSections(text) {
-    const sections = {};
+function splitSections(text: string): {
+    header: string;
+    sections: Record<string, string[]>;
+} {
+    const sections: Record<string, string[]> = {};
     let current = null;
     const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
     const header = lines[0] || "";
@@ -26,8 +40,8 @@ function splitSections(text) {
     return { header, sections };
 }
 
-function parseKeyValues(lines = []) {
-    const values = {};
+function parseKeyValues(lines: string[] = []): Record<string, string> {
+    const values: Record<string, string> = {};
     for (const raw of lines) {
         const line = raw.trim();
         const index = line.indexOf(":");
@@ -66,8 +80,8 @@ function splitCsv(line) {
     return parts;
 }
 
-function parseEvents(lines = []) {
-    const events = {
+function parseEvents(lines: string[] = []): OsuEvents {
+    const events: OsuEvents = {
         background: null,
         video: null,
         videoOffset: 0,
@@ -108,7 +122,7 @@ function parseEvents(lines = []) {
     return events;
 }
 
-function parseTimingPoints(lines = []) {
+function parseTimingPoints(lines: string[] = []): TimingPoint[] {
     const timingPoints = [];
 
     for (const raw of lines) {
@@ -144,7 +158,7 @@ function parseTimingPoints(lines = []) {
     return timingPoints.sort((a, b) => a.time - b.time);
 }
 
-const SAMPLE_SET_NAMES = {
+const SAMPLE_SET_NAMES: Record<number, string> = {
     1: "normal",
     2: "soft",
     3: "drum",
@@ -181,8 +195,11 @@ function getTimingSampleInfo(timingPoints, time) {
     };
 }
 
-function parseHitObjects(lines = [], timingPoints = []) {
-    const hitObjects = [];
+function parseHitObjects(
+    lines: string[] = [],
+    timingPoints: TimingPoint[] = [],
+): OsuHitObject[] {
+    const hitObjects: OsuHitObject[] = [];
 
     for (const raw of lines) {
         const line = raw.trim();
@@ -211,7 +228,7 @@ function parseHitObjects(lines = [], timingPoints = []) {
                   : parts[5] || "";
         const hitSample = parseHitSample(hitSampleValue);
         const timingSample = getTimingSampleInfo(timingPoints, time);
-        const object = {
+        const object: OsuHitObject = {
             x,
             y,
             time,
@@ -249,7 +266,7 @@ function parseHitObjects(lines = [], timingPoints = []) {
     return hitObjects.sort((a, b) => a.time - b.time);
 }
 
-export function parseOsu(text) {
+export function parseOsu(text: string): ParsedBeatmap {
     const { header, sections } = splitSections(text);
     const general = parseKeyValues(sections.General);
     const metadata = parseKeyValues(sections.Metadata);
@@ -663,8 +680,8 @@ function addSliderNotes(object, beatmap, notes) {
     }
 }
 
-export function compileCatchChart(beatmap) {
-    const notes = [];
+export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
+    const notes: CatchNote[] = [];
     const bananaRandom = createSeededRandom(1337);
 
     for (const object of beatmap.hitObjects) {
@@ -729,18 +746,75 @@ export function compileCatchChart(beatmap) {
     };
 }
 
-function normalizePath(path) {
-    return path
-        .replace(/\\/g, "/")
-        .replace(/^\.?\//, "")
-        .toLowerCase();
+function normalizeArchivePath(path: string, relativeTo = ""): string | null {
+    const requestedPath = path.replace(/\\/g, "/");
+    if (requestedPath.startsWith("/") || /^[a-z]:/i.test(requestedPath)) {
+        return null;
+    }
+
+    const basePath = relativeTo.replace(/\\/g, "/");
+    const segments = [...basePath.split("/"), ...requestedPath.split("/")];
+    const normalized: string[] = [];
+
+    for (const segment of segments) {
+        if (!segment || segment === ".") continue;
+        if (segment === "..") {
+            if (!normalized.length) return null;
+            normalized.pop();
+            continue;
+        }
+        normalized.push(segment);
+    }
+
+    return normalized.join("/");
 }
 
-export function extractArchive(arrayBuffer) {
-    const files = unzipSync(new Uint8Array(arrayBuffer));
-    const beatmaps = [];
+function sanitizeArchiveEntryPath(path: string): string | null {
+    const normalizedPath = path.replace(/\\/g, "/");
+    const segments = normalizedPath.split("/");
+    // Reject unsafe ZIP names; only references inside a map may use `../`.
+    if (
+        normalizedPath.startsWith("/") ||
+        /^[a-z]:/i.test(normalizedPath) ||
+        segments.includes("..")
+    ) {
+        return null;
+    }
 
-    for (const [name, data] of Object.entries(files)) {
+    const safePath = segments
+        .filter((segment) => segment && segment !== ".")
+        .join("/");
+    return safePath || null;
+}
+
+export function resolveArchivePath(
+    resourcePath: string,
+    relativeTo = "",
+): string | null {
+    // Resolve map resource references relative to the .osu file, then ensure
+    // normalization stays inside the archive root.
+    const baseDirectory = relativeTo.replace(/\\/g, "/").split("/");
+    if (baseDirectory.length) baseDirectory.pop();
+    return (
+        normalizeArchivePath(
+            resourcePath,
+            baseDirectory.join("/"),
+        )?.toLowerCase() ?? null
+    );
+}
+
+export function extractArchive(arrayBuffer: ArrayBuffer): OsuArchive {
+    const unzippedFiles = unzipSync(new Uint8Array(arrayBuffer));
+    const files = Object.create(null) as Record<string, Uint8Array>;
+    const beatmaps: ArchivedBeatmap[] = [];
+
+    for (const [archivePath, data] of Object.entries(unzippedFiles)) {
+        const name = sanitizeArchiveEntryPath(archivePath);
+        if (!name) {
+            console.warn("忽略压缩包中的不安全路径", archivePath);
+            continue;
+        }
+        files[name] = data;
         if (!name.toLowerCase().endsWith(".osu")) continue;
         try {
             beatmaps.push({ name, text: strFromU8(data) });
@@ -752,24 +826,32 @@ export function extractArchive(arrayBuffer) {
     return { files, beatmaps };
 }
 
-export function findArchiveFile(files, wantedPath) {
+export function findArchiveFile(
+    files: Record<string, Uint8Array>,
+    wantedPath: string | null | undefined,
+    relativeTo = "",
+): ArchiveFile | null {
     if (!wantedPath) return null;
-    const wanted = normalizePath(wantedPath);
+    const wanted = resolveArchivePath(wantedPath, relativeTo)?.toLowerCase();
+    if (!wanted) return null;
 
     for (const [name, data] of Object.entries(files)) {
-        if (normalizePath(name) === wanted) return { name, data };
+        if (name.toLowerCase() === wanted) return { name, data };
     }
 
     const wantedBase = wanted.split("/").pop();
     for (const [name, data] of Object.entries(files)) {
-        const base = normalizePath(name).split("/").pop();
+        const base = name.toLowerCase().split("/").pop();
         if (base === wantedBase) return { name, data };
     }
 
     return null;
 }
 
-export function findArchiveFileByExtension(files, extensions) {
+export function findArchiveFileByExtension(
+    files: Record<string, Uint8Array>,
+    extensions: readonly string[],
+): ArchiveFile | null {
     const wanted = extensions.map((extension) => extension.toLowerCase());
     for (const [name, data] of Object.entries(files)) {
         const lower = name.toLowerCase();
@@ -780,7 +862,7 @@ export function findArchiveFileByExtension(files, extensions) {
     return null;
 }
 
-export function decodeArchiveText(entry) {
+export function decodeArchiveText(entry: ArchiveFile | null): string {
     if (!entry) return "";
     try {
         return strFromU8(entry.data);
@@ -790,7 +872,7 @@ export function decodeArchiveText(entry) {
     }
 }
 
-export function getMimeType(fileName) {
+export function getMimeType(fileName: string): string {
     const lower = fileName.toLowerCase();
     if (lower.endsWith(".mp3")) return "audio/mpeg";
     if (lower.endsWith(".ogg") || lower.endsWith(".oga")) return "audio/ogg";

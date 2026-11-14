@@ -1,4 +1,10 @@
 import * as PIXI from "./vendor/pixi.js";
+import type {
+    StoryboardCommand,
+    StoryboardData,
+    StoryboardSprite,
+    StoryboardTrigger,
+} from "./domain.ts";
 
 const STORYBOARD_HEIGHT = 480;
 const ORIGIN_ANCHORS = {
@@ -52,14 +58,19 @@ function splitCsv(line) {
     return parts;
 }
 
-export function normalizeStoryboardPath(path) {
+export function normalizeStoryboardPath(
+    path: string | null | undefined,
+): string {
     return String(path || "")
         .replace(/\\/g, "/")
         .replace(/^\.?\//, "")
         .toLowerCase();
 }
 
-export function getAnimationFramePath(path, frameIndex) {
+export function getAnimationFramePath(
+    path: string,
+    frameIndex: number,
+): string {
     const file = String(path || "");
     const dotIndex = file.lastIndexOf(".");
     if (dotIndex === -1) return `${file}${frameIndex}`;
@@ -113,7 +124,65 @@ function parseCommand(parts) {
     };
 }
 
-export function parseStoryboard(text) {
+interface StoryboardPlayerOptions {
+    width?: number;
+    height?: number;
+    fileUrls?: Map<string, string>;
+    backgroundFile?: string;
+}
+
+interface InitialSpriteValues {
+    alpha: number;
+    x: number;
+    y: number;
+    scale: number;
+    vectorX: number;
+    vectorY: number;
+    rotation: number;
+    tint: number;
+    additive: boolean;
+    flipH: boolean;
+    flipV: boolean;
+}
+
+interface CommandCandidate {
+    command: Exclude<StoryboardCommand, { type: "L" } | { type: "T" }>;
+    start: number;
+    end: number;
+    offset: number;
+    order: number;
+}
+
+interface ActiveTrigger {
+    group: StoryboardTrigger;
+    commands: StoryboardCommand[];
+    start: number;
+    end: number;
+}
+
+interface SpriteRecord {
+    sprite: PIXI.Sprite;
+    data: StoryboardSprite;
+    anchorX: number;
+    anchorY: number;
+    firstCommand: number;
+    displayEndTime: number;
+    initial: InitialSpriteValues;
+    framePaths: string[];
+    candidates: CommandCandidate[];
+    activeTriggers: ActiveTrigger[];
+}
+
+interface TriggerBinding {
+    record: SpriteRecord;
+    group: StoryboardTrigger;
+}
+
+interface OrderReference {
+    value: number;
+}
+
+export function parseStoryboard(text: string): StoryboardData {
     const sprites = [];
     const samples = [];
     const variables = {};
@@ -488,7 +557,13 @@ function commandValue(command, time) {
     });
 }
 
-function collectCandidates(commands, time, offset, orderRef, output) {
+function collectCandidates(
+    commands: StoryboardCommand[],
+    time: number,
+    offset: number,
+    orderRef: OrderReference,
+    output: CommandCandidate[],
+): void {
     for (const command of commands) {
         if (command.type === "T") continue;
 
@@ -543,7 +618,12 @@ function collectCandidates(commands, time, offset, orderRef, output) {
     }
 }
 
-function resolveParameterFlag(candidates, time, flag, initialValue = false) {
+function resolveParameterFlag(
+    candidates: CommandCandidate[],
+    time: number,
+    flag: string,
+    initialValue = false,
+): boolean {
     let best = null;
 
     for (const candidate of candidates) {
@@ -579,7 +659,10 @@ function adjustAnchor(anchor, flipped, vectorScale) {
     return anchor;
 }
 
-function latestCandidate(candidates, types) {
+function latestCandidate(
+    candidates: CommandCandidate[],
+    types: readonly string[],
+): CommandCandidate | null {
     let best = null;
     for (const candidate of candidates) {
         if (!types.includes(candidate.command.type)) continue;
@@ -634,7 +717,10 @@ function groupDisplayEndTime(commands) {
     return end;
 }
 
-export function getStoryboardRange(data) {
+export function getStoryboardRange(data: StoryboardData): {
+    start: number;
+    end: number;
+} {
     let start = Infinity;
     let end = 0;
 
@@ -794,7 +880,23 @@ function firstCommandTime(commands, offset = 0) {
 }
 
 export class StoryboardPlayer {
-    constructor(data, options = {}) {
+    readonly width: number;
+    readonly height: number;
+    readonly fileUrls: Map<string, string>;
+    readonly backgroundFile: string;
+    readonly worldScale: number;
+    readonly offsetX: number;
+    readonly backgroundContainer: PIXI.Container;
+    readonly foregroundContainer: PIXI.Container;
+    readonly overlayContainer: PIXI.Container;
+    readonly sprites: SpriteRecord[];
+    readonly triggerBindings: TriggerBinding[];
+    readonly textures: Map<string, PIXI.Texture>;
+    readonly loadingUrls: Set<string>;
+    destroyed: boolean;
+    lastUpdateTime = 0;
+
+    constructor(data: StoryboardData, options: StoryboardPlayerOptions = {}) {
         this.width = options.width || window.gameWidth || 1280;
         this.height = options.height || window.gameHeight || 720;
         this.fileUrls = options.fileUrls || new Map();
@@ -888,7 +990,12 @@ export class StoryboardPlayer {
         this.buildTriggerBindings();
     }
 
-    loadTexture(normalized, url, sprite) {
+    loadTexture(
+        normalized: string,
+        url: string | undefined,
+        sprite: PIXI.Sprite,
+    ): void {
+        if (!url) return;
         const existing = this.textures.get(normalized);
         if (existing) {
             if (sprite.texture === PIXI.Texture.EMPTY) {
@@ -918,7 +1025,7 @@ export class StoryboardPlayer {
         image.src = url;
     }
 
-    applyRecordTexture(record) {
+    applyRecordTexture(record: SpriteRecord): void {
         const frames = record.framePaths;
         if (frames.length <= 1) {
             record.sprite.texture =
@@ -946,7 +1053,7 @@ export class StoryboardPlayer {
             PIXI.Texture.EMPTY;
     }
 
-    buildTriggerBindings() {
+    buildTriggerBindings(): void {
         this.triggerBindings.length = 0;
 
         for (const record of this.sprites) {
@@ -959,7 +1066,7 @@ export class StoryboardPlayer {
         }
     }
 
-    trigger(time) {
+    trigger(time: number): void {
         if (this.destroyed) return;
 
         for (const { record, group } of this.triggerBindings) {
@@ -985,13 +1092,13 @@ export class StoryboardPlayer {
         }
     }
 
-    resetTriggers() {
+    resetTriggers(): void {
         for (const record of this.sprites) {
             record.activeTriggers.length = 0;
         }
     }
 
-    update(time) {
+    update(time: number): void {
         this.lastUpdateTime = time;
 
         for (const record of this.sprites) {
@@ -1138,7 +1245,7 @@ export class StoryboardPlayer {
         }
     }
 
-    destroy() {
+    destroy(): void {
         this.destroyed = true;
         for (const texture of this.textures.values()) {
             texture.destroy(true);

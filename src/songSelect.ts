@@ -6,6 +6,7 @@ import {
     findArchiveFileByExtension,
     getMimeType,
     parseOsu,
+    resolveArchivePath,
 } from "./osuParser.ts";
 import {
     getAnimationFramePath,
@@ -29,6 +30,14 @@ import {
 } from "./background.ts";
 import * as ui from "./ui.ts";
 import { format, i18n } from "./i18n/index.ts";
+import type {
+    ArchiveFile,
+    GameChart,
+    ParsedBeatmap,
+    PresetChart,
+    StoryboardData,
+    StoryboardBundle,
+} from "./domain.ts";
 
 const VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogv", ".mov"];
 const PRESET_CHARTS = [
@@ -36,13 +45,13 @@ const PRESET_CHARTS = [
         file: "355322 nekodex - circles!.osz",
         label: "355322 nekodex - circles!.osz",
     },
-];
+] satisfies PresetChart[];
 
 function isStoryboardMediaLine(line) {
     return /^\s*(Sprite|Animation)\s*,/i.test(line);
 }
 
-function getInlineStoryboardText(parsed) {
+function getInlineStoryboardText(parsed: ParsedBeatmap): string {
     const inlineLines = (parsed.eventsRaw || []).filter(isStoryboardMediaLine);
     if (!inlineLines.length) return "";
 
@@ -51,7 +60,10 @@ function getInlineStoryboardText(parsed) {
     );
 }
 
-function getArchiveStoryboardData(archive, parsed) {
+function getArchiveStoryboardData(
+    archive: ReturnType<typeof extractArchive>,
+    parsed: ParsedBeatmap,
+): StoryboardData {
     const osbEntry = findArchiveFileByExtension(archive.files, [".osb"]);
     const sharedText = osbEntry ? decodeArchiveText(osbEntry) : "";
     const inlineText = getInlineStoryboardText(parsed);
@@ -70,14 +82,17 @@ function getArchiveStoryboardData(archive, parsed) {
     };
 }
 
-function buildStoryboard(source, resolveUrl) {
+function buildStoryboard(
+    source: string | StoryboardData | null,
+    resolveUrl: (normalizedPath: string, originalPath: string) => string | null,
+): StoryboardBundle | null {
     if (!source) return null;
 
     const data = typeof source === "string" ? parseStoryboard(source) : source;
     if (!data.sprites.length) return null;
 
-    const fileUrls = new Map();
-    const resolve = (file) => {
+    const fileUrls = new Map<string, string>();
+    const resolve = (file: string): void => {
         const normalized = normalizeStoryboardPath(file);
         if (!normalized || fileUrls.has(normalized)) return;
 
@@ -103,15 +118,19 @@ function buildStoryboard(source, resolveUrl) {
     return { data, fileUrls };
 }
 
-function findCompanionFile(files, wantedPath) {
-    const wanted = normalizeStoryboardPath(wantedPath);
+function findCompanionFile(
+    files: File[],
+    wantedPath: string | null | undefined,
+    relativeTo = "",
+): File | null {
+    if (!wantedPath) return null;
+    const wanted = resolveArchivePath(wantedPath, relativeTo);
     if (!wanted) return null;
 
     const wantedBase = wanted.split("/").pop();
     for (const file of files) {
-        const name = normalizeStoryboardPath(
-            file.webkitRelativePath || file.name,
-        );
+        const name = resolveArchivePath(file.webkitRelativePath || file.name);
+        if (!name) continue;
         if (name === wanted || name.split("/").pop() === wantedBase) {
             return file;
         }
@@ -119,7 +138,10 @@ function findCompanionFile(files, wantedPath) {
     return null;
 }
 
-function findCompanionByExtension(files, extensions) {
+function findCompanionByExtension(
+    files: File[],
+    extensions: readonly string[],
+): File | null {
     return (
         files.find((file) =>
             extensions.some((extension) =>
@@ -129,8 +151,8 @@ function findCompanionByExtension(files, extensions) {
     );
 }
 
-let currentChart = null;
-let ownedUrls = [];
+let currentChart: GameChart | null = null;
+let ownedUrls: string[] = [];
 let loadGeneration = 0;
 
 function computeFallSpeed(preemptMs) {
@@ -139,7 +161,9 @@ function computeFallSpeed(preemptMs) {
     return (judgeY + 50 * scale) / (preemptMs / 1000);
 }
 
-function finalizeChart(chart) {
+function finalizeChart(
+    chart: Omit<GameChart, "fallSpeed" | "endTime">,
+): GameChart {
     chart.fallSpeed = computeFallSpeed(chart.preemptMs);
     const tail = chart.audioDurationMs
         ? Math.min(chart.audioDurationMs, chart.lastNoteTime + 6000)
@@ -148,26 +172,30 @@ function finalizeChart(chart) {
     return chart;
 }
 
-function makeBlobUrl(entry, into) {
+function makeBlobUrl(entry: ArchiveFile, into: string[]): string {
     const blob = new Blob([entry.data], { type: getMimeType(entry.name) });
     const url = URL.createObjectURL(blob);
     into.push(url);
     return url;
 }
 
-function makeFileUrl(file, into) {
+function makeFileUrl(file: File, into: string[]): string {
     const url = URL.createObjectURL(file);
     into.push(url);
     return url;
 }
 
-function revokeUrls(urls) {
+function revokeUrls(urls: string[]): void {
     for (const url of urls) {
         URL.revokeObjectURL(url);
     }
 }
 
-async function selectChart(chart, newUrls, token) {
+async function selectChart(
+    chart: GameChart,
+    newUrls: string[],
+    token: number,
+): Promise<boolean> {
     if (token !== loadGeneration) {
         revokeUrls(newUrls);
         return false;
@@ -210,11 +238,11 @@ async function selectChart(chart, newUrls, token) {
     return true;
 }
 
-export function getCurrentChart() {
+export function getCurrentChart(): GameChart | null {
     return currentChart;
 }
 
-function summarize(parsed, fileName) {
+function summarize(parsed: ParsedBeatmap, fileName: string) {
     const firstRed = parsed.timingPoints.find(
         (point) => point.uninherited && point.beatLength > 0,
     );
@@ -233,11 +261,16 @@ function summarize(parsed, fileName) {
     };
 }
 
-async function buildImportedChart(file, fileList, token) {
+async function buildImportedChart(
+    file: File,
+    fileList: File[],
+    token: number,
+): Promise<GameChart | null> {
     const lowerName = file.name.toLowerCase();
     const newUrls = [];
-    let parsed;
-    let archive = null;
+    let parsed: ParsedBeatmap;
+    let archive: ReturnType<typeof extractArchive> | null = null;
+    let beatmapPath = file.webkitRelativePath || file.name;
 
     try {
         if (lowerName.endsWith(".osz") || lowerName.endsWith(".zip")) {
@@ -266,6 +299,7 @@ async function buildImportedChart(file, fileList, token) {
                 chosen = parsedList[index];
             }
 
+            beatmapPath = chosen.entry.name;
             parsed = chosen.parsed;
         } else if (lowerName.endsWith(".osu")) {
             parsed = parseOsu(await file.text());
@@ -286,11 +320,15 @@ async function buildImportedChart(file, fileList, token) {
         let backgroundUrl = null;
         let audioDurationMs = 0;
         let videoUrl = null;
-        let storyboard = null;
+        let storyboard: StoryboardBundle | null = null;
 
         if (archive) {
             const audioEntry =
-                findArchiveFile(archive.files, parsed.general.audioFilename) ||
+                findArchiveFile(
+                    archive.files,
+                    parsed.general.audioFilename,
+                    beatmapPath,
+                ) ||
                 findArchiveFileByExtension(archive.files, [
                     ".mp3",
                     ".ogg",
@@ -302,7 +340,11 @@ async function buildImportedChart(file, fileList, token) {
             }
 
             const backgroundEntry =
-                findArchiveFile(archive.files, parsed.events.background) ||
+                findArchiveFile(
+                    archive.files,
+                    parsed.events.background,
+                    beatmapPath,
+                ) ||
                 findArchiveFileByExtension(archive.files, [
                     ".jpg",
                     ".jpeg",
@@ -315,7 +357,11 @@ async function buildImportedChart(file, fileList, token) {
 
             if (parsed.events.video) {
                 const videoEntry =
-                    findArchiveFile(archive.files, parsed.events.video) ||
+                    findArchiveFile(
+                        archive.files,
+                        parsed.events.video,
+                        beatmapPath,
+                    ) ||
                     findArchiveFileByExtension(archive.files, VIDEO_EXTENSIONS);
                 if (videoEntry) {
                     videoUrl = makeBlobUrl(videoEntry, newUrls);
@@ -325,13 +371,21 @@ async function buildImportedChart(file, fileList, token) {
             storyboard = buildStoryboard(
                 getArchiveStoryboardData(archive, parsed),
                 (normalized, file) => {
-                    const entry = findArchiveFile(archive.files, file);
+                    const entry = findArchiveFile(
+                        archive.files,
+                        file,
+                        beatmapPath,
+                    );
                     return entry ? makeBlobUrl(entry, newUrls) : null;
                 },
             );
         } else {
             const companionAudio =
-                findCompanionFile(fileList, parsed.general.audioFilename) ||
+                findCompanionFile(
+                    fileList,
+                    parsed.general.audioFilename,
+                    beatmapPath,
+                ) ||
                 fileList.find((item) =>
                     /\.(mp3|ogg|wav|m4a)$/i.test(item.name),
                 );
@@ -341,7 +395,11 @@ async function buildImportedChart(file, fileList, token) {
             }
 
             const companionImage =
-                findCompanionFile(fileList, parsed.events.background) ||
+                findCompanionFile(
+                    fileList,
+                    parsed.events.background,
+                    beatmapPath,
+                ) ||
                 fileList.find((item) => /\.(jpe?g|png|webp)$/i.test(item.name));
             if (companionImage) {
                 backgroundUrl = URL.createObjectURL(companionImage);
@@ -350,8 +408,11 @@ async function buildImportedChart(file, fileList, token) {
 
             if (parsed.events.video) {
                 const videoFile =
-                    findCompanionFile(fileList, parsed.events.video) ||
-                    findCompanionByExtension(fileList, VIDEO_EXTENSIONS);
+                    findCompanionFile(
+                        fileList,
+                        parsed.events.video,
+                        beatmapPath,
+                    ) || findCompanionByExtension(fileList, VIDEO_EXTENSIONS);
                 if (videoFile) {
                     videoUrl = URL.createObjectURL(videoFile);
                     newUrls.push(videoUrl);
@@ -366,7 +427,7 @@ async function buildImportedChart(file, fileList, token) {
                 : getInlineStoryboardText(parsed);
 
             storyboard = buildStoryboard(storyboardText, (normalized, file) => {
-                const match = findCompanionFile(fileList, file);
+                const match = findCompanionFile(fileList, file, beatmapPath);
                 if (!match) return null;
                 const url = URL.createObjectURL(match);
                 newUrls.push(url);
@@ -378,8 +439,8 @@ async function buildImportedChart(file, fileList, token) {
             ...(parsed.events.samples || []),
             ...(storyboard?.data.samples || []),
         ];
-        const sampleUrlCache = new Map();
-        const samples = [];
+        const sampleUrlCache = new Map<string, string>();
+        const samples: GameChart["samples"] = [];
 
         for (const sample of sampleEvents) {
             const normalized = normalizeStoryboardPath(sample.file);
@@ -388,11 +449,19 @@ async function buildImportedChart(file, fileList, token) {
             let url = sampleUrlCache.get(normalized);
             if (!url) {
                 if (archive) {
-                    const entry = findArchiveFile(archive.files, sample.file);
+                    const entry = findArchiveFile(
+                        archive.files,
+                        sample.file,
+                        beatmapPath,
+                    );
                     if (!entry) continue;
                     url = makeBlobUrl(entry, newUrls);
                 } else {
-                    const file = findCompanionFile(fileList, sample.file);
+                    const file = findCompanionFile(
+                        fileList,
+                        sample.file,
+                        beatmapPath,
+                    );
                     if (!file) continue;
                     url = makeFileUrl(file, newUrls);
                 }
@@ -523,7 +592,7 @@ async function buildImportedChart(file, fileList, token) {
     }
 }
 
-export async function importFiles(files) {
+export async function importFiles(files: File[]): Promise<void> {
     if (!files.length) return;
 
     const mainFile = files.find((file) => /\.(osu|osz|zip)$/i.test(file.name));
@@ -560,7 +629,7 @@ export async function importFiles(files) {
     }
 }
 
-async function loadPresetChart(preset) {
+async function loadPresetChart(preset: PresetChart): Promise<void> {
     ui.showLoading(i18n.loading.reading);
 
     try {
