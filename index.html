@@ -1,12 +1,86 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>nowjs</title>
-  </head>
-  <body>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+<html lang="zh-CN" class="mdui-theme-dark">
+    <head>
+        <meta charset="UTF-8" />
+        <!-- No site icon yet; the empty data URI avoids a default /favicon.ico request. -->
+        <link rel="icon" href="data:," />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#0b1416" />
+        <meta name="color-scheme" content="dark" />
+        <meta
+            name="description"
+            content="nowJS - 支持导入 osu! 谱面的节奏接水果游戏"
+            data-i18n-content="app.description"
+        />
+        <title data-i18n="app.title">nowJS · 节奏接水果</title>
+        <style>
+            :root {
+                color-scheme: dark;
+            }
+
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                overflow: hidden;
+                background: #0b1416;
+                color: #dee4e5;
+                font-family:
+                    "Roboto Flex", Roboto, "Noto Sans SC", "PingFang SC",
+                    "Microsoft YaHei", system-ui, sans-serif;
+            }
+
+            #boot-splash {
+                position: fixed;
+                inset: 0;
+                z-index: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 16px;
+                background: #0b1416;
+                pointer-events: none;
+            }
+
+            #boot-splash .boot-mark {
+                display: grid;
+                place-items: center;
+                width: 56px;
+                height: 56px;
+                border-radius: 16px;
+                background: #004f54;
+                color: #a0f0f5;
+                font-size: 30px;
+                font-weight: 600;
+                line-height: 1;
+            }
+
+            #boot-splash strong {
+                font-size: 22px;
+                font-weight: 600;
+                letter-spacing: 0.02em;
+                color: #dee4e5;
+            }
+
+            #boot-splash span {
+                color: #bfc8ca;
+                font-size: 11px;
+                font-weight: 500;
+                letter-spacing: 0.5px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="boot-splash">
+            <div class="boot-mark" aria-hidden="true">n</div>
+            <strong>nowJS</strong>
+            <span>RHYTHM CATCH</span>
+        </div>
+        <noscript data-i18n="app.noscript"
+            >需要启用 JavaScript 才能游玩 nowJS。 / JavaScript is required to
+            play nowJS.</noscript
+        >
+        <script type="module" src="./src/main.js"></script>
+    </body>
 </html>

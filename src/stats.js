@@ -1,28 +1,52 @@
-import * as PIXI from "pixi.js";
+import * as PIXI from "./vendor/pixi.js";
+import { MD3_COLORS } from "./theme.js";
+import { i18n, onLanguageChange } from "./i18n/index.js";
 
-const app = window.app;
+const layer = window.statsLayer || window.gameplayLayer || window.app.stage;
 const SCALE = window.gameScale;
 
 window.combo = 0;
 window.maxCombo = 0;
 window.hitCount = 0;
 window.missCount = 0;
+window.bananaCount = 0;
+
+const statsAccent = new PIXI.Graphics();
+statsAccent
+    .roundRect(14 * SCALE, 22 * SCALE, 3 * SCALE, 52 * SCALE, 2 * SCALE)
+    .fill({
+        color: MD3_COLORS.primary,
+        alpha: 0.8,
+    });
+layer.addChild(statsAccent);
 
 const hitText = new PIXI.Text({
-    text: "Hit: 0",
-    style: { fontSize: 36 * SCALE, fill: 0xffcc00, fontWeight: "bold" },
+    text: `${i18n.stats.hit}: 0`,
+    style: {
+        fontSize: 23 * SCALE,
+        fill: MD3_COLORS.onSurface,
+        fontWeight: "700",
+        letterSpacing: 1 * SCALE,
+    },
 });
-hitText.x = 20 * SCALE;
+hitText.alpha = 0.88;
+hitText.x = 26 * SCALE;
 hitText.y = 20 * SCALE;
-app.stage.addChild(hitText);
+layer.addChild(hitText);
 
 const missCountText = new PIXI.Text({
-    text: "Miss: 0",
-    style: { fontSize: 36 * SCALE, fill: 0xff3333, fontWeight: "bold" },
+    text: `${i18n.stats.miss}: 0`,
+    style: {
+        fontSize: 23 * SCALE,
+        fill: MD3_COLORS.error,
+        fontWeight: "700",
+        letterSpacing: 1 * SCALE,
+    },
 });
-missCountText.x = 20 * SCALE;
-missCountText.y = 20 * SCALE + 42 * SCALE;
-app.stage.addChild(missCountText);
+missCountText.alpha = 0.92;
+missCountText.x = 26 * SCALE;
+missCountText.y = 20 * SCALE + 30 * SCALE;
+layer.addChild(missCountText);
 
 const comboText = new PIXI.Text({
     text: "0x",
@@ -30,22 +54,23 @@ const comboText = new PIXI.Text({
 });
 comboText.anchor.set(0.5);
 comboText.visible = false;
-app.stage.addChild(comboText);
+layer.addChild(comboText);
 
 const missPopup = new PIXI.Text({
-    text: "miss!",
+    text: i18n.stats.missPopup,
     style: { fontSize: 64 * SCALE, fill: 0xff3333, fontWeight: "bold" },
 });
 missPopup.anchor.set(0.5);
 missPopup.visible = false;
-app.stage.addChild(missPopup);
+layer.addChild(missPopup);
 
 let comboCurrentScale = 1;
 let missCurrentScale = 1;
 
 export function updateStatsDisplay() {
-    hitText.text = `Hit: ${window.hitCount}`;
-    missCountText.text = `Miss: ${window.missCount}`;
+    hitText.text = `${i18n.stats.hit}: ${window.hitCount}`;
+    missCountText.text = `${i18n.stats.miss}: ${window.missCount}`;
+    missPopup.text = i18n.stats.missPopup;
     comboText.text = `${window.combo}x`;
     if (window.combo > 0) {
         comboCurrentScale = 1.5;
@@ -71,6 +96,23 @@ export function updateComboPosition() {
         missPopup.y = player.y - 150 * SCALE;
     }
 }
+
+export function resetStats() {
+    window.combo = 0;
+    window.maxCombo = 0;
+    window.hitCount = 0;
+    window.missCount = 0;
+    window.bananaCount = 0;
+    comboCurrentScale = 1;
+    missCurrentScale = 1;
+    comboText.scale.set(1);
+    missPopup.scale.set(1);
+    missPopup.visible = false;
+    comboText.visible = false;
+    updateStatsDisplay();
+}
+
+onLanguageChange(() => updateStatsDisplay());
 
 export function animateComboScale() {
     if (comboCurrentScale > 1.01) {

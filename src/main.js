@@ -1,5 +1,18 @@
-import * as PIXI from "pixi.js";
+import {
+    Application,
+    Container,
+    Graphics,
+    Sprite,
+    Text,
+    Texture,
+} from "./vendor/pixi.js";
+import { setTheme } from "./vendor/mdui.js";
 import { showResolutionSelector } from "./resolution.js";
+import { MD3_COLORS } from "./theme.js";
+import { initI18n } from "./i18n/index.js";
+
+setTheme("dark");
+await initI18n();
 
 const resolution = await showResolutionSelector();
 const WIDTH = resolution.width;
@@ -9,7 +22,17 @@ window.gameWidth = WIDTH;
 window.gameHeight = HEIGHT;
 window.gameScale = HEIGHT / 720;
 
-window.app = new PIXI.Application();
+window.app = new Application();
+
+// Pixi registers render pipes when their scene modules are first imported.
+// The gameplay modules are loaded after the renderer initializes, so make sure
+// the graphics/text/sprite pipes exist before creating the renderer.
+const pipeWarmup = new Container();
+pipeWarmup.visible = false;
+pipeWarmup.addChild(new Sprite(Texture.EMPTY));
+pipeWarmup.addChild(new Graphics().circle(0, 0, 1).fill(0xffffff));
+pipeWarmup.addChild(new Text({ text: "", style: { fontSize: 8 } }));
+window.app.stage.addChild(pipeWarmup);
 
 let resolutionSetting = window.devicePixelRatio || 1;
 if (WIDTH >= 2560) {
@@ -27,18 +50,33 @@ await window.app.init({
     autoDensity: false,
     antialias: WIDTH < 1920,
     preference: "webgpu",
-    background: 0x333333,
+    background: MD3_COLORS.surface,
 });
+
+// Preserve the browser's native context menu on the canvas (including image
+// save/copy actions); game controls are driven by window-level listeners.
+window.app.renderer.events.autoPreventDefault = false;
 
 document.body.style.margin = "0";
 document.body.style.padding = "0";
 document.body.style.overflow = "hidden";
 document.body.style.position = "relative";
+document.body.style.background = "#0b1416";
 
 document.body.appendChild(window.app.canvas);
 
 window.app.canvas.style.position = "absolute";
 window.app.canvas.style.display = "block";
+window.app.canvas.style.zIndex = "1";
+
+window.bgLayer = new Container();
+window.gameplayLayer = new Container();
+window.storyboardLayer = new Container();
+window.statsLayer = new Container();
+window.app.stage.addChild(window.bgLayer);
+window.app.stage.addChild(window.gameplayLayer);
+window.app.stage.addChild(window.storyboardLayer);
+window.app.stage.addChild(window.statsLayer);
 
 function resize() {
     const winW = window.innerWidth;
@@ -57,17 +95,29 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-import("./player.js");
-import("./line.js");
-import("./audio.js");
-import("./circlePool.js");
-import("./stats.js");
-import("./ui.js");
-import("./gameLoop.js");
-
-window.gameState = "waiting";
+window.gameState = "menu";
 window.isPaused = false;
+window.gameplayLayer.visible = false;
+window.statsLayer.visible = false;
+window.currentChart = null;
+
+await import("./player.js");
+await import("./line.js");
+await import("./circlePool.js");
+await import("./stats.js");
+await import("./ui.js");
+const songSelect = await import("./songSelect.js");
+await import("./gameLoop.js");
+
+const boot = document.getElementById("boot-splash");
+if (boot) boot.remove();
 
 if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js");
+    navigator.serviceWorker
+        .register(`${import.meta.env.BASE_URL}sw.js`)
+        .catch(() => {
+            // 离线缓存不可用时不影响正常游玩
+        });
 }
+
+songSelect.showPresetMenu();

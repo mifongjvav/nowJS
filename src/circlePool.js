@@ -1,60 +1,78 @@
-import * as PIXI from "pixi.js";
-import { BlurFilter } from "pixi.js";
-import { sound } from "@pixi/sound";
-import { updateStatsDisplay, showMiss } from "./stats.js";
-import { playCatchSound } from "./audio.js";
+import * as PIXI from "./vendor/pixi.js";
+import { showMiss, updateStatsDisplay } from "./stats.js";
+import { playCatchSound, playComboBreak } from "./audio.js";
+import { triggerStoryboardHit } from "./background.js";
+import { getPlayfield } from "./layout.js";
+import { MD3_COLORS } from "./theme.js";
 
-const app = window.app;
-const HEIGHT = window.gameHeight;
 const SCALE = window.gameScale;
 const RADIUS = 20 * SCALE;
-
-export const JUDGE_TOLERANCE = 3 * SCALE;
+const CATCHER_WIDTH = 130 * SCALE;
+const CATCH_WINDOW_MS = 95;
+// Use most of the plate as the catch area while keeping a small edge margin.
+const CATCH_CENTER_RATIO = 0.9;
 
 class CirclePool {
-    constructor(poolSize = 30) {
+    constructor(poolSize = 90) {
         this.pool = [];
         this.activeCircles = [];
-        this.initPool(poolSize);
-    }
+        this.layer = window.gameplayLayer || window.app.stage;
+        this.lastMissSound = 0;
+        this.lastCatchSound = 0;
 
-    initPool(size) {
-        for (let i = 0; i < size; i++) {
-            const circle = new PIXI.Graphics();
-            circle.beginFill(0xffffff);
-            circle.drawCircle(0, 0, RADIUS);
-            circle.endFill();
-            circle.visible = false;
-            circle.active = false;
-            circle.speedY = 5 * SCALE;
-            circle.hasJudged = false;
-            app.stage.addChild(circle);
-            this.pool.push(circle);
+        for (let i = 0; i < poolSize; i++) {
+            this.createCircle();
         }
     }
 
-    get(x, y) {
-        for (let i = 0; i < this.pool.length; i++) {
-            const c = this.pool[i];
-            if (!c.active) {
-                c.active = true;
-                c.visible = true;
-                c.hasJudged = false;
-                c.x = x;
-                c.y = y;
+    createCircle() {
+        const circle = new PIXI.Graphics();
+        circle.circle(0, 0, RADIUS).fill(0xffffff);
+        circle.visible = false;
+        circle.active = false;
+        circle.hasJudged = false;
+        circle.displayRadius = RADIUS;
+        this.layer.addChild(circle);
+        this.pool.push(circle);
+        return circle;
+    }
 
-                const initialBlur = 2 * SCALE;
-                const clearY = 50 * SCALE;
-                c.filters = [new BlurFilter(initialBlur)];
-                c.blurStrength = initialBlur;
-                c.blurStartY = y;
-                c.blurClearY = clearY;
+    spawnNote(note, chartTime) {
+        let circle = this.pool.find((item) => !item.active);
+        if (!circle) circle = this.createCircle();
 
-                this.activeCircles.push(c);
-                return c;
-            }
-        }
-        return null;
+        const field = getPlayfield();
+        const x = Math.max(0, Math.min(512, note.x));
+        const scale = note.scale || 1;
+
+        circle.active = true;
+        circle.visible = true;
+        circle.hasJudged = false;
+        circle.note = note;
+        circle.noteTime = note.time;
+        circle.fallSpeed =
+            (window.currentChart && window.currentChart.fallSpeed) || 330;
+        circle.x = field.left + (x / 512) * field.width;
+        circle.displayRadius = RADIUS * scale;
+        circle.scale.set(scale);
+        circle.tint =
+            note.type === "droplet"
+                ? MD3_COLORS.primary
+                : note.type === "banana"
+                  ? MD3_COLORS.banana
+                  : MD3_COLORS.onSurface;
+
+        circle.y = this.yFor(circle, chartTime);
+
+        this.activeCircles.push(circle);
+        return circle;
+    }
+
+    yFor(circle, chartTime) {
+        const judgeY = window.judgeLine ? window.judgeLine.y : window.player.y;
+        return (
+            judgeY - ((circle.noteTime - chartTime) / 1000) * circle.fallSpeed
+        );
     }
 
     release(circle) {
@@ -63,6 +81,9 @@ class CirclePool {
         circle.active = false;
         circle.visible = false;
         circle.hasJudged = false;
+        circle.filters = null;
+        circle.tint = MD3_COLORS.onSurface;
+        circle.scale.set(1);
         circle.y = -100 * SCALE;
     }
 
@@ -72,124 +93,100 @@ class CirclePool {
         }
     }
 
-    update(deltaTime) {
+    overlaps(circle, player) {
+        const playerWidth = window.playerWidth || 100 * SCALE;
+        const playerCenter = player.x + playerWidth / 2;
+        const catchHalfWidth = (playerWidth * CATCH_CENTER_RATIO) / 2;
+        return Math.abs(circle.x - playerCenter) <= catchHalfWidth;
+    }
+
+    update(chartTime) {
         if (window.gameState !== "playing" || window.isPaused) return;
 
         const player = window.player;
         if (!player) return;
 
-        const judgeLineY = player.y;
+        for (let i = this.activeCircles.length - 1; i >= 0; i--) {
+            const circle = this.activeCircles[i];
+            circle.y = this.yFor(circle, chartTime);
 
-        for (let i = 0; i < this.activeCircles.length; i++) {
-            const c = this.activeCircles[i];
-            c.y += c.speedY * deltaTime;
+            const delta = chartTime - circle.noteTime;
 
-            if (c.filters && c.filters.length > 0) {
-                const startY = c.blurStartY;
-                const endY = c.blurClearY;
-                const currentY = c.y;
-
-                // don't delete the following comment!
-                // 不要删除下面这条注释！
-                // eslint-disable-next-line no-useless-assignment
-                let progress = 0;
-                if (currentY <= startY) {
-                    progress = 0;
-                } else if (currentY >= endY) {
-                    progress = 1;
-                } else {
-                    progress = (currentY - startY) / (endY - startY);
-                }
-
-                let newBlur = c.blurStrength * (1 - progress);
-                newBlur = Math.max(0, newBlur);
-
-                if (newBlur <= 0.1) {
-                    c.filters = null;
-                } else {
-                    c.filters[0].blur = newBlur;
-                }
-            }
-
-            if (c.hasJudged) continue;
-
-            const dy = Math.abs(c.y - judgeLineY);
-            if (dy <= JUDGE_TOLERANCE) {
-                const playerX = player.x;
-                const playerW = 130 * SCALE;
-                if (c.x >= playerX - 15 * SCALE && c.x <= playerX + playerW) {
-                    this.performHit(c);
+            if (
+                !circle.hasJudged &&
+                delta >= -CATCH_WINDOW_MS &&
+                delta <= CATCH_WINDOW_MS
+            ) {
+                if (this.overlaps(circle, player)) {
+                    this.performHit(circle);
                     continue;
                 }
             }
 
-            if (c.y > judgeLineY + JUDGE_TOLERANCE + RADIUS) {
-                this.release(c);
-                sound.play("miss");
-                window.missCount++;
-                window.combo = 0;
-                showMiss();
-                updateStatsDisplay();
-            }
-
-            if (c.y + RADIUS > HEIGHT) {
-                this.release(c);
-                sound.play("miss");
-                window.missCount++;
-                window.combo = 0;
-                showMiss();
-                updateStatsDisplay();
+            if (delta > CATCH_WINDOW_MS) {
+                if (circle.note.type === "banana") {
+                    this.release(circle);
+                } else {
+                    this.registerMiss(circle);
+                }
             }
         }
     }
 
-    manualHit() {
-        if (window.gameState !== "playing" || window.isPaused) return;
+    registerMiss(circle) {
+        this.release(circle);
+        const now = performance.now();
+        const brokeCombo = window.combo > 0;
 
-        const player = window.player;
-        if (!player) return;
-
-        const judgeLineY = player.y;
-
-        for (let i = this.activeCircles.length - 1; i >= 0; i--) {
-            const c = this.activeCircles[i];
-            if (c.hasJudged) continue;
-
-            const dy = Math.abs(c.y - judgeLineY);
-            const playerX = player.x;
-            const playerW = 130 * SCALE;
-
-            if (
-                dy <= JUDGE_TOLERANCE * 2 &&
-                c.x >= playerX - 15 * SCALE &&
-                c.x <= playerX + playerW
-            ) {
-                this.performHit(c);
-                break;
-            }
+        if (brokeCombo && now - this.lastMissSound > 45) {
+            this.lastMissSound = now;
+            playComboBreak();
         }
+
+        window.missCount++;
+        window.combo = 0;
+        showMiss();
+        updateStatsDisplay();
     }
 
     performHit(circle) {
         const player = window.player;
         const playfieldWidth = 512 * window.gameScale;
         const leftBound = (window.gameWidth - playfieldWidth) / 2;
-        playCatchSound(
-            player.x,
-            130 * window.gameScale,
-            leftBound,
-            playfieldWidth,
-        );
-        window.hitCount++;
-        window.combo++;
-        if (window.combo > window.maxCombo) {
-            window.maxCombo = window.combo;
+        const now = performance.now();
+        if (now - this.lastCatchSound > 18) {
+            this.lastCatchSound = now;
+            playCatchSound(
+                circle.note,
+                player.x,
+                window.playerWidth || CATCHER_WIDTH,
+                leftBound,
+                playfieldWidth,
+            );
         }
-        updateStatsDisplay();
+
+        triggerStoryboardHit(
+            Number.isFinite(window.chartTime)
+                ? window.chartTime
+                : circle.noteTime,
+        );
+
+        if (circle.note.type === "banana") {
+            window.bananaCount = (window.bananaCount || 0) + 1;
+        } else {
+            window.hitCount++;
+            window.combo++;
+            if (window.combo > window.maxCombo) {
+                window.maxCombo = window.combo;
+            }
+            updateStatsDisplay();
+        }
+
         circle.hasJudged = true;
         this.release(circle);
     }
 }
 
-export const circlePool = new CirclePool(30);
+export const circlePool = new CirclePool(90);
+export { CATCH_WINDOW_MS };
 window.circlePool = circlePool;
