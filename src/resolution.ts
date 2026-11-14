@@ -1,12 +1,12 @@
 import "./vendor/mdui.js";
-import { injectBaseStyles } from "./styles.js";
-import { i18n } from "./i18n/index.js";
+import { injectBaseStyles } from "./styles.ts";
+import { i18n } from "./i18n/index.ts";
 import {
     playUiDialogClose,
     playUiDialogOpen,
     playUiHover,
     playUiSelect,
-} from "./audio.js";
+} from "./audio.ts";
 
 export const RESOLUTIONS = {
     "720p": { width: 1280, height: 720 },

@@ -6,19 +6,19 @@ import {
     findArchiveFileByExtension,
     getMimeType,
     parseOsu,
-} from "./osuParser.js";
+} from "./osuParser.ts";
 import {
     getAnimationFramePath,
     getStoryboardRange,
     normalizeStoryboardPath,
     parseStoryboard,
-} from "./storyboard.js";
+} from "./storyboard.ts";
 import {
     getMusicDurationMs,
     loadMusic,
     playSongSelectConfirm,
     unloadMusic,
-} from "./audio.js";
+} from "./audio.ts";
 import {
     clearStoryboard,
     clearVideo,
@@ -26,9 +26,9 @@ import {
     setSamples,
     setStoryboard,
     setVideo,
-} from "./background.js";
-import * as ui from "./ui.js";
-import { format, i18n } from "./i18n/index.js";
+} from "./background.ts";
+import * as ui from "./ui.ts";
+import { format, i18n } from "./i18n/index.ts";
 
 const VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogv", ".mov"];
 const PRESET_CHARTS = [

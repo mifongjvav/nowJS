@@ -1,8 +1,8 @@
-import { CATCH_WINDOW_MS, circlePool } from "./circlePool.js";
-import { animateComboScale, resetStats, updateComboPosition } from "./stats.js";
-import * as ui from "./ui.js";
-import { getCurrentChart, initSongSelect } from "./songSelect.js";
-import { i18n } from "./i18n/index.js";
+import { CATCH_WINDOW_MS, circlePool } from "./circlePool.ts";
+import { animateComboScale, resetStats, updateComboPosition } from "./stats.ts";
+import * as ui from "./ui.ts";
+import { getCurrentChart, initSongSelect } from "./songSelect.ts";
+import { i18n } from "./i18n/index.ts";
 import {
     pauseMusic,
     playMenuBack,
@@ -19,12 +19,12 @@ import {
     stopMusic,
     stopPauseLoop,
     stopSpinnerLoop,
-} from "./audio.js";
+} from "./audio.ts";
 import {
     resetAutoPlayMotion,
     toggleAutoPlay,
     updateAutoPlay,
-} from "./autoplay.js";
+} from "./autoplay.ts";
 import {
     pauseMedia,
     resumeMedia,
@@ -32,7 +32,7 @@ import {
     startMedia,
     stopMedia,
     updateMedia,
-} from "./background.js";
+} from "./background.ts";
 
 const app = window.app;
 

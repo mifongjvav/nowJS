@@ -7,9 +7,9 @@ import {
     Texture,
 } from "./vendor/pixi.js";
 import { setTheme } from "./vendor/mdui.js";
-import { showResolutionSelector } from "./resolution.js";
-import { MD3_COLORS } from "./theme.js";
-import { initI18n } from "./i18n/index.js";
+import { showResolutionSelector } from "./resolution.ts";
+import { MD3_COLORS } from "./theme.ts";
+import { initI18n } from "./i18n/index.ts";
 
 setTheme("dark");
 await initI18n();
@@ -101,13 +101,13 @@ window.gameplayLayer.visible = false;
 window.statsLayer.visible = false;
 window.currentChart = null;
 
-await import("./player.js");
-await import("./line.js");
-await import("./circlePool.js");
-await import("./stats.js");
-await import("./ui.js");
-const songSelect = await import("./songSelect.js");
-await import("./gameLoop.js");
+await import("./player.ts");
+await import("./line.ts");
+await import("./circlePool.ts");
+await import("./stats.ts");
+await import("./ui.ts");
+const songSelect = await import("./songSelect.ts");
+await import("./gameLoop.ts");
 
 const boot = document.getElementById("boot-splash");
 if (boot) boot.remove();

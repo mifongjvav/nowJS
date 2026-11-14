@@ -1,6 +1,6 @@
 import * as PIXI from "./vendor/pixi.js";
 import { BlurFilter } from "./vendor/pixi.js";
-import { MD3_COLORS } from "./theme.js";
+import { MD3_COLORS } from "./theme.ts";
 
 const app = window.app;
 const WIDTH = window.gameWidth;

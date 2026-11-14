@@ -1,8 +1,8 @@
 import * as PIXI from "./vendor/pixi.js";
 import { BlurFilter } from "./vendor/pixi.js";
-import { MD3_COLORS } from "./theme.js";
-import { i18n } from "./i18n/index.js";
-import { StoryboardPlayer } from "./storyboard.js";
+import { MD3_COLORS } from "./theme.ts";
+import { i18n } from "./i18n/index.ts";
+import { StoryboardPlayer } from "./storyboard.ts";
 
 const WIDTH = window.gameWidth;
 const HEIGHT = window.gameHeight;

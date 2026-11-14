@@ -1,6 +1,6 @@
 import * as PIXI from "./vendor/pixi.js";
-import { MD3_COLORS } from "./theme.js";
-import { i18n, onLanguageChange } from "./i18n/index.js";
+import { MD3_COLORS } from "./theme.ts";
+import { i18n, onLanguageChange } from "./i18n/index.ts";
 
 const layer = window.statsLayer || window.gameplayLayer || window.app.stage;
 const SCALE = window.gameScale;

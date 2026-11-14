@@ -1,6 +1,6 @@
 import { snackbar } from "./vendor/mdui.js";
-import { injectBaseStyles } from "./styles.js";
-import { RESOLUTIONS, showResolutionSelector } from "./resolution.js";
+import { injectBaseStyles } from "./styles.ts";
+import { RESOLUTIONS, showResolutionSelector } from "./resolution.ts";
 import {
     applyI18n,
     format,
@@ -8,8 +8,8 @@ import {
     i18n,
     onLanguageChange,
     setLanguage,
-} from "./i18n/index.js";
-import { isAutoPlayEnabled, setAutoPlay } from "./autoplay.js";
+} from "./i18n/index.ts";
+import { isAutoPlayEnabled, setAutoPlay } from "./autoplay.ts";
 import {
     playMenuPlaySelect,
     playNotification,
@@ -18,7 +18,7 @@ import {
     playUiDialogOpen,
     playUiHover,
     playUiSelect,
-} from "./audio.js";
+} from "./audio.ts";
 
 injectBaseStyles();
 

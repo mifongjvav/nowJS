@@ -4,8 +4,8 @@ import {
     setLocale,
     templates as zhCNMduiTemplates,
 } from "../vendor/mdui.js";
-import zhCN from "./locales/zh-cn.js";
-import enUS from "./locales/en-us.js";
+import zhCN from "./locales/zh-cn.ts";
+import enUS from "./locales/en-us.ts";
 
 const STORAGE_KEY = "nowjs-language";
 const DEFAULT_LANGUAGE = "zh-cn";

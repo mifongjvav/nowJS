@@ -2,8 +2,8 @@
 // teleporting it under each fruit. Speed also drives a small tilt/stretch and
 // an afterimage trail so the motion stays readable during fast patterns.
 import * as PIXI from "./vendor/pixi.js";
-import { CATCH_WINDOW_MS, circlePool } from "./circlePool.js";
-import { MD3_COLORS } from "./theme.js";
+import { CATCH_WINDOW_MS, circlePool } from "./circlePool.ts";
+import { MD3_COLORS } from "./theme.ts";
 
 const STORAGE_KEY = "nowjs-autoplay";
 const TRAIL_COUNT = 7;
@@ -27,7 +27,7 @@ function readStoredAutoPlay() {
 let enabled = readStoredAutoPlay();
 let velocity = 0;
 let trail = null;
-let trailGhosts = [];
+const trailGhosts = [];
 let trailHistory = [];
 let trailWidth = 0;
 let trailHeight = 0;

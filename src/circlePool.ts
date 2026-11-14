@@ -1,9 +1,9 @@
 import * as PIXI from "./vendor/pixi.js";
-import { showMiss, updateStatsDisplay } from "./stats.js";
-import { playCatchSound, playComboBreak } from "./audio.js";
-import { triggerStoryboardHit } from "./background.js";
-import { getPlayfield } from "./layout.js";
-import { MD3_COLORS } from "./theme.js";
+import { showMiss, updateStatsDisplay } from "./stats.ts";
+import { playCatchSound, playComboBreak } from "./audio.ts";
+import { triggerStoryboardHit } from "./background.ts";
+import { getPlayfield } from "./layout.ts";
+import { MD3_COLORS } from "./theme.ts";
 
 const SCALE = window.gameScale;
 const RADIUS = 20 * SCALE;
