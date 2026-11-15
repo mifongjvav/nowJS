@@ -13,28 +13,65 @@ const CATCH_WINDOW_MS = 95;
 // Use most of the plate as the catch area while keeping a small edge margin.
 const CATCH_CENTER_RATIO = 0.9;
 
-function drawNoteGraphics(circle, holdHeight = 0, headRadius = RADIUS) {
+function drawNoteGraphics(circle, holdHeight, color) {
     circle.clear();
+
     if (holdHeight > 0.5) {
-        // Draw holds as one rounded progress-bar-like capsule instead of a
-        // thin line with a separate circular head.
-        const holdWidth = RADIUS * 1.3;
+        // Holds use the same width as the note head and are drawn as a
+        // rounded progress bar with an outer glow and a white outline.
+        const holdWidth = RADIUS * 2;
         const barHeight = Math.max(holdHeight, holdWidth);
+        const radius = holdWidth / 2;
+        const glow = 4 * SCALE;
+        const border = Math.max(2 * SCALE, RADIUS * 0.16);
+        const innerWidth = Math.max(2 * SCALE, holdWidth - border * 2);
+        const innerHeight = Math.max(2 * SCALE, barHeight - border * 2);
+
         circle
             .roundRect(
-                -holdWidth / 2,
-                -barHeight,
-                holdWidth,
-                barHeight,
-                holdWidth / 2,
+                -radius - glow,
+                -barHeight - glow,
+                holdWidth + glow * 2,
+                barHeight + glow * 2,
+                radius + glow,
             )
-            .fill(0xffffff);
+            .fill({ color, alpha: 0.16 });
+        circle
+            .roundRect(-radius, -barHeight, holdWidth, barHeight, radius)
+            .fill({ color: 0xffffff, alpha: 0.92 });
+        circle
+            .roundRect(
+                -innerWidth / 2,
+                -barHeight + border,
+                innerWidth,
+                innerHeight,
+                innerWidth / 2,
+            )
+            .fill({ color });
+
+        const coreWidth = Math.max(2 * SCALE, innerWidth * 0.34);
+        circle
+            .roundRect(
+                -coreWidth / 2,
+                -barHeight + border * 2,
+                coreWidth,
+                Math.max(0, barHeight - border * 4),
+                coreWidth / 2,
+            )
+            .fill({ color: 0xffffff, alpha: 0.14 });
         return;
     }
-    circle.circle(0, 0, headRadius).fill(0xffffff);
+
+    circle.circle(0, 0, RADIUS * 1.28).fill({ color, alpha: 0.15 });
+    circle.circle(0, 0, RADIUS).fill({ color: 0xffffff, alpha: 0.92 });
+    circle.circle(0, 0, RADIUS * 0.8).fill({ color });
+    circle.circle(0, 0, RADIUS * 0.34).fill({ color: 0xffffff, alpha: 0.18 });
+    circle
+        .circle(-RADIUS * 0.3, -RADIUS * 0.32, RADIUS * 0.16)
+        .fill({ color: 0xffffff, alpha: 0.78 });
 }
 
-function getNoteTint(note) {
+function getNoteColor(note) {
     if (note.type === "banana") return MD3_COLORS.banana;
     if (typeof note.color === "number") return note.color;
     if (note.holdEndTime) return MD3_COLORS.primary;
@@ -91,9 +128,9 @@ class CirclePool {
             note.holdEndTime && note.holdEndTime > note.time
                 ? ((note.holdEndTime - note.time) / 1000) * circle.fallSpeed
                 : 0;
-        drawNoteGraphics(circle, holdHeight);
+        drawNoteGraphics(circle, holdHeight, getNoteColor(note));
 
-        circle.tint = getNoteTint(note);
+        circle.tint = 0xffffff;
 
         circle.y = this.yFor(circle, chartTime);
 
@@ -315,8 +352,8 @@ class CirclePool {
         const judgeY = window.judgeLine ? window.judgeLine.y : circle.y;
 
         circle.y = judgeY;
-        drawNoteGraphics(circle, holdHeight);
-        circle.tint = getNoteTint(note);
+        drawNoteGraphics(circle, holdHeight, getNoteColor(note));
+        circle.tint = 0xffffff;
     }
 
     updateHold(circle, chartTime) {
