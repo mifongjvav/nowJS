@@ -9,6 +9,7 @@ import type {
     OsuEvents,
     OsuHitObject,
     ParsedBeatmap,
+    PlayMode,
     TimingPoint,
 } from "./domain.ts";
 
@@ -827,7 +828,7 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
     const bananaRandom = createSeededRandom(1337);
 
     for (const object of beatmap.hitObjects) {
-        if (object.type & 1) {
+        if ((object.type & 1) !== 0 || (object.type & 128) !== 0) {
             notes.push({
                 time: object.time,
                 x: object.x,
@@ -881,7 +882,10 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
         metadata: beatmap.metadata,
         difficulty: beatmap.difficulty,
         mode: beatmap.general.mode,
+        playMode: "catch",
         mania: null,
+        sourceKeys:
+            beatmap.general.mode === 3 ? getManiaSourceKeys(beatmap) : null,
     };
 }
 
@@ -949,61 +953,101 @@ function resolveManiaChord(candidates: ManiaCandidate[]): CatchNote[] {
     return notes;
 }
 
-function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
-    const sourceKeys = getManiaSourceKeys(beatmap);
+function createManiaChordCollector() {
     const notes: CatchNote[] = [];
-    const candidates: ManiaCandidate[] = [];
+    let candidates: ManiaCandidate[] = [];
     let chordStart = Number.NaN;
 
-    const flushChord = () => {
+    const flush = () => {
         if (!candidates.length) return;
         notes.push(...resolveManiaChord(candidates));
-        candidates.length = 0;
+        candidates = [];
     };
 
-    for (const object of beatmap.hitObjects) {
-        const isHold = Boolean(object.type & 128);
-        const isCircle = Boolean(object.type & 1);
-        if (!isHold && !isCircle) continue;
-
-        // osu!mania column formula from the .osu file format documentation:
-        // floor(x * keyCount / 512), clamped to the valid column range.
-        const column = clamp(
-            Math.floor((object.x * sourceKeys) / 512),
-            0,
-            sourceKeys - 1,
-        );
-        const note: CatchNote = {
-            time: Math.max(0, object.time),
-            x: 0,
-            type: "fruit",
-            scale: 1,
-            samples: object.samples || [],
-            lane: mapManiaColumn(column, sourceKeys),
-        };
-
-        if (isHold && Number.isFinite(object.endTime)) {
-            const endTime = Math.max(note.time, object.endTime);
-            if (endTime > note.time) {
-                note.holdEndTime = endTime;
+    return {
+        push(note: CatchNote, targetLane: number): void {
+            if (
+                Number.isNaN(chordStart) ||
+                note.time - chordStart > MANIA_CHORD_TOLERANCE_MS
+            ) {
+                flush();
+                chordStart = note.time;
             }
-        }
+            candidates.push({ note, targetLane });
+        },
+        finish(): CatchNote[] {
+            flush();
+            return notes;
+        },
+    };
+}
 
-        if (
-            Number.isNaN(chordStart) ||
-            note.time - chordStart > MANIA_CHORD_TOLERANCE_MS
-        ) {
-            flushChord();
-            chordStart = note.time;
-        }
+function compileManiaChart(
+    beatmap: ParsedBeatmap,
+    catchChart?: CompiledCatchChart,
+): CompiledCatchChart {
+    const sourceKeys =
+        beatmap.general.mode === 3 ? getManiaSourceKeys(beatmap) : null;
+    const collector = createManiaChordCollector();
 
-        candidates.push({
-            note,
-            targetLane: note.lane as number,
-        });
+    if (sourceKeys !== null) {
+        for (const object of beatmap.hitObjects) {
+            const isHold = Boolean(object.type & 128);
+            const isCircle = Boolean(object.type & 1);
+            if (!isHold && !isCircle) continue;
+
+            // osu!mania column formula from the .osu file format
+            // documentation: floor(x * keyCount / 512), clamped to the valid
+            // column range.
+            const column = clamp(
+                Math.floor((object.x * sourceKeys) / 512),
+                0,
+                sourceKeys - 1,
+            );
+            const note: CatchNote = {
+                time: Math.max(0, object.time),
+                x: 0,
+                type: "fruit",
+                scale: 1,
+                samples: object.samples || [],
+            };
+
+            if (isHold && Number.isFinite(object.endTime)) {
+                const endTime = Math.max(note.time, object.endTime);
+                if (endTime > note.time) {
+                    note.holdEndTime = endTime;
+                }
+            }
+
+            collector.push(note, mapManiaColumn(column, sourceKeys));
+        }
+    } else {
+        // Mania can also be selected for osu!/osu!catch charts. Reuse the
+        // catch compilation so sliders and their droplets keep their rhythm,
+        // then fold every playable note onto a 4K lane by horizontal position.
+        const sourceChart = catchChart ?? compileCatchChart(beatmap);
+        for (const sourceNote of sourceChart.notes) {
+            if (sourceNote.type === "banana") continue;
+
+            const lane = clamp(
+                Math.floor((sourceNote.x * MANIA_LANE_COUNT) / 512),
+                0,
+                MANIA_LANE_COUNT - 1,
+            );
+            collector.push(
+                {
+                    time: sourceNote.time,
+                    x: 0,
+                    type: "fruit",
+                    scale: 1,
+                    samples: sourceNote.samples || [],
+                },
+                lane,
+            );
+        }
     }
-    flushChord();
 
+    const notes = collector.finish();
     const firstNoteTime = notes.length ? notes[0].time : 0;
     let lastNoteTime = 0;
     for (const note of notes) {
@@ -1024,18 +1068,24 @@ function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
         metadata: beatmap.metadata,
         difficulty: beatmap.difficulty,
         mode: beatmap.general.mode,
+        playMode: "mania",
         mania: {
-            sourceKeys,
+            sourceKeys: sourceKeys ?? MANIA_LANE_COUNT,
             laneCount: MANIA_LANE_COUNT,
             keyLabels: [...MANIA_KEY_LABELS],
         },
+        sourceKeys,
     };
 }
 
-export function compileChart(beatmap: ParsedBeatmap): CompiledCatchChart {
-    return beatmap.general.mode === 3
-        ? compileManiaChart(beatmap)
-        : compileCatchChart(beatmap);
+export function compileChart(
+    beatmap: ParsedBeatmap,
+    playMode: PlayMode = beatmap.general.mode === 3 ? "mania" : "catch",
+    catchChart?: CompiledCatchChart,
+): CompiledCatchChart {
+    return playMode === "mania"
+        ? compileManiaChart(beatmap, catchChart)
+        : (catchChart ?? compileCatchChart(beatmap));
 }
 
 function normalizeArchivePath(path: string, relativeTo = ""): string | null {

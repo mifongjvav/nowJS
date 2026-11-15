@@ -14,6 +14,8 @@ import "../../node_modules/mdui/components/list.js";
 import "../../node_modules/mdui/components/list-item.js";
 import "../../node_modules/mdui/components/menu.js";
 import "../../node_modules/mdui/components/menu-item.js";
+import "../../node_modules/mdui/components/segmented-button-group.js";
+import "../../node_modules/mdui/components/segmented-button.js";
 import "../../node_modules/mdui/components/top-app-bar.js";
 
 import "../../node_modules/@mdui/icons/check-circle.js";

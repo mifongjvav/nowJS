@@ -36,8 +36,10 @@ import type {
     ArchiveFile,
     CatchHitSample,
     CatchNote,
+    CompiledCatchChart,
     GameChart,
     ParsedBeatmap,
+    PlayMode,
     PresetChart,
     StoryboardData,
     StoryboardBundle,
@@ -159,6 +161,7 @@ function findCompanionByExtension(
 }
 
 let currentChart: GameChart | null = null;
+let currentVariants: Record<PlayMode, CompiledCatchChart> | null = null;
 let ownedUrls: string[] = [];
 let loadGeneration = 0;
 
@@ -168,14 +171,22 @@ function computeFallSpeed(preemptMs) {
     return (judgeY + 50 * scale) / (preemptMs / 1000);
 }
 
-function finalizeChart(
-    chart: Omit<GameChart, "fallSpeed" | "endTime">,
-): GameChart {
+function refreshChartTiming(chart) {
     chart.fallSpeed = computeFallSpeed(chart.preemptMs);
     const tail = chart.audioDurationMs
         ? Math.min(chart.audioDurationMs, chart.lastNoteTime + 6000)
         : chart.lastNoteTime + 2200;
-    chart.endTime = Math.max(chart.lastNoteTime + 2200, tail);
+    chart.endTime = Math.max(
+        chart.lastNoteTime + 2200,
+        tail,
+        chart.storyboardEndTime || 0,
+    );
+}
+
+function finalizeChart(
+    chart: Omit<GameChart, "fallSpeed" | "endTime">,
+): GameChart {
+    refreshChartTiming(chart);
     return chart;
 }
 
@@ -250,6 +261,7 @@ function attachHitSampleUrls(
 
 async function selectChart(
     chart: GameChart,
+    variants: Record<PlayMode, CompiledCatchChart>,
     newUrls: string[],
     token: number,
 ): Promise<boolean> {
@@ -291,6 +303,7 @@ async function selectChart(
     revokeUrls(previousUrls);
 
     currentChart = chart;
+    currentVariants = variants;
     window.currentChart = chart;
     preloadCatchSamples(chart.notes);
     ui.setSong(chart);
@@ -299,6 +312,36 @@ async function selectChart(
 
 export function getCurrentChart(): GameChart | null {
     return currentChart;
+}
+
+export function setPlayMode(mode: PlayMode): void {
+    if (window.gameState !== "menu") return;
+
+    const chart = currentChart;
+    const variant = currentVariants ? currentVariants[mode] : null;
+    if (!chart || !variant || chart.playMode === mode) return;
+    if (!variant.notes.length) {
+        // Keep the picker in sync if a chart has no playable notes in the
+        // requested mode.
+        ui.setSong(chart);
+        return;
+    }
+
+    chart.notes = variant.notes;
+    chart.playMode = variant.playMode;
+    chart.mania = variant.mania;
+    chart.sourceKeys = variant.sourceKeys;
+    chart.objectCount = variant.objectCount;
+    chart.firstNoteTime = variant.firstNoteTime;
+    chart.lastNoteTime = variant.lastNoteTime;
+    chart.lengthMs = variant.lengthMs;
+    chart.preemptMs = variant.preemptMs;
+    chart.bpm = variant.bpm;
+    refreshChartTiming(chart);
+
+    window.currentChart = chart;
+    preloadCatchSamples(chart.notes);
+    ui.setSong(chart);
 }
 
 function summarize(parsed: ParsedBeatmap, fileName: string) {
@@ -380,15 +423,27 @@ async function buildImportedChart(
             throw new Error(i18n.error.noPlayableObjects);
         }
 
-        const compiled = compileChart(parsed);
+        const defaultMode: PlayMode =
+            parsed.general.mode === 3 ? "mania" : "catch";
+        const catchVariant = compileChart(parsed, "catch");
+        const variants: Record<PlayMode, CompiledCatchChart> = {
+            catch: catchVariant,
+            mania: compileChart(parsed, "mania", catchVariant),
+        };
+        let compiled = variants[defaultMode];
         if (!compiled.notes.length) {
-            throw new Error(i18n.error.noPlayableObjects);
+            const fallbackMode: PlayMode =
+                defaultMode === "mania" ? "catch" : "mania";
+            if (!variants[fallbackMode].notes.length) {
+                throw new Error(i18n.error.noPlayableObjects);
+            }
+            compiled = variants[fallbackMode];
         }
 
         // Resolve per-object custom hit samples from the .osu hitSample
         // filename (and from the archive/companion files). Missing files fall
         // back to the built-in Argon Pro/Argon/default sample banks.
-        attachHitSampleUrls(compiled.notes, (filename) => {
+        const resolveHitSample = (filename: string) => {
             if (archive) {
                 const entry = findArchiveFile(
                     archive.files,
@@ -404,7 +459,9 @@ async function buildImportedChart(
                 beatmapPath,
             );
             return companion ? makeFileUrl(companion, newUrls) : null;
-        });
+        };
+        attachHitSampleUrls(variants.catch.notes, resolveHitSample);
+        attachHitSampleUrls(variants.mania.notes, resolveHitSample);
 
         let audioUrl = null;
         let backgroundUrl = null;
@@ -650,7 +707,9 @@ async function buildImportedChart(
             lengthMs: compiled.lengthMs,
             preemptMs: compiled.preemptMs,
             mode: compiled.mode,
+            playMode: compiled.playMode,
             mania: compiled.mania,
+            sourceKeys: compiled.sourceKeys,
             audioUrl,
             audioDurationMs,
             backgroundUrl,
@@ -670,13 +729,7 @@ async function buildImportedChart(
             hasStoryboard: Boolean(storyboard),
         });
 
-        chart.endTime = Math.max(
-            chart.endTime,
-            storyboardRange?.end ?? 0,
-            Number.isFinite(sampleEnd) ? sampleEnd : 0,
-        );
-
-        const applied = await selectChart(chart, newUrls, token);
+        const applied = await selectChart(chart, variants, newUrls, token);
         return applied ? chart : null;
     } catch (error) {
         revokeUrls(newUrls);
@@ -705,16 +758,16 @@ export async function importFiles(files: File[]): Promise<void> {
         ui.hideLoading();
         ui.setSong(chart);
         ui.showMenu();
-        if (chart.mania) {
+        if (chart.mode === 3) {
+            const keys = chart.sourceKeys ?? chart.mania?.sourceKeys ?? 4;
+            const laneCount = chart.mania?.laneCount ?? 4;
             const maniaMessage =
-                chart.mania.sourceKeys === chart.mania.laneCount
-                    ? format(i18n.toast.maniaDetected, {
-                          keys: chart.mania.sourceKeys,
+                chart.playMode === "mania" && keys !== laneCount
+                    ? format(i18n.toast.maniaConverted, {
+                          keys,
+                          laneCount,
                       })
-                    : format(i18n.toast.maniaConverted, {
-                          keys: chart.mania.sourceKeys,
-                          laneCount: chart.mania.laneCount,
-                      });
+                    : format(i18n.toast.maniaDetected, { keys });
             ui.showToast(maniaMessage, "info");
         }
         playSongSelectConfirm();
@@ -781,12 +834,14 @@ export function initSongSelect() {
     ui.setUICallbacks({
         importFiles,
         preset: loadPresetChart,
+        modeChange: setPlayMode,
     });
     ui.setPresetCharts(PRESET_CHARTS);
 }
 
 export function showPresetMenu() {
     currentChart = null;
+    currentVariants = null;
     window.currentChart = null;
     ui.setSong(null);
     ui.hideLoading();

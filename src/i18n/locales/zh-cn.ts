@@ -38,10 +38,14 @@ export default {
         presetsHint: "点击曲包即可开始导入",
         dropHint: "将 .osz / .osu 拖放到窗口中（.osu 可附带音频与背景图）",
         playHint:
-            "鼠标移动接住水果 · Esc 暂停 · A 自动游玩 · mania 谱面会自动转为 4K，使用 D F J K 打击",
+            "Catch 模式移动鼠标接水果，Mania 4K 模式用 D F J K 打击 · Esc 暂停 · A 自动游玩",
         importedBadge: "已导入",
         multipleFiles: "{{name}} 等 {{count}} 个文件",
         chartReady: "谱面已就绪",
+        modeLabel: "模式",
+        modeCatch: "Catch",
+        modeMania: "Mania 4K",
+        modeAria: "选择游戏模式",
         resolutionAria: "更改渲染分辨率",
         languageAria: "切换语言",
     },
@@ -51,7 +55,7 @@ export default {
         duration: "时长",
         difficulty: "难度",
         mapper: "谱师",
-        mode: "模式",
+        sourceMode: "源模式",
     },
     unknown: {
         title: "未知曲目",
@@ -83,7 +87,7 @@ export default {
         defaultName: "难度 {{index}}",
         bpm: "{{bpm}} BPM",
         objects: "{{count}} 物件",
-        maniaConverted: "mania {{keys}}K → 4K",
+        mania: "osu!mania {{keys}}K",
         cancel: "取消",
     },
     loading: {

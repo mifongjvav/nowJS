@@ -651,6 +651,25 @@ const BASE_CSS = `
         letter-spacing: var(--mdui-typescale-label-large-tracking);
     }
 
+    .now-play-mode {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .now-play-mode-label {
+        flex: 0 0 auto;
+        color: rgb(var(--mdui-color-on-surface-variant));
+        font-size: var(--mdui-typescale-label-medium-size);
+        line-height: var(--mdui-typescale-label-medium-line-height);
+        letter-spacing: var(--mdui-typescale-label-medium-tracking);
+    }
+
+    .now-play-mode mdui-segmented-button-group {
+        --shape-corner: 999px;
+    }
+
     .now-song-actions {
         display: flex;
         flex-wrap: wrap;
@@ -1252,6 +1271,11 @@ const BASE_CSS = `
 
         .now-song-actions {
             margin-top: 10px;
+        }
+
+        .now-play-mode {
+            margin-top: 10px;
+            gap: 8px;
         }
 
         .now-drop-hint-inner {

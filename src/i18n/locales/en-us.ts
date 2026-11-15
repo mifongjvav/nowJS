@@ -39,10 +39,14 @@ export default {
         dropHint:
             "Drag and drop .osz / .osu here (.osu can include audio and a background image)",
         playHint:
-            "Move the mouse to catch fruit · Esc to pause · A for auto play · mania beatmaps are converted to 4K and played with D F J K",
+            "Catch: move the mouse to catch fruit · Mania 4K: press D F J K · Esc to pause · A for auto play",
         importedBadge: "Imported",
         multipleFiles: "{{name}} (+{{count}} files)",
         chartReady: "Beatmap ready",
+        modeLabel: "Mode",
+        modeCatch: "Catch",
+        modeMania: "Mania 4K",
+        modeAria: "Choose game mode",
         resolutionAria: "Change render resolution",
         languageAria: "Change language",
     },
@@ -52,7 +56,7 @@ export default {
         duration: "Length",
         difficulty: "Difficulty",
         mapper: "Mapper",
-        mode: "Mode",
+        sourceMode: "Source",
     },
     unknown: {
         title: "Unknown track",
@@ -84,7 +88,7 @@ export default {
         defaultName: "Difficulty {{index}}",
         bpm: "{{bpm}} BPM",
         objects: "{{count}} objects",
-        maniaConverted: "mania {{keys}}K → 4K",
+        mania: "osu!mania {{keys}}K",
         cancel: "Cancel",
     },
     loading: {

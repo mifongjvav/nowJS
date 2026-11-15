@@ -24,6 +24,7 @@ import type {
     DifficultySummary,
     GameChart,
     GameResults,
+    PlayMode,
     PresetChart,
 } from "./domain.ts";
 
@@ -33,6 +34,7 @@ interface UICallbacks {
     start: () => void;
     importFiles: (files: File[]) => void;
     preset: (preset: PresetChart) => void;
+    modeChange: (mode: PlayMode) => void;
     seekStart: () => boolean;
     seekEnd: (progress: number) => void;
     resume: () => void;
@@ -44,6 +46,7 @@ const callbacks: UICallbacks = {
     start: () => {},
     importFiles: () => {},
     preset: () => {},
+    modeChange: () => {},
     seekStart: () => false,
     seekEnd: () => {},
     resume: () => {},
@@ -186,6 +189,26 @@ root.innerHTML = `
                             ${i18n.menu.importDescription}
                         </p>
                         <div class="now-song-meta" id="now-song-meta"></div>
+                        <div class="now-play-mode">
+                            <span class="now-play-mode-label" data-i18n="menu.modeLabel">
+                                ${i18n.menu.modeLabel}
+                            </span>
+                            <mdui-segmented-button-group
+                                id="now-mode-picker"
+                                selects="single"
+                                value="catch"
+                                disabled
+                                aria-label="${i18n.menu.modeAria}"
+                                data-i18n-aria-label="menu.modeAria"
+                            >
+                                <mdui-segmented-button value="catch">
+                                    <span data-i18n="menu.modeCatch">${i18n.menu.modeCatch}</span>
+                                </mdui-segmented-button>
+                                <mdui-segmented-button value="mania">
+                                    <span data-i18n="menu.modeMania">${i18n.menu.modeMania}</span>
+                                </mdui-segmented-button>
+                            </mdui-segmented-button-group>
+                        </div>
                         <div class="now-song-actions">
                             <mdui-button
                                 variant="filled"
@@ -401,6 +424,7 @@ const songKicker = root.querySelector("#now-song-kicker");
 const songTitle = root.querySelector("#now-song-title");
 const songArtist = root.querySelector("#now-song-artist");
 const songMeta = root.querySelector("#now-song-meta");
+const modePicker = root.querySelector("#now-mode-picker");
 const startBtn = root.querySelector("#now-start-btn");
 const startLabel = root.querySelector("#now-start-label");
 const importBtn = root.querySelector("#now-import-btn");
@@ -554,8 +578,24 @@ function setCover(chart) {
     }
 }
 
+function describeSourceMode(chart: GameChart): string {
+    if (chart.mode === 3) return `osu!mania ${chart.sourceKeys ?? 4}K`;
+    if (chart.mode === 2) return "osu!catch";
+    if (chart.mode === 1) return "osu!taiko";
+    return "osu!";
+}
+
+function syncModePicker(chart: GameChart | null): void {
+    const mode: PlayMode = chart ? chart.playMode : "catch";
+    if (modePicker.value !== mode) {
+        modePicker.value = mode;
+    }
+    modePicker.disabled = !chart;
+}
+
 export function setSong(chart: GameChart | null): void {
     currentSong = chart || null;
+    syncModePicker(currentSong);
 
     if (!currentSong) {
         setCover(null);
@@ -597,14 +637,7 @@ export function setSong(chart: GameChart | null): void {
     );
     if (metadata.version) addMeta(i18n.meta.difficulty, metadata.version);
     if (metadata.creator) addMeta(i18n.meta.mapper, metadata.creator);
-    if (currentSong.mania) {
-        addMeta(
-            i18n.meta.mode,
-            currentSong.mania.sourceKeys === currentSong.mania.laneCount
-                ? `osu!mania ${currentSong.mania.laneCount}K`
-                : `osu!mania ${currentSong.mania.sourceKeys}K → ${currentSong.mania.laneCount}K`,
-        );
-    }
+    addMeta(i18n.meta.sourceMode, describeSourceMode(currentSong));
 
     startBtn.disabled = false;
     startLabel.textContent = i18n.menu.start;
@@ -831,11 +864,9 @@ export function pickDifficulty(
             const creator = metadata.creator || i18n.unknown.mapper;
             const maniaInfo =
                 item.mode === 3
-                    ? item.maniaSourceKeys && item.maniaSourceKeys !== 4
-                        ? ` · ${format(i18n.difficulty.maniaConverted, {
-                              keys: item.maniaSourceKeys,
-                          })}`
-                        : " · osu!mania 4K"
+                    ? ` · ${format(i18n.difficulty.mania, {
+                          keys: item.maniaSourceKeys ?? 4,
+                      })}`
                     : "";
             const row = document.createElement("mdui-list-item");
 
@@ -976,6 +1007,16 @@ onLanguageChange(() => {
 
 autoplayBtn.addEventListener("change", () => {
     setAutoPlay(autoplayBtn.selected);
+});
+
+modePicker.addEventListener("change", () => {
+    if (!currentSong) return;
+
+    const mode = String(modePicker.value);
+    if (mode !== "catch" && mode !== "mania") return;
+    if (currentSong.playMode === mode) return;
+
+    callbacks.modeChange(mode);
 });
 
 window.addEventListener("nowjs-autoplay-change", (event) => {

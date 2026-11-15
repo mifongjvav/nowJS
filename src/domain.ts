@@ -117,6 +117,8 @@ export interface ManiaChartInfo {
     keyLabels: string[];
 }
 
+export type PlayMode = "catch" | "mania";
+
 export interface CompiledCatchChart {
     notes: CatchNote[];
     firstNoteTime: number;
@@ -128,7 +130,9 @@ export interface CompiledCatchChart {
     metadata: OsuMetadata;
     difficulty: OsuDifficulty;
     mode: number;
+    playMode: PlayMode;
     mania: ManiaChartInfo | null;
+    sourceKeys: number | null;
 }
 
 export interface ArchiveFile {
