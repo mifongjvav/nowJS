@@ -18,6 +18,10 @@ let countdown: HTMLDivElement | null = null;
 let activeBreak: BreakInfo | null = null;
 let lastCountdown: number | null = null;
 let goShown = false;
+let resultHideAt = 0;
+
+const RESULT_FLASH_MS = 450;
+const RESULT_HOLD_MS = 2000;
 
 function ensureOverlay(): void {
     if (overlay) return;
@@ -72,6 +76,7 @@ export function beginBreakOverlay(
     activeBreak = breakInfo;
     lastCountdown = null;
     goShown = false;
+    resultHideAt = breakInfo.start + RESULT_FLASH_MS + RESULT_HOLD_MS;
     overlay.classList.remove("now-hidden");
     result.style.visibility = "visible";
     countdown.classList.add("now-hidden");
@@ -84,6 +89,10 @@ export function updateBreakOverlay(time: number): void {
     if (!activeBreak || !overlay || !result || !countdown) return;
 
     const { end } = activeBreak;
+
+    if (!goShown && time >= resultHideAt) {
+        result.style.visibility = "hidden";
+    }
 
     if (goShown) {
         if (time >= end + 700) {
@@ -115,6 +124,7 @@ export function resetBreakOverlay(): void {
     activeBreak = null;
     lastCountdown = null;
     goShown = false;
+    resultHideAt = 0;
 
     if (overlay) {
         overlay.classList.add("now-hidden");

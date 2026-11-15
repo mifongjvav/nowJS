@@ -1189,7 +1189,8 @@ const BASE_CSS = `
     }
 
     .now-break-icon.is-flashing {
-        animation: now-break-flash 500ms ease-in-out 4;
+        animation: now-break-flash 450ms
+            var(--mdui-motion-easing-emphasized-decelerate) 1 both;
     }
 
     .now-break-countdown {
@@ -1219,16 +1220,20 @@ const BASE_CSS = `
     }
 
     @keyframes now-break-flash {
-        0%,
-        100% {
+        0% {
             opacity: 0;
-            transform: scale(0.72);
+            transform: scale(0.65);
         }
-        40% {
+        22% {
             opacity: 1;
-            transform: scale(1.08);
+            transform: scale(1.1);
         }
-        65% {
+        38% {
+            opacity: 0.5;
+            transform: scale(1);
+        }
+        58%,
+        100% {
             opacity: 1;
             transform: scale(1);
         }
