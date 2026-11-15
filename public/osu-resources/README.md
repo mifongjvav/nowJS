@@ -1,11 +1,13 @@
-# osu! sound resources
+# osu! resources
 
-This directory contains the sound effects used by nowJS, selected from the
-official [`ppy/osu-resources`](https://github.com/ppy/osu-resources) repository.
+This directory contains sound effects and fallback skin sprites used by nowJS,
+selected from the official [`ppy/osu-resources`](https://github.com/ppy/osu-resources)
+repository.
 
 - Source: <https://github.com/ppy/osu-resources>
 - Commit: `343e0b9986497743370450101147d4cdb96238ed` (2026-11-12)
-- Original directory: `osu.Game.Resources/Samples`
+- Sound directory: `osu.Game.Resources/Samples`
+- Skin directories: `osu.Game.Resources/Skins/Legacy`, `osu.Game.Resources/Skins/Retro`
 - Copyright: ppy Pty Ltd and osu! contributors
 - License: [Creative Commons Attribution-NonCommercial 4.0 International](LICENCE.md)
     - <https://creativecommons.org/licenses/by-nc/4.0/>
@@ -31,11 +33,30 @@ The remaining sounds come from the osu! default resources:
 Custom hit samples referenced by an imported `.osu` file take priority over
 the bundled packs, matching the osu! file format.
 
+## Fallback skin sprites
+
+Some storyboards use `UseSkinSprites` and reference elements from the player's
+skin. nowJS has no user-selectable skin system, so it falls back to the classic
+osu! skin assets in `Skins/Default/`:
+
+- `sliderb0.png`
+- `sliderfollowcircle.png`
+- `sliderscorepoint.png`
+- `reversearrow.png`
+- `spinner-background.png`
+- `spinner-circle.png`
+
+The Legacy 2x assets were resized to their logical 1x dimensions. The spinner
+background comes from the Retro skin at its original size. Beatmap-provided
+files always take priority over these fallbacks.
+
 ## Changes
 
-The included files are copied **unmodified**, with their original directory
-structure and file names preserved. No audio has been re-encoded or edited.
-Unused osu! samples are intentionally not included to keep the repository small.
+The bundled sound files are copied **unmodified**, with their original
+directory structure and file names preserved. No audio has been re-encoded or
+edited. The fallback skin sprites from `Skins/Legacy` were resized to 1x; the
+Retro spinner background is unchanged. Unused osu! resources are intentionally
+not included to keep the repository small.
 
 ## Attribution / trademark
 

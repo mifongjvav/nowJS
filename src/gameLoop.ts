@@ -29,6 +29,7 @@ import {
     pauseMedia,
     resumeMedia,
     seekMedia,
+    setStoryboardPassing,
     startMedia,
     stopMedia,
     updateMedia,
@@ -45,6 +46,11 @@ let bananasActiveLastFrame = false;
 let lastFrameTime = 0;
 let isSeeking = false;
 let seekHasAudio = false;
+let nextBreakIndex = 0;
+let sectionStartHits = 0;
+let sectionStartMisses = 0;
+let breakResults = [];
+let finalBreakStateApplied = false;
 
 initSongSelect();
 
@@ -92,6 +98,7 @@ function startGame() {
     nextNoteIndex = 0;
     endHandled = false;
     musicStarted = leadIn <= 0;
+    resetStoryboardSections(chartTime);
 
     window.gameState = "playing";
     window.isPaused = false;
@@ -101,6 +108,50 @@ function startGame() {
     startMedia(chartTime);
 
     if (musicStarted) playMusic();
+}
+
+function resetStoryboardSections(time) {
+    const breaks = window.currentChart?.breaks || [];
+    nextBreakIndex = breaks.findIndex((item) => item.start > time);
+    if (nextBreakIndex === -1) nextBreakIndex = breaks.length;
+    sectionStartHits = window.hitCount;
+    sectionStartMisses = window.missCount;
+    breakResults = [];
+    finalBreakStateApplied = false;
+    setStoryboardPassing(true);
+}
+
+function updateStoryboardSections(time) {
+    const chart = window.currentChart;
+    const breaks = chart?.breaks || [];
+
+    while (
+        nextBreakIndex < breaks.length &&
+        time >= breaks[nextBreakIndex].start
+    ) {
+        const hits = window.hitCount - sectionStartHits;
+        const misses = window.missCount - sectionStartMisses;
+        const total = hits + misses;
+        // osu! checks the health bar when a break begins. nowJS has no health
+        // bar, so section accuracy above 50% is used as the pass condition.
+        const passing = total === 0 || hits / total > 0.5;
+        breakResults.push(passing);
+        setStoryboardPassing(passing);
+        sectionStartHits = window.hitCount;
+        sectionStartMisses = window.missCount;
+        nextBreakIndex += 1;
+    }
+
+    if (
+        !finalBreakStateApplied &&
+        breaks.length > 0 &&
+        chart &&
+        time > chart.lastNoteTime
+    ) {
+        const passedBreaks = breakResults.filter(Boolean).length;
+        setStoryboardPassing(passedBreaks >= breakResults.length / 2);
+        finalBreakStateApplied = true;
+    }
 }
 
 function pauseGame(silent = false) {
@@ -199,6 +250,7 @@ function finishGameSeek(progress) {
     resetAutoPlayMotion();
     circlePool.releaseAll();
     resetManiaInput();
+    resetStoryboardSections(chartTime);
     stopSpinnerLoop();
     bananasActiveLastFrame = false;
 
@@ -337,6 +389,7 @@ app.ticker.add((ticker) => {
     }
     window.chartTime = chartTime;
 
+    updateStoryboardSections(chartTime);
     updateMedia(chartTime);
 
     while (

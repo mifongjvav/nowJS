@@ -82,6 +82,20 @@ function splitCsv(line) {
     return parts;
 }
 
+function parseSampleLayer(value: unknown): number {
+    const text = String(value ?? "")
+        .trim()
+        .toLowerCase();
+    if (text === "background") return 0;
+    if (text === "fail") return 1;
+    if (text === "pass") return 2;
+    if (text === "foreground") return 3;
+    if (text === "overlay") return 4;
+
+    const layer = Number(text);
+    return Number.isInteger(layer) && layer >= 0 && layer <= 5 ? layer : 0;
+}
+
 function parseEvents(lines: string[] = []): OsuEvents {
     const events: OsuEvents = {
         background: null,
@@ -126,6 +140,7 @@ function parseEvents(lines: string[] = []): OsuEvents {
                     time,
                     file,
                     volume: parseNumber(parts[4], 100),
+                    layer: parseSampleLayer(parts[2]),
                 });
             }
         }

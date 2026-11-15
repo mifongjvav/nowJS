@@ -26,6 +26,7 @@ let lastVideoSeek = -Infinity;
 let storyboardPlayer = null;
 let storyboardData = null;
 let storyboardReplacesBackground = false;
+let storyboardPassing = true;
 let currentUrl = null;
 let currentImage = null;
 let currentBlur = true;
@@ -334,12 +335,15 @@ export function clearStoryboard() {
     if (!storyboardPlayer) return;
 
     storyboardPlayer.backgroundContainer.removeFromParent();
+    storyboardPlayer.failContainer.removeFromParent();
+    storyboardPlayer.passContainer.removeFromParent();
     storyboardPlayer.foregroundContainer.removeFromParent();
     storyboardPlayer.overlayContainer.removeFromParent();
     storyboardPlayer.destroy();
     storyboardPlayer = null;
     storyboardData = null;
     storyboardReplacesBackground = false;
+    storyboardPassing = true;
     updateDimmer();
 }
 
@@ -370,6 +374,14 @@ export function setStoryboard(data, options = {}) {
     storyboardPlayer.backgroundContainer.visible = false;
     bgLayer.addChild(storyboardPlayer.backgroundContainer);
 
+    storyboardPlayer.failContainer.zIndex = 3.1;
+    storyboardPlayer.failContainer.visible = false;
+    bgLayer.addChild(storyboardPlayer.failContainer);
+
+    storyboardPlayer.passContainer.zIndex = 3.2;
+    storyboardPlayer.passContainer.visible = false;
+    bgLayer.addChild(storyboardPlayer.passContainer);
+
     // The Foreground layer is still below hit objects, so it belongs in the
     // background layer (above the background image and its dimmer).
     storyboardPlayer.foregroundContainer.zIndex = 4;
@@ -382,6 +394,14 @@ export function setStoryboard(data, options = {}) {
     overlayLayer.addChild(storyboardPlayer.overlayContainer);
 
     updateDimmer();
+}
+
+export function setStoryboardPassing(passing: boolean): void {
+    storyboardPassing = Boolean(passing);
+    if (!storyboardPlayer) return;
+
+    storyboardPlayer.failContainer.visible = mediaStarted && !storyboardPassing;
+    storyboardPlayer.passContainer.visible = mediaStarted && storyboardPassing;
 }
 
 function lowerBoundSample(time) {
@@ -428,6 +448,12 @@ function playSample(sample) {
     }
 }
 
+function isSampleAudible(sample) {
+    if (sample.layer === 1) return !storyboardPassing;
+    if (sample.layer === 2) return storyboardPassing;
+    return true;
+}
+
 export function setSamples(samples = []) {
     stopActiveSamples();
     mediaSamples = (samples || [])
@@ -467,6 +493,8 @@ export function startMedia(time = 0) {
 
     if (storyboardPlayer) {
         storyboardPlayer.backgroundContainer.visible = true;
+        storyboardPlayer.failContainer.visible = !storyboardPassing;
+        storyboardPlayer.passContainer.visible = storyboardPassing;
         storyboardPlayer.foregroundContainer.visible = true;
         storyboardPlayer.overlayContainer.visible = true;
     }
@@ -556,6 +584,8 @@ export function stopMedia() {
     }
     if (storyboardPlayer) {
         storyboardPlayer.backgroundContainer.visible = false;
+        storyboardPlayer.failContainer.visible = false;
+        storyboardPlayer.passContainer.visible = false;
         storyboardPlayer.foregroundContainer.visible = false;
         storyboardPlayer.overlayContainer.visible = false;
         storyboardPlayer.resetTriggers();
@@ -578,7 +608,7 @@ export function updateMedia(time) {
     ) {
         const sample = mediaSamples[nextSampleIndex];
         nextSampleIndex += 1;
-        if (!mediaPaused) {
+        if (!mediaPaused && isSampleAudible(sample)) {
             playSample(sample);
         }
     }

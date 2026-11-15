@@ -69,6 +69,59 @@ const PRESET_CHARTS = [
     },
 ] satisfies PresetChart[];
 
+const DEFAULT_SKIN_FILES = new Set([
+    "sliderb0.png",
+    "sliderfollowcircle.png",
+    "sliderscorepoint.png",
+    "reversearrow.png",
+    "spinner-background.png",
+    "spinner-circle.png",
+]);
+const DEFAULT_SKIN_ROOT = `${import.meta.env.BASE_URL}osu-resources/Skins/Default`;
+const defaultSkinUrls = new Map<string, string>();
+let defaultSkinPromise: Promise<void> | null = null;
+
+function ensureDefaultSkinUrls(): Promise<void> {
+    if (defaultSkinPromise) return defaultSkinPromise;
+
+    defaultSkinPromise = Promise.all(
+        [...DEFAULT_SKIN_FILES].map(async (file) => {
+            try {
+                const response = await fetch(`${DEFAULT_SKIN_ROOT}/${file}`);
+                if (!response.ok) return;
+
+                const blob = await response.blob();
+                defaultSkinUrls.set(
+                    file,
+                    URL.createObjectURL(
+                        new Blob([blob], { type: "image/png" }),
+                    ),
+                );
+            } catch (error) {
+                console.warn("默认皮肤资源加载失败", file, error);
+            }
+        }),
+    ).then(() => undefined);
+
+    return defaultSkinPromise;
+}
+
+function getDefaultSkinUrl(normalizedPath: string): string | null {
+    const base = normalizedPath.split("/").pop();
+    if (!base || !DEFAULT_SKIN_FILES.has(base)) return null;
+    return defaultSkinUrls.get(base) || null;
+}
+
+function getStaticSpriteCandidates(file: string): string[] {
+    const normalized = normalizeStoryboardPath(file);
+    const candidates = [normalized];
+    const match = normalized.match(/^(.*?)(\d+)(\.[^./]+)$/);
+    if (match) {
+        candidates.push(`${match[1]}-${match[2]}${match[3]}`);
+    }
+    return candidates;
+}
+
 function isStoryboardMediaLine(line) {
     return /^\s*(Sprite|Animation|[46])\s*,/i.test(line);
 }
@@ -139,12 +192,40 @@ function buildStoryboard(
     if (!data.sprites.length) return null;
 
     const fileUrls = new Map<string, string>();
-    const resolve = (file: string): void => {
+    const resolveCandidate = (candidate: string): string | null => {
+        const normalized = normalizeStoryboardPath(candidate);
+        if (!normalized) return null;
+        if (fileUrls.has(normalized)) return normalized;
+
+        const url = resolveUrl(normalized, candidate);
+        if (url) {
+            fileUrls.set(normalized, url);
+            return normalized;
+        }
+        return null;
+    };
+
+    const resolveStatic = (file: string): void => {
         const normalized = normalizeStoryboardPath(file);
         if (!normalized || fileUrls.has(normalized)) return;
 
-        const url = resolveUrl(normalized, file);
-        if (url) fileUrls.set(normalized, url);
+        let resolved = null;
+        for (const candidate of getStaticSpriteCandidates(file)) {
+            resolved = resolveCandidate(candidate);
+            if (resolved) break;
+        }
+
+        if (resolved) {
+            if (resolved !== normalized) {
+                fileUrls.set(normalized, fileUrls.get(resolved));
+            }
+            return;
+        }
+
+        const fallback = getDefaultSkinUrl(normalized);
+        if (fallback) {
+            fileUrls.set(normalized, fallback);
+        }
     };
 
     for (const sprite of data.sprites) {
@@ -158,18 +239,11 @@ function buildStoryboard(
                     sprite.file,
                     frame,
                 )) {
-                    const normalized = normalizeStoryboardPath(candidate);
-                    if (!normalized || fileUrls.has(normalized)) continue;
-
-                    const url = resolveUrl(normalized, candidate);
-                    if (url) {
-                        fileUrls.set(normalized, url);
-                        break;
-                    }
+                    if (resolveCandidate(candidate)) break;
                 }
             }
         } else {
-            resolve(sprite.file);
+            resolveStatic(sprite.file);
         }
     }
 
@@ -477,6 +551,8 @@ async function buildImportedChart(
             throw new Error(i18n.error.noPlayableObjects);
         }
 
+        await ensureDefaultSkinUrls();
+
         const defaultMode: PlayMode =
             parsed.general.mode === 3 ? "mania" : "catch";
         const variants: Record<PlayMode, CompiledCatchChart> = {
@@ -692,6 +768,7 @@ async function buildImportedChart(
                 time: sample.time,
                 url,
                 volume: sample.volume ?? 100,
+                layer: sample.layer,
             });
         }
 
@@ -791,6 +868,7 @@ async function buildImportedChart(
             videoOffset: parsed.events.videoOffset || 0,
             storyboard,
             samples,
+            breaks: parsed.events.breaks || [],
             replacesBackground,
             storyboardStartTime,
             storyboardEndTime: Math.max(
@@ -904,6 +982,7 @@ async function loadPresetChart(preset: PresetChart): Promise<void> {
 }
 
 export function initSongSelect() {
+    void ensureDefaultSkinUrls();
     ui.setUICallbacks({
         importFiles,
         preset: loadPresetChart,

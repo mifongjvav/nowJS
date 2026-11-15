@@ -75,6 +75,8 @@ export interface OsuSampleEvent {
     time: number;
     file: string;
     volume: number;
+    /** 0 = background, 1 = fail, 2 = pass, 3 = foreground, 4 = overlay. */
+    layer?: number;
 }
 
 export interface OsuEvents {
@@ -244,7 +246,13 @@ export interface GameChart extends CompiledCatchChart {
     videoUrl: string | null;
     videoOffset: number;
     storyboard: StoryboardBundle | null;
-    samples: Array<{ time: number; url: string; volume: number }>;
+    samples: Array<{
+        time: number;
+        url: string;
+        volume: number;
+        layer?: number;
+    }>;
+    breaks: Array<{ start: number; end: number }>;
     replacesBackground: boolean;
     storyboardStartTime: number;
     storyboardEndTime: number;

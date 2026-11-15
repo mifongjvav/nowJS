@@ -74,6 +74,20 @@ function getAnimationDelay(value, formatVersion) {
     return delay;
 }
 
+function parseSampleLayer(value) {
+    const text = String(value ?? "")
+        .trim()
+        .toLowerCase();
+    if (text === "background") return 0;
+    if (text === "fail") return 1;
+    if (text === "pass") return 2;
+    if (text === "foreground") return 3;
+    if (text === "overlay") return 4;
+
+    const layer = Number(text);
+    return Number.isInteger(layer) && layer >= 0 && layer <= 5 ? layer : 0;
+}
+
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
@@ -328,7 +342,14 @@ export function parseStoryboard(
             const time = parseNumber(parts[1], 0);
             const file = parts[3] || "";
             const volume = parseNumber(parts[4], 100);
-            if (file) samples.push({ time, file, volume });
+            if (file) {
+                samples.push({
+                    time,
+                    file,
+                    volume,
+                    layer: parseSampleLayer(parts[2]),
+                });
+            }
             continue;
         }
 
@@ -960,6 +981,8 @@ export class StoryboardPlayer {
     readonly worldScale: number;
     readonly offsetX: number;
     readonly backgroundContainer: PIXI.Container;
+    readonly failContainer: PIXI.Container;
+    readonly passContainer: PIXI.Container;
     readonly foregroundContainer: PIXI.Container;
     readonly overlayContainer: PIXI.Container;
     readonly sprites: SpriteRecord[];
@@ -982,6 +1005,8 @@ export class StoryboardPlayer {
         this.offsetX = this.width / 2 - 320 * this.worldScale;
 
         this.backgroundContainer = new PIXI.Container();
+        this.failContainer = new PIXI.Container();
+        this.passContainer = new PIXI.Container();
         this.foregroundContainer = new PIXI.Container();
         this.overlayContainer = new PIXI.Container();
         this.sprites = [];
@@ -991,9 +1016,6 @@ export class StoryboardPlayer {
         this.destroyed = false;
 
         for (const spriteData of data?.sprites || []) {
-            if (spriteData.layerIndex === 1 || spriteData.layerIndex === 2) {
-                continue;
-            }
             const framePaths = [];
             if (spriteData.animation) {
                 for (
@@ -1048,6 +1070,10 @@ export class StoryboardPlayer {
 
             if (spriteData.layerIndex === 0) {
                 this.backgroundContainer.addChild(sprite);
+            } else if (spriteData.layerIndex === 1) {
+                this.failContainer.addChild(sprite);
+            } else if (spriteData.layerIndex === 2) {
+                this.passContainer.addChild(sprite);
             } else if (spriteData.layerIndex === 3) {
                 this.foregroundContainer.addChild(sprite);
             } else {
@@ -1329,6 +1355,8 @@ export class StoryboardPlayer {
         this.textures.clear();
 
         this.backgroundContainer.destroy({ children: true });
+        this.failContainer.destroy({ children: true });
+        this.passContainer.destroy({ children: true });
         this.foregroundContainer.destroy({ children: true });
         this.overlayContainer.destroy({ children: true });
         this.sprites.length = 0;
