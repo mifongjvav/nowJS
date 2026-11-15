@@ -12,6 +12,10 @@ import {
 } from "./i18n/index.ts";
 import { isAutoPlayEnabled, setAutoPlay } from "./autoplay.ts";
 import {
+    isHoldTailJudgementEnabled,
+    setHoldTailJudgementEnabled,
+} from "./maniaSettings.ts";
+import {
     playMenuPlaySelect,
     playNotification,
     playSongSelectDifficulty,
@@ -208,6 +212,14 @@ root.innerHTML = `
                                     <span data-i18n="menu.modeMania">${i18n.menu.modeMania}</span>
                                 </mdui-segmented-button>
                             </mdui-segmented-button-group>
+                            <div class="now-hold-tail" id="now-hold-tail">
+                                <mdui-switch
+                                    id="now-hold-tail-switch"
+                                    aria-label="${i18n.menu.holdTailAria}"
+                                    data-i18n-aria-label="menu.holdTailAria"
+                                ></mdui-switch>
+                                <span data-i18n="menu.holdTail">${i18n.menu.holdTail}</span>
+                            </div>
                         </div>
                         <div class="now-song-actions">
                             <mdui-button
@@ -425,6 +437,8 @@ const songTitle = root.querySelector("#now-song-title");
 const songArtist = root.querySelector("#now-song-artist");
 const songMeta = root.querySelector("#now-song-meta");
 const modePicker = root.querySelector("#now-mode-picker");
+const holdTailRow = root.querySelector("#now-hold-tail");
+const holdTailSwitch = root.querySelector("#now-hold-tail-switch");
 const startBtn = root.querySelector("#now-start-btn");
 const startLabel = root.querySelector("#now-start-label");
 const importBtn = root.querySelector("#now-import-btn");
@@ -472,6 +486,8 @@ function syncDialogActions() {
 
 compactActions.addEventListener("change", syncDialogActions);
 syncDialogActions();
+
+holdTailSwitch.checked = isHoldTailJudgementEnabled();
 
 autoplayBtn.selected = isAutoPlayEnabled();
 hudAuto.classList.toggle("now-hidden", !isAutoPlayEnabled());
@@ -1007,6 +1023,16 @@ onLanguageChange(() => {
 
 autoplayBtn.addEventListener("change", () => {
     setAutoPlay(autoplayBtn.selected);
+});
+
+holdTailSwitch.addEventListener("change", () => {
+    setHoldTailJudgementEnabled(holdTailSwitch.checked);
+});
+
+holdTailRow.addEventListener("click", (event) => {
+    if (event.target.closest("mdui-switch")) return;
+    holdTailSwitch.checked = !holdTailSwitch.checked;
+    setHoldTailJudgementEnabled(holdTailSwitch.checked);
 });
 
 modePicker.addEventListener("change", () => {

@@ -20,6 +20,7 @@ declare global {
     interface GameCircle extends Graphics {
         active: boolean;
         hasJudged: boolean;
+        holdActive: boolean;
         note: CatchNote;
         noteTime: number;
         fallSpeed: number;
@@ -30,6 +31,7 @@ declare global {
         activeCircles: GameCircle[];
         spawnNote(note: CatchNote, chartTime: number): GameCircle;
         pressLane(lane: number, chartTime: number): boolean;
+        releaseLane(lane: number, chartTime: number): void;
         releaseAll(): void;
         update(chartTime: number): void;
     }

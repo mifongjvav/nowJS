@@ -46,6 +46,8 @@ export default {
         modeCatch: "Catch",
         modeMania: "Mania 4K",
         modeAria: "选择游戏模式",
+        holdTail: "长条尾判",
+        holdTailAria: "开关 osu!mania 长条尾判",
         resolutionAria: "更改渲染分辨率",
         languageAria: "切换语言",
     },

@@ -190,6 +190,15 @@ window.addEventListener("keyup", (event) => {
     if (plates[lane]) {
         plates[lane].pressed = false;
     }
+
+    if (
+        maniaActive &&
+        !window.autoPlay &&
+        window.gameState === "playing" &&
+        !window.isPaused
+    ) {
+        circlePool.releaseLane(lane, window.chartTime);
+    }
 });
 
 window.addEventListener("blur", () => {
@@ -202,12 +211,18 @@ export function updateMania(chartTime: number, deltaMS: number): void {
     const playing = window.gameState === "playing" && !window.isPaused;
     const autoPlay = playing && window.autoPlay;
 
-    if (autoPlay) {
+    if (playing) {
         for (const circle of circlePool.activeCircles) {
             const lane = circle.note ? circle.note.lane : undefined;
             if (typeof lane !== "number" || lane < 0 || lane >= LANE_COUNT) {
                 continue;
             }
+            if (circle.holdActive) {
+                plates[lane].pulse = 1;
+                continue;
+            }
+            if (!autoPlay) continue;
+
             const delta = chartTime - circle.noteTime;
             if (Math.abs(delta) <= AUTO_HOLD_WINDOW_MS) {
                 plates[lane].pulse = 1;

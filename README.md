@@ -37,7 +37,7 @@
     - 滑条
     - banana
     - 视频/故事版
-    - osu!mania 谱面默认转换为 4K（D F J K 打击），也可随时切回 Catch
+    - osu!mania 谱面默认转换为 4K（D F J K 打击，可开关长条尾判），也可随时切回 Catch
 - 更好的效果
     - 模糊
     - MDUI

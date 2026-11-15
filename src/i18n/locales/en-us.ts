@@ -47,6 +47,8 @@ export default {
         modeCatch: "Catch",
         modeMania: "Mania 4K",
         modeAria: "Choose game mode",
+        holdTail: "Hold tails",
+        holdTailAria: "Toggle osu!mania hold-note tail judgement",
         resolutionAria: "Change render resolution",
         languageAria: "Change language",
     },

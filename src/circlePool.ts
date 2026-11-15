@@ -4,6 +4,7 @@ import { playCatchSound, playComboBreak } from "./audio.ts";
 import { triggerStoryboardHit } from "./background.ts";
 import { getPlayfield } from "./layout.ts";
 import { MD3_COLORS } from "./theme.ts";
+import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
 
 const SCALE = window.gameScale;
 const RADIUS = 20 * SCALE;
@@ -11,6 +12,23 @@ const CATCHER_WIDTH = 130 * SCALE;
 const CATCH_WINDOW_MS = 95;
 // Use most of the plate as the catch area while keeping a small edge margin.
 const CATCH_CENTER_RATIO = 0.9;
+
+function drawNoteGraphics(circle, holdHeight = 0, headRadius = RADIUS) {
+    circle.clear();
+    if (holdHeight > 0.5) {
+        const holdWidth = RADIUS * 0.72;
+        circle
+            .roundRect(
+                -holdWidth / 2,
+                -holdHeight,
+                holdWidth,
+                holdHeight,
+                holdWidth / 2,
+            )
+            .fill(0xffffff);
+    }
+    circle.circle(0, 0, headRadius).fill(0xffffff);
+}
 
 class CirclePool {
     constructor(poolSize = 90) {
@@ -48,6 +66,7 @@ class CirclePool {
         circle.active = true;
         circle.visible = true;
         circle.hasJudged = false;
+        circle.holdActive = false;
         circle.note = note;
         circle.noteTime = note.time;
         circle.fallSpeed =
@@ -56,22 +75,11 @@ class CirclePool {
         circle.displayRadius = RADIUS * scale;
         circle.scale.set(scale);
 
-        circle.clear();
-        if (note.holdEndTime && note.holdEndTime > note.time) {
-            const holdHeight =
-                ((note.holdEndTime - note.time) / 1000) * circle.fallSpeed;
-            const holdWidth = RADIUS * 0.72;
-            circle
-                .roundRect(
-                    -holdWidth / 2,
-                    -holdHeight,
-                    holdWidth,
-                    holdHeight,
-                    holdWidth / 2,
-                )
-                .fill(0xffffff);
-        }
-        circle.circle(0, 0, RADIUS).fill(0xffffff);
+        const holdHeight =
+            note.holdEndTime && note.holdEndTime > note.time
+                ? ((note.holdEndTime - note.time) / 1000) * circle.fallSpeed
+                : 0;
+        drawNoteGraphics(circle, holdHeight);
 
         circle.tint =
             note.type === "droplet"
@@ -101,6 +109,7 @@ class CirclePool {
         circle.active = false;
         circle.visible = false;
         circle.hasJudged = false;
+        circle.holdActive = false;
         circle.filters = null;
         circle.tint = MD3_COLORS.onSurface;
         circle.scale.set(1);
@@ -147,6 +156,25 @@ class CirclePool {
         return true;
     }
 
+    releaseLane(lane, chartTime) {
+        const chart = window.currentChart;
+        if (!chart || !chart.mania) return;
+
+        for (const circle of this.activeCircles.slice()) {
+            if (!circle.holdActive || !circle.note) continue;
+            if (circle.note.lane !== lane) continue;
+
+            const endTime = circle.note.holdEndTime;
+            if (!Number.isFinite(endTime)) continue;
+
+            if (chartTime >= endTime - CATCH_WINDOW_MS) {
+                this.performHoldTailHit(circle);
+            } else {
+                this.failHoldTail(circle);
+            }
+        }
+    }
+
     update(chartTime) {
         if (window.gameState !== "playing" || window.isPaused) return;
 
@@ -156,14 +184,19 @@ class CirclePool {
 
         for (let i = this.activeCircles.length - 1; i >= 0; i--) {
             const circle = this.activeCircles[i];
-            circle.y = this.yFor(circle, chartTime);
-
             const delta = chartTime - circle.noteTime;
 
             if (mania) {
                 // Mania notes are only collected when their lane key is
                 // pressed (or by auto play). The plates stay still, so the
                 // catch overlap test must not judge them automatically.
+                if (circle.holdActive) {
+                    this.updateHold(circle, chartTime);
+                    continue;
+                }
+
+                circle.y = this.yFor(circle, chartTime);
+
                 if (window.autoPlay && !circle.hasJudged && delta >= 0) {
                     // Auto play should not lose notes when a slow frame
                     // skips over the hit window; it presses as soon as the
@@ -172,7 +205,7 @@ class CirclePool {
                     continue;
                 }
 
-                if (delta > CATCH_WINDOW_MS) {
+                if (!circle.hasJudged && delta > CATCH_WINDOW_MS) {
                     if (circle.note.type === "banana") {
                         this.release(circle);
                     } else {
@@ -181,6 +214,8 @@ class CirclePool {
                 }
                 continue;
             }
+
+            circle.y = this.yFor(circle, chartTime);
 
             if (
                 !circle.hasJudged &&
@@ -219,7 +254,7 @@ class CirclePool {
         updateStatsDisplay();
     }
 
-    performHit(circle) {
+    playHitEffects(circle) {
         const player = window.player;
         const playfieldWidth = 512 * window.gameScale;
         const leftBound = (window.gameWidth - playfieldWidth) / 2;
@@ -252,19 +287,85 @@ class CirclePool {
                 ? window.chartTime
                 : circle.noteTime,
         );
+    }
+
+    shouldHoldCircle(circle) {
+        return Boolean(
+            window.currentChart &&
+            window.currentChart.mania &&
+            circle.note.holdEndTime &&
+            circle.note.holdEndTime > circle.note.time &&
+            isHoldTailJudgementEnabled(),
+        );
+    }
+
+    refreshHoldVisual(circle, chartTime) {
+        const note = circle.note;
+        const endTime = note.holdEndTime;
+        if (!Number.isFinite(endTime)) return;
+
+        const startTime = Math.max(chartTime, note.time);
+        const remaining = Math.max(0, endTime - startTime);
+        const holdHeight = (remaining / 1000) * circle.fallSpeed;
+        const judgeY = window.judgeLine ? window.judgeLine.y : circle.y;
+
+        circle.y = judgeY;
+        drawNoteGraphics(circle, holdHeight);
+        circle.tint = MD3_COLORS.primary;
+    }
+
+    updateHold(circle, chartTime) {
+        this.refreshHoldVisual(circle, chartTime);
+        if (chartTime >= circle.note.holdEndTime) {
+            this.performHoldTailHit(circle);
+        }
+    }
+
+    performHoldTailHit(circle) {
+        if (!circle.holdActive) return;
+
+        circle.holdActive = false;
+        this.playHitEffects(circle);
+        window.hitCount++;
+        window.combo++;
+        if (window.combo > window.maxCombo) {
+            window.maxCombo = window.combo;
+        }
+        updateStatsDisplay();
+        this.release(circle);
+    }
+
+    failHoldTail(circle) {
+        if (!circle.holdActive) return;
+        circle.holdActive = false;
+        this.registerMiss(circle);
+    }
+
+    performHit(circle) {
+        this.playHitEffects(circle);
 
         if (circle.note.type === "banana") {
             window.bananaCount = (window.bananaCount || 0) + 1;
-        } else {
-            window.hitCount++;
-            window.combo++;
-            if (window.combo > window.maxCombo) {
-                window.maxCombo = window.combo;
-            }
-            updateStatsDisplay();
+            circle.hasJudged = true;
+            this.release(circle);
+            return;
         }
 
+        window.hitCount++;
+        window.combo++;
+        if (window.combo > window.maxCombo) {
+            window.maxCombo = window.combo;
+        }
+        updateStatsDisplay();
+
         circle.hasJudged = true;
+
+        if (this.shouldHoldCircle(circle)) {
+            circle.holdActive = true;
+            this.refreshHoldVisual(circle, window.chartTime);
+            return;
+        }
+
         this.release(circle);
     }
 }

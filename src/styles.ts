@@ -653,6 +653,7 @@ const BASE_CSS = `
 
     .now-play-mode {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 12px;
         margin-top: 18px;
@@ -667,7 +668,25 @@ const BASE_CSS = `
     }
 
     .now-play-mode mdui-segmented-button-group {
+        flex: 0 0 auto;
         --shape-corner: 999px;
+    }
+
+    .now-play-mode mdui-segmented-button {
+        width: 120px;
+    }
+
+    .now-hold-tail {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 6px;
+        color: rgb(var(--mdui-color-on-surface-variant));
+        font-size: var(--mdui-typescale-label-medium-size);
+        line-height: var(--mdui-typescale-label-medium-line-height);
+        letter-spacing: var(--mdui-typescale-label-medium-tracking);
+        cursor: pointer;
+        user-select: none;
     }
 
     .now-song-actions {
