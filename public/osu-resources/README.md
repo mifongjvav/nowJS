@@ -12,15 +12,24 @@ official [`ppy/osu-resources`](https://github.com/ppy/osu-resources) repository.
 
 ## Included sounds
 
-Only the samples actually referenced by the game are included:
+Only the samples actually referenced by the game are included.
 
-- Gameplay hit samples: `normal`, `soft`, `drum` sets
-- Catch, combo break, pause loop, restart, resume countdown
-- Banana shower loop and bonus
+Gameplay hit sounds use the **Argon Pro** sample pack. If a sound is absent
+from Argon Pro, the **Argon** pack is used, and finally the osu! default
+samples are used. This applies to the normal/soft/drum hitnormal, hitclap,
+hitwhistle, hitfinish and slidertick samples, as well as combo break and
+spinner sounds.
+
+The remaining sounds come from the osu! default resources:
+
+- Catch banana, pause loop, restart, resume countdown
 - Results impact and applause
 - UI hover/click/dialog/notification sounds
 - Song-select confirm/difficulty sounds
 - Menu select/back sounds
+
+Custom hit samples referenced by an imported `.osu` file take priority over
+the bundled packs, matching the osu! file format.
 
 ## Changes
 

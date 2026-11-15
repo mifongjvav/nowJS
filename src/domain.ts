@@ -10,7 +10,17 @@ export interface TimingPoint {
     sliderVelocity: number;
     meter: number;
     sampleSet: number;
+    sampleIndex: number;
     volume: number;
+}
+
+export interface CatchHitSample {
+    bank: string;
+    name: string;
+    volume: number;
+    index?: number;
+    filename?: string;
+    url?: string;
 }
 
 export interface OsuHitObject extends Point {
@@ -18,7 +28,14 @@ export interface OsuHitObject extends Point {
     type: number;
     hitSound: number;
     sampleSet: string;
+    additionSet: string;
+    sampleIndex: number;
+    sampleFilename: string;
     volume: number;
+    samples: CatchHitSample[];
+    nodeSamples?: CatchHitSample[][];
+    edgeSounds?: number[];
+    edgeSets?: Array<{ normalSet: number; additionSet: number }>;
     curveType?: string;
     curvePoints?: Point[];
     slides?: number;
@@ -87,9 +104,7 @@ export interface CatchNote {
     x: number;
     type: CatchNoteType;
     scale: number;
-    sampleSet: string;
-    hitSound: number;
-    volume: number;
+    samples: CatchHitSample[];
 }
 
 export interface CompiledCatchChart {

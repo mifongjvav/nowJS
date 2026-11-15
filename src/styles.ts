@@ -747,6 +747,15 @@ const BASE_CSS = `
             220ms both;
     }
 
+    /* Keep cards at their natural height and let the menu scroll instead of
+       squeezing their contents when the window is short. */
+    .now-presets,
+    mdui-card.now-song-card,
+    mdui-card.now-drop-hint,
+    .now-play-hint {
+        flex: 0 0 auto;
+    }
+
     .now-menu-footer {
         width: 100%;
         max-width: var(--now-content-width);
@@ -1149,6 +1158,114 @@ const BASE_CSS = `
             font-size: var(--mdui-typescale-headline-large-size);
             line-height: var(--mdui-typescale-headline-large-line-height);
             letter-spacing: var(--mdui-typescale-headline-large-tracking);
+        }
+    }
+
+    /* Compact layout for short windows (for example a 946x526 sandbox frame).
+       Without this, the vertical flex layout squeezes the song card until its
+       cover and text overlap. */
+    @media (max-height: 780px) {
+        .now-menu-main {
+            gap: 12px;
+            padding: 20px 0;
+        }
+    }
+
+    @media (max-height: 700px) {
+        .now-menu-screen {
+            padding: 8px clamp(16px, 3.5vw, 40px) 10px;
+        }
+
+        mdui-top-app-bar.now-top-app-bar {
+            min-height: 56px;
+            height: 56px;
+        }
+
+        .now-brand-mark {
+            width: 40px;
+            height: 40px;
+            font-size: 22px;
+        }
+
+        .now-menu-main {
+            gap: 8px;
+            padding: 12px 0;
+        }
+
+        .now-presets-heading {
+            margin-bottom: 6px;
+        }
+
+        mdui-card.now-preset-card {
+            min-height: 80px;
+            gap: 6px;
+            padding: 8px;
+        }
+
+        .now-preset-mark {
+            width: 40px;
+            height: 40px;
+            font-size: 13px;
+        }
+
+        .now-song-card-inner {
+            grid-template-columns: clamp(120px, 22vh, 160px) minmax(0, 1fr);
+            gap: 20px;
+            padding: 14px 16px;
+        }
+
+        .now-song-cover {
+            min-height: 0;
+        }
+
+        .now-song-body {
+            padding: 0;
+        }
+
+        .now-song-title {
+            margin-top: 4px;
+            font-size: var(--mdui-typescale-headline-small-size);
+            line-height: var(--mdui-typescale-headline-small-line-height);
+            letter-spacing: var(--mdui-typescale-headline-small-tracking);
+        }
+
+        .now-song-artist {
+            margin-top: 4px;
+            font-size: var(--mdui-typescale-body-medium-size);
+            line-height: var(--mdui-typescale-body-medium-line-height);
+            letter-spacing: var(--mdui-typescale-body-medium-tracking);
+        }
+
+        .now-song-meta {
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .now-meta-item {
+            min-height: 26px;
+            padding: 2px 10px;
+        }
+
+        .now-meta-item strong {
+            font-size: var(--mdui-typescale-label-medium-size);
+        }
+
+        .now-song-actions {
+            margin-top: 10px;
+        }
+
+        .now-drop-hint-inner {
+            min-height: 38px;
+            padding: 4px 16px;
+        }
+
+        .now-play-hint {
+            font-size: var(--mdui-typescale-label-medium-size);
+            line-height: var(--mdui-typescale-label-medium-line-height);
+        }
+
+        .now-menu-footer {
+            padding-top: 6px;
         }
     }
 

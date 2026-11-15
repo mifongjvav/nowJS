@@ -13,9 +13,10 @@ Selected sound effects in this project are copied from
     - Full license: [`public/osu-resources/LICENCE.md`](public/osu-resources/LICENCE.md)
     - <https://creativecommons.org/licenses/by-nc/4.0/>
 
-Only the samples referenced by nowJS are included. The copied files are
-unmodified and keep their original directory structure. They are used for
-non-commercial purposes only.
+Only the samples referenced by nowJS are included. Gameplay hit sounds use the
+Argon Pro pack with Argon and osu! default fallbacks; other sounds use the
+osu! default resources. The copied files are unmodified and keep their original
+directory structure. They are used for non-commercial purposes only.
 
 `osu!` and `ppy` are trademarks of ppy Pty Ltd. nowJS is not affiliated with,
 endorsed by, or sponsored by ppy Pty Ltd.

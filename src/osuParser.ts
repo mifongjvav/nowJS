@@ -2,6 +2,7 @@ import { strFromU8, unzipSync } from "./vendor/fflate.js";
 import type {
     ArchiveFile,
     ArchivedBeatmap,
+    CatchHitSample,
     CatchNote,
     CompiledCatchChart,
     OsuArchive,
@@ -151,6 +152,7 @@ function parseTimingPoints(lines: string[] = []): TimingPoint[] {
             sliderVelocity: uninherited ? 1 : -100 / beatLength,
             meter: parseNumber(parts[2], 4),
             sampleSet: parseNumber(parts[3], 0) | 0,
+            sampleIndex: Math.max(0, parseNumber(parts[4], 0) | 0),
             volume: parseNumber(parts[5], 100),
         });
     }
@@ -164,40 +166,133 @@ const SAMPLE_SET_NAMES: Record<number, string> = {
     3: "drum",
 };
 
+function normalizeSampleSet(value: unknown): string {
+    const name = String(value ?? "")
+        .trim()
+        .toLowerCase();
+    return name === "soft" || name === "drum" || name === "normal"
+        ? name
+        : "normal";
+}
+
 function parseHitSample(value) {
     const parts = String(value || "").split(":");
     return {
         normalSet: parseNumber(parts[0], 0) | 0,
         additionSet: parseNumber(parts[1], 0) | 0,
-        index: parseNumber(parts[2], 0) | 0,
-        volume: parseNumber(parts[3], 0),
+        index: Math.max(0, parseNumber(parts[2], 0) | 0),
+        volume: Math.max(0, parseNumber(parts[3], 0)),
         filename: parts[4] || "",
     };
 }
 
-function getTimingSampleInfo(timingPoints, time) {
+function getTimingSampleInfo(timingPoints, time, defaultSampleSet = "normal") {
     let sampleSet = 0;
+    let sampleIndex = 0;
     let volume = 100;
 
     for (const point of timingPoints) {
         if (point.time > time) break;
-        if (point.sampleSet >= 1 && point.sampleSet <= 3) {
-            sampleSet = point.sampleSet;
-        }
-        if (point.volume > 0) {
-            volume = point.volume;
-        }
+        sampleSet = point.sampleSet;
+        sampleIndex = point.sampleIndex || 0;
+        volume = point.volume;
     }
 
     return {
-        sampleSet: SAMPLE_SET_NAMES[sampleSet] || "normal",
+        sampleSet: SAMPLE_SET_NAMES[sampleSet] || defaultSampleSet,
+        sampleIndex,
         volume,
     };
+}
+
+const ADDITION_SOUNDS = [
+    { bit: 8, name: "hitclap" },
+    { bit: 2, name: "hitwhistle" },
+    { bit: 4, name: "hitfinish" },
+];
+
+function buildHitSamples(
+    hitSound: number,
+    normalSet: string,
+    additionSet: string,
+    sampleIndex: number,
+    volume: number,
+    filename = "",
+): CatchHitSample[] {
+    // A custom filename replaces every layer of the object's hitsound.
+    if (filename) {
+        return [
+            {
+                bank: "normal",
+                name: "hitnormal",
+                volume,
+                index: sampleIndex > 0 ? sampleIndex : undefined,
+                filename,
+            },
+        ];
+    }
+
+    const index = sampleIndex > 0 ? sampleIndex : undefined;
+    const samples: CatchHitSample[] = [
+        {
+            bank: normalSet,
+            name: "hitnormal",
+            volume,
+            index,
+        },
+    ];
+
+    for (const addition of ADDITION_SOUNDS) {
+        if (!(hitSound & addition.bit)) continue;
+        samples.push({
+            bank: additionSet,
+            name: addition.name,
+            volume,
+            index,
+        });
+    }
+
+    return samples;
+}
+
+function parseEdgeSet(value) {
+    const parts = String(value || "").split(":");
+    return {
+        normalSet: parseNumber(parts[0], 0) | 0,
+        additionSet: parseNumber(parts[1], 0) | 0,
+    };
+}
+
+function buildSliderNodeSamples(
+    object: OsuHitObject,
+    timingSample: ReturnType<typeof getTimingSampleInfo>,
+    nodeIndex: number,
+): CatchHitSample[] {
+    const edgeSound = object.edgeSounds?.[nodeIndex];
+    const edgeSet = object.edgeSets?.[nodeIndex];
+    const hitSound = edgeSound ?? object.hitSound;
+    const normalSet = edgeSet
+        ? SAMPLE_SET_NAMES[edgeSet.normalSet] || timingSample.sampleSet
+        : object.sampleSet;
+    const additionSet = edgeSet
+        ? SAMPLE_SET_NAMES[edgeSet.additionSet] || normalSet
+        : object.additionSet;
+    const sampleIndex = object.sampleIndex || timingSample.sampleIndex || 0;
+
+    return buildHitSamples(
+        hitSound,
+        normalSet,
+        additionSet,
+        sampleIndex,
+        object.volume,
+        object.sampleFilename,
+    );
 }
 
 function parseHitObjects(
     lines: string[] = [],
     timingPoints: TimingPoint[] = [],
+    defaultSampleSet = "normal",
 ): OsuHitObject[] {
     const hitObjects: OsuHitObject[] = [];
 
@@ -227,17 +322,37 @@ function parseHitObjects(
                   ? parts[6] || ""
                   : parts[5] || "";
         const hitSample = parseHitSample(hitSampleValue);
-        const timingSample = getTimingSampleInfo(timingPoints, time);
+        const timingSample = getTimingSampleInfo(
+            timingPoints,
+            time,
+            defaultSampleSet,
+        );
+        const sampleSet =
+            SAMPLE_SET_NAMES[hitSample.normalSet] || timingSample.sampleSet;
+        const additionSet =
+            SAMPLE_SET_NAMES[hitSample.additionSet] || sampleSet;
+        const sampleIndex = hitSample.index || timingSample.sampleIndex || 0;
+        const volume =
+            hitSample.volume > 0 ? hitSample.volume : timingSample.volume;
         const object: OsuHitObject = {
             x,
             y,
             time,
             type,
             hitSound,
-            sampleSet:
-                SAMPLE_SET_NAMES[hitSample.normalSet] || timingSample.sampleSet,
-            volume:
-                hitSample.volume > 0 ? hitSample.volume : timingSample.volume,
+            sampleSet,
+            additionSet,
+            sampleIndex,
+            sampleFilename: hitSample.filename,
+            volume,
+            samples: buildHitSamples(
+                hitSound,
+                sampleSet,
+                additionSet,
+                sampleIndex,
+                volume,
+                hitSample.filename,
+            ),
         };
 
         if (type & 2) {
@@ -256,6 +371,19 @@ function parseHitObjects(
                 );
             object.slides = clamp(Math.round(parseNumber(parts[6], 1)), 1, 16);
             object.length = Math.max(0, parseNumber(parts[7], 0));
+            object.edgeSounds = (parts[8] || "")
+                .split("|")
+                .filter((value) => value !== "")
+                .map((value) => parseNumber(value, object.hitSound) | 0);
+            object.edgeSets = (parts[9] || "")
+                .split("|")
+                .filter((value) => value !== "")
+                .map(parseEdgeSet);
+            object.nodeSamples = Array.from(
+                { length: object.slides + 1 },
+                (_, nodeIndex) =>
+                    buildSliderNodeSamples(object, timingSample, nodeIndex),
+            );
         } else if (type & 8) {
             object.endTime = Math.max(time, parseNumber(parts[5], time));
         }
@@ -271,8 +399,13 @@ export function parseOsu(text: string): ParsedBeatmap {
     const general = parseKeyValues(sections.General);
     const metadata = parseKeyValues(sections.Metadata);
     const difficulty = parseKeyValues(sections.Difficulty);
+    const defaultSampleSet = normalizeSampleSet(general.SampleSet);
     const timingPoints = parseTimingPoints(sections.TimingPoints);
-    const hitObjects = parseHitObjects(sections.HitObjects, timingPoints);
+    const hitObjects = parseHitObjects(
+        sections.HitObjects,
+        timingPoints,
+        defaultSampleSet,
+    );
     const versionMatch = header.match(/osu file format v(\d+)/i);
 
     return {
@@ -281,7 +414,7 @@ export function parseOsu(text: string): ParsedBeatmap {
             audioFilename: general.AudioFilename || "",
             previewTime: parseNumber(general.PreviewTime, -1),
             mode: parseNumber(general.Mode, 0),
-            sampleSet: general.SampleSet || "Normal",
+            sampleSet: defaultSampleSet,
             widescreenStoryboard: general.WidescreenStoryboard === "1",
         },
         metadata: {
@@ -589,8 +722,20 @@ function addBananaNotes(object, notes, random) {
         random();
         random();
         random();
-        notes.push({ time, x, type: "banana", scale: 1.15 });
+        notes.push({ time, x, type: "banana", scale: 1.15, samples: [] });
     }
+}
+
+function getDropletSamples(samples: CatchHitSample[]): CatchHitSample[] {
+    const base = samples.find((sample) => sample.name === "hitnormal");
+    if (!base) return [];
+    return [
+        {
+            ...base,
+            name: "slidertick",
+            volume: Math.round(base.volume * 0.65),
+        },
+    ];
 }
 
 function addSliderNotes(object, beatmap, notes) {
@@ -601,16 +746,10 @@ function addSliderNotes(object, beatmap, notes) {
     const sliderMultiplier = beatmap.difficulty.sliderMultiplier || 1.4;
     const pixelsPerBeat = 100 * sliderMultiplier * sliderVelocity;
     const length = object.length;
-    const fruitSample = {
-        sampleSet: object.sampleSet || "normal",
-        hitSound: object.hitSound || 0,
-        volume: object.volume ?? 100,
-    };
-    const dropletSample = {
-        sampleSet: fruitSample.sampleSet,
-        hitSound: 0,
-        volume: Math.round(fruitSample.volume * 0.65),
-    };
+    const nodeSamples = object.nodeSamples?.length
+        ? object.nodeSamples
+        : [object.samples];
+    const dropletSamples = getDropletSamples(nodeSamples[0] || []);
 
     if (length <= 1 || pixelsPerBeat <= 0 || beatLength <= 0) {
         notes.push({
@@ -618,7 +757,7 @@ function addSliderNotes(object, beatmap, notes) {
             x: object.x,
             type: "fruit",
             scale: 1,
-            ...fruitSample,
+            samples: nodeSamples[0] || [],
         });
         return;
     }
@@ -630,7 +769,7 @@ function addSliderNotes(object, beatmap, notes) {
             x: object.x,
             type: "fruit",
             scale: 1,
-            ...fruitSample,
+            samples: nodeSamples[0] || [],
         });
         return;
     }
@@ -647,7 +786,7 @@ function addSliderNotes(object, beatmap, notes) {
         x: object.x,
         type: "fruit",
         scale: 1,
-        ...fruitSample,
+        samples: nodeSamples[0] || [],
     });
 
     for (let slide = 0; slide < object.slides; slide++) {
@@ -666,7 +805,7 @@ function addSliderNotes(object, beatmap, notes) {
                 x: point.x,
                 type: "droplet",
                 scale: 0.58,
-                ...dropletSample,
+                samples: dropletSamples,
             });
         }
 
@@ -675,7 +814,7 @@ function addSliderNotes(object, beatmap, notes) {
             x: forward ? endPoint.x : object.x,
             type: "fruit",
             scale: 0.92,
-            ...fruitSample,
+            samples: nodeSamples[slide + 1] || nodeSamples[0] || [],
         });
     }
 }
@@ -691,9 +830,7 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
                 x: object.x,
                 type: "fruit",
                 scale: 1,
-                sampleSet: object.sampleSet || "normal",
-                hitSound: object.hitSound || 0,
-                volume: object.volume ?? 100,
+                samples: object.samples,
             });
         } else if (object.type & 2) {
             addSliderNotes(object, beatmap, notes);
@@ -721,9 +858,7 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
             x: clamp(note.x, 0, 512),
             type: note.type,
             scale: note.scale,
-            sampleSet: note.sampleSet || "normal",
-            hitSound: note.hitSound || 0,
-            volume: note.volume ?? 100,
+            samples: note.samples || [],
         });
     }
 

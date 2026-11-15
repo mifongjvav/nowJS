@@ -15,9 +15,11 @@ import {
     parseStoryboard,
 } from "./storyboard.ts";
 import {
+    clearCustomHitSamples,
     getMusicDurationMs,
     loadMusic,
     playSongSelectConfirm,
+    preloadCatchSamples,
     unloadMusic,
 } from "./audio.ts";
 import {
@@ -32,6 +34,8 @@ import * as ui from "./ui.ts";
 import { format, i18n } from "./i18n/index.ts";
 import type {
     ArchiveFile,
+    CatchHitSample,
+    CatchNote,
     GameChart,
     ParsedBeatmap,
     PresetChart,
@@ -194,6 +198,56 @@ function revokeUrls(urls: string[]): void {
     }
 }
 
+function stripExtension(path: string): string {
+    return path.replace(/\.[^./\\]+$/, "");
+}
+
+function getSampleFileCandidates(sample: CatchHitSample): string[] {
+    if (sample.filename) {
+        return [sample.filename, stripExtension(sample.filename)];
+    }
+
+    // A custom sample bank index of 1 opts into beatmap samples; 2 and above
+    // additionally use the numbered file name before the unsuffixed one.
+    if (!sample.index || sample.index < 1) return [];
+    const base = `${sample.bank}-${sample.name}`;
+    const names = [];
+    if (sample.index >= 2) names.push(`${base}${sample.index}.wav`);
+    names.push(`${base}.wav`);
+    return names;
+}
+
+function attachHitSampleUrls(
+    notes: CatchNote[],
+    resolveFile: (filename: string) => string | null,
+): void {
+    const cache = new Map<string, string | null>();
+
+    for (const note of notes) {
+        for (const sample of note.samples || []) {
+            if (sample.url) continue;
+
+            const candidates = getSampleFileCandidates(sample);
+            if (!candidates.length) continue;
+
+            const key = candidates.join("|").toLowerCase();
+            let url: string | null;
+            if (cache.has(key)) {
+                url = cache.get(key) ?? null;
+            } else {
+                url = null;
+                for (const candidate of candidates) {
+                    url = resolveFile(candidate);
+                    if (url) break;
+                }
+                cache.set(key, url);
+            }
+
+            if (url) sample.url = url;
+        }
+    }
+}
+
 async function selectChart(
     chart: GameChart,
     newUrls: string[],
@@ -233,10 +287,12 @@ async function selectChart(
 
     const previousUrls = ownedUrls;
     ownedUrls = newUrls;
+    clearCustomHitSamples();
     revokeUrls(previousUrls);
 
     currentChart = chart;
     window.currentChart = chart;
+    preloadCatchSamples(chart.notes);
     ui.setSong(chart);
     return true;
 }
@@ -318,6 +374,27 @@ async function buildImportedChart(
         if (!compiled.notes.length) {
             throw new Error(i18n.error.noPlayableObjects);
         }
+
+        // Resolve per-object custom hit samples from the .osu hitSample
+        // filename (and from the archive/companion files). Missing files fall
+        // back to the built-in Argon Pro/Argon/default sample banks.
+        attachHitSampleUrls(compiled.notes, (filename) => {
+            if (archive) {
+                const entry = findArchiveFile(
+                    archive.files,
+                    filename,
+                    beatmapPath,
+                );
+                return entry ? makeBlobUrl(entry, newUrls) : null;
+            }
+
+            const companion = findCompanionFile(
+                fileList,
+                filename,
+                beatmapPath,
+            );
+            return companion ? makeFileUrl(companion, newUrls) : null;
+        });
 
         let audioUrl = null;
         let backgroundUrl = null;

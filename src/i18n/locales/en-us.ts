@@ -5,7 +5,8 @@ export default {
         brandTagline: "rhythm catch",
         footer: "nowJS · osu!catch style",
         footerTech: "Material Design 3",
-        soundCredit: "Sound: ppy/osu-resources · CC BY-NC 4.0",
+        soundCredit:
+            "Sound: ppy/osu-resources · Argon Pro / Argon · CC BY-NC 4.0",
         noscript: "JavaScript is required to play nowJS.",
     },
     license: {

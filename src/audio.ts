@@ -1,4 +1,5 @@
 import { sound } from "./vendor/pixi-sound.js";
+import type { CatchHitSample, CatchNote } from "./domain.ts";
 
 // Pause behaviour is controlled by the game itself. @pixi/sound's automatic
 // blur handling would otherwise pause only WebAudio sounds while storyboard
@@ -8,14 +9,23 @@ if (sound.supported) {
 }
 
 const SAMPLE_ROOT = `${import.meta.env.BASE_URL}osu-resources/Samples`;
+const GAMEPLAY_ROOT = "Gameplay";
 
-const HIT_SAMPLE_SETS = ["normal", "soft", "drum"];
-const HIT_SOUND_LAYERS = [
-    { bit: 0, suffix: "hitnormal", volume: 1 },
-    { bit: 8, suffix: "hitclap", volume: 0.8 },
-    { bit: 2, suffix: "hitwhistle", volume: 0.8 },
-    { bit: 4, suffix: "hitfinish", volume: 0.9 },
-];
+const HIT_SAMPLE_BANKS = ["normal", "soft", "drum"];
+const HIT_SOUND_NAMES = ["hitnormal", "hitclap", "hitwhistle", "hitfinish"];
+// The Argon Pro skin is the primary sample pack. Sounds it does not ship
+// (combobreak, spinner sounds, etc.) fall back to Argon, then the osu! default
+// resources.
+const SAMPLE_PACKS = ["ArgonPro", "Argon"];
+const HIT_SOUND_LAYER_VOLUMES: Record<string, number> = {
+    hitnormal: 1,
+    hitclap: 0.8,
+    hitwhistle: 0.8,
+    hitfinish: 0.9,
+    // The compiled droplets already carry a reduced volume.
+    slidertick: 1,
+};
+const HIT_SOUND_VOLUME_SCALE = 0.9;
 const CATCH_SOUND_LOOKAHEAD_SECONDS = 0.004;
 const activeCatchSources = new Set();
 
@@ -23,13 +33,35 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
 
-function addSound(alias, path, preload = false) {
+function gameplaySamplePaths(file: string, packs = SAMPLE_PACKS): string[] {
+    return [
+        ...packs.map((pack) => `${GAMEPLAY_ROOT}/${pack}/${file}`),
+        `${GAMEPLAY_ROOT}/${file}`,
+    ];
+}
+
+function addSound(alias, paths, preload = false) {
     if (sound.exists(alias)) return;
 
-    sound.add(alias, {
-        url: `${SAMPLE_ROOT}/${path}`,
-        preload,
-    });
+    const queue = (Array.isArray(paths) ? paths : [paths]).slice();
+    const loadNext = () => {
+        const path = queue.shift();
+        if (!path) return;
+
+        sound.add(alias, {
+            url: `${SAMPLE_ROOT}/${path}`,
+            preload,
+            loaded: (error) => {
+                if (!error) return;
+                if (sound.exists(alias)) {
+                    sound.remove(alias);
+                }
+                loadNext();
+            },
+        });
+    };
+
+    loadNext();
 }
 
 function ensureAudioContextRunning() {
@@ -125,23 +157,51 @@ function playCatchLayer(alias, options) {
     return source;
 }
 
-for (const sampleSet of HIT_SAMPLE_SETS) {
-    for (const layer of HIT_SOUND_LAYERS) {
+for (const sampleSet of HIT_SAMPLE_BANKS) {
+    for (const soundName of HIT_SOUND_NAMES) {
         addSound(
-            `${sampleSet}-${layer.suffix}`,
-            `Gameplay/${sampleSet}-${layer.suffix}.wav`,
+            `${sampleSet}-${soundName}`,
+            gameplaySamplePaths(`${sampleSet}-${soundName}.wav`),
             true,
         );
     }
+    addSound(
+        `${sampleSet}-slidertick`,
+        gameplaySamplePaths(`${sampleSet}-slidertick.wav`),
+        true,
+    );
 }
 
-addSound("catch-banana", "Gameplay/catch-banana.wav", true);
-addSound("combobreak", "Gameplay/combobreak.mp3", true);
-addSound("pause-loop", "Gameplay/pause-loop.mp3", true);
-addSound("restart", "Gameplay/restart.wav", true);
-addSound("resume-countdown", "Gameplay/resume-countdown.wav", true);
-addSound("spinnerspin", "Gameplay/spinnerspin.wav", true);
-addSound("spinnerbonus", "Gameplay/spinnerbonus.wav", true);
+addSound("catch-banana", [`${GAMEPLAY_ROOT}/catch-banana.wav`], true);
+// Argon Pro ships no non-hit gameplay sounds; Argon provides these before the
+// osu! default resources.
+addSound(
+    "combobreak",
+    [
+        `${GAMEPLAY_ROOT}/Argon/combobreak.wav`,
+        `${GAMEPLAY_ROOT}/combobreak.mp3`,
+    ],
+    true,
+);
+addSound(
+    "spinnerspin",
+    [
+        `${GAMEPLAY_ROOT}/Argon/spinnerspin.wav`,
+        `${GAMEPLAY_ROOT}/spinnerspin.wav`,
+    ],
+    true,
+);
+addSound(
+    "spinnerbonus",
+    [
+        `${GAMEPLAY_ROOT}/Argon/spinnerbonus.wav`,
+        `${GAMEPLAY_ROOT}/spinnerbonus.wav`,
+    ],
+    true,
+);
+addSound("pause-loop", [`${GAMEPLAY_ROOT}/pause-loop.mp3`], true);
+addSound("restart", [`${GAMEPLAY_ROOT}/restart.wav`], true);
+addSound("resume-countdown", [`${GAMEPLAY_ROOT}/resume-countdown.wav`], true);
 
 addSound("rank-impact-pass", "Results/rank-impact-pass.wav", true);
 addSound("rank-impact-pass-ss", "Results/rank-impact-pass-ss.wav", true);
@@ -187,6 +247,62 @@ window.addEventListener("keydown", unlockAudio, {
     capture: true,
 });
 
+const customSampleAliases = new Map<string, string>();
+let customSampleCounter = 0;
+
+function ensureCustomSample(url: string): string {
+    const existing = customSampleAliases.get(url);
+    if (existing && sound.exists(existing)) return existing;
+
+    const alias = `custom-hit-${++customSampleCounter}`;
+    sound.add(alias, {
+        url,
+        preload: true,
+    });
+    customSampleAliases.set(url, alias);
+    return alias;
+}
+
+export function preloadCatchSamples(notes: readonly CatchNote[] = []): void {
+    for (const note of notes) {
+        for (const sample of note.samples || []) {
+            if (sample.url) ensureCustomSample(sample.url);
+        }
+    }
+}
+
+export function clearCustomHitSamples(): void {
+    for (const alias of customSampleAliases.values()) {
+        if (sound.exists(alias)) {
+            sound.remove(alias);
+        }
+    }
+    customSampleAliases.clear();
+}
+
+function playHitSample(
+    sample: CatchHitSample,
+    volumeScale: number,
+    pan: number,
+): void {
+    const layerVolume = HIT_SOUND_LAYER_VOLUMES[sample.name] ?? 0.8;
+    const volume =
+        clamp((sample.volume ?? 100) / 100, 0, 1) *
+        HIT_SOUND_VOLUME_SCALE *
+        layerVolume *
+        volumeScale;
+
+    if (sample.url) {
+        playCatchLayer(ensureCustomSample(sample.url), { volume, pan });
+        return;
+    }
+
+    const bank = HIT_SAMPLE_BANKS.includes(sample.bank)
+        ? sample.bank
+        : "normal";
+    playCatchLayer(`${bank}-${sample.name}`, { volume, pan });
+}
+
 export function playCatchSound(
     note,
     playerX,
@@ -206,18 +322,8 @@ export function playCatchSound(
         return;
     }
 
-    const sampleSet = HIT_SAMPLE_SETS.includes(note?.sampleSet)
-        ? note.sampleSet
-        : "normal";
-    const hitSound = note?.hitSound || 0;
-    const baseVolume = clamp((note?.volume ?? 100) / 100, 0, 1) * 0.9;
-
-    for (const layer of HIT_SOUND_LAYERS) {
-        if (layer.bit !== 0 && !(hitSound & layer.bit)) continue;
-        playCatchLayer(`${sampleSet}-${layer.suffix}`, {
-            volume: baseVolume * layer.volume,
-            pan,
-        });
+    for (const sample of note?.samples || []) {
+        playHitSample(sample, 1, pan);
     }
 }
 
@@ -228,8 +334,10 @@ const GAMEPLAY_SOUND_ALIASES = [
     "restart",
     "resume-countdown",
     "spinnerspin",
-    ...HIT_SAMPLE_SETS.flatMap((sampleSet) =>
-        HIT_SOUND_LAYERS.map((layer) => `${sampleSet}-${layer.suffix}`),
+    ...HIT_SAMPLE_BANKS.flatMap((sampleSet) =>
+        [...HIT_SOUND_NAMES, "slidertick"].map(
+            (soundName) => `${sampleSet}-${soundName}`,
+        ),
     ),
 ];
 
@@ -243,7 +351,10 @@ export function stopGameplaySounds() {
     }
     activeCatchSources.clear();
 
-    for (const alias of GAMEPLAY_SOUND_ALIASES) {
+    for (const alias of [
+        ...GAMEPLAY_SOUND_ALIASES,
+        ...customSampleAliases.values(),
+    ]) {
         if (sound.exists(alias)) {
             sound.stop(alias);
         }
