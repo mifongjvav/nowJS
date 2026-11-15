@@ -425,10 +425,9 @@ async function buildImportedChart(
 
         const defaultMode: PlayMode =
             parsed.general.mode === 3 ? "mania" : "catch";
-        const catchVariant = compileChart(parsed, "catch");
         const variants: Record<PlayMode, CompiledCatchChart> = {
-            catch: catchVariant,
-            mania: compileChart(parsed, "mania", catchVariant),
+            catch: compileChart(parsed, "catch"),
+            mania: compileChart(parsed, "mania"),
         };
         let compiled = variants[defaultMode];
         if (!compiled.notes.length) {

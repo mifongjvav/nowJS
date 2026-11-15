@@ -982,10 +982,7 @@ function createManiaChordCollector() {
     };
 }
 
-function compileManiaChart(
-    beatmap: ParsedBeatmap,
-    catchChart?: CompiledCatchChart,
-): CompiledCatchChart {
+function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
     const sourceKeys =
         beatmap.general.mode === 3 ? getManiaSourceKeys(beatmap) : null;
     const collector = createManiaChordCollector();
@@ -1022,28 +1019,54 @@ function compileManiaChart(
             collector.push(note, mapManiaColumn(column, sourceKeys));
         }
     } else {
-        // Mania can also be selected for osu!/osu!catch charts. Reuse the
-        // catch compilation so sliders and their droplets keep their rhythm,
-        // then fold every playable note onto a 4K lane by horizontal position.
-        const sourceChart = catchChart ?? compileCatchChart(beatmap);
-        for (const sourceNote of sourceChart.notes) {
-            if (sourceNote.type === "banana") continue;
+        // Mania can also be selected for osu!/osu!catch charts. Circles
+        // become taps and sliders become real hold notes so they are drawn as
+        // rounded bars instead of a stream of individual droplets.
+        const sliderMultiplier = beatmap.difficulty.sliderMultiplier || 1.4;
+
+        for (const object of beatmap.hitObjects) {
+            const isCircle = Boolean(object.type & 1);
+            const isSlider = Boolean(object.type & 2);
+            const isHold = Boolean(object.type & 128);
+            if (!isCircle && !isSlider && !isHold) continue;
+
+            const note: CatchNote = {
+                time: Math.max(0, object.time),
+                x: 0,
+                type: "fruit",
+                scale: 1,
+                samples: object.samples || [],
+            };
+
+            if (isSlider) {
+                const { beatLength, sliderVelocity } = getTimingAt(
+                    beatmap.timingPoints,
+                    object.time,
+                );
+                const pixelsPerBeat = 100 * sliderMultiplier * sliderVelocity;
+                const length = object.length || 0;
+                const slides = object.slides || 1;
+
+                if (length > 1 && pixelsPerBeat > 0 && beatLength > 0) {
+                    const slideDuration = (length / pixelsPerBeat) * beatLength;
+                    const endTime = note.time + slideDuration * slides;
+                    if (Number.isFinite(endTime) && endTime > note.time) {
+                        note.holdEndTime = endTime;
+                    }
+                }
+            } else if (isHold && Number.isFinite(object.endTime)) {
+                const endTime = Math.max(note.time, object.endTime);
+                if (endTime > note.time) {
+                    note.holdEndTime = endTime;
+                }
+            }
 
             const lane = clamp(
-                Math.floor((sourceNote.x * MANIA_LANE_COUNT) / 512),
+                Math.floor((object.x * MANIA_LANE_COUNT) / 512),
                 0,
                 MANIA_LANE_COUNT - 1,
             );
-            collector.push(
-                {
-                    time: sourceNote.time,
-                    x: 0,
-                    type: "fruit",
-                    scale: 1,
-                    samples: sourceNote.samples || [],
-                },
-                lane,
-            );
+            collector.push(note, lane);
         }
     }
 
@@ -1081,11 +1104,10 @@ function compileManiaChart(
 export function compileChart(
     beatmap: ParsedBeatmap,
     playMode: PlayMode = beatmap.general.mode === 3 ? "mania" : "catch",
-    catchChart?: CompiledCatchChart,
 ): CompiledCatchChart {
     return playMode === "mania"
-        ? compileManiaChart(beatmap, catchChart)
-        : (catchChart ?? compileCatchChart(beatmap));
+        ? compileManiaChart(beatmap)
+        : compileCatchChart(beatmap);
 }
 
 function normalizeArchivePath(path: string, relativeTo = ""): string | null {

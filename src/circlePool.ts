@@ -16,16 +16,20 @@ const CATCH_CENTER_RATIO = 0.9;
 function drawNoteGraphics(circle, holdHeight = 0, headRadius = RADIUS) {
     circle.clear();
     if (holdHeight > 0.5) {
-        const holdWidth = RADIUS * 0.72;
+        // Draw holds as one rounded progress-bar-like capsule instead of a
+        // thin line with a separate circular head.
+        const holdWidth = RADIUS * 1.3;
+        const barHeight = Math.max(holdHeight, holdWidth);
         circle
             .roundRect(
                 -holdWidth / 2,
-                -holdHeight,
+                -barHeight,
                 holdWidth,
-                holdHeight,
+                barHeight,
                 holdWidth / 2,
             )
             .fill(0xffffff);
+        return;
     }
     circle.circle(0, 0, headRadius).fill(0xffffff);
 }
