@@ -2,6 +2,10 @@
 
 The setting is off by default and enables fixed-step decoupling automatically.
 Each service reports its own acknowledged startup state and fallback reason.
+Both Pixi entry points install the official no-eval compatibility implementation;
+rendering does not require the `eval` capability. The render worker catches
+dependency-load/initialization failures before marking itself ready, and uses a
+worker timer if worker `requestAnimationFrame` is unavailable or unsupported.
 
 - `logic.worker.ts`: authoritative 240 Hz movement, spawning, catch/mania
   judgements and hold tails. The pure model is in `simulation.ts`. The main

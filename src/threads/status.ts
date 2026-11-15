@@ -1,3 +1,4 @@
+import { describeWorkerError } from "./workerRuntime.js";
 export type ThreadName = "logic" | "render" | "audio" | "input";
 export type ThreadState = "off" | "starting" | "active" | "fallback";
 export interface ThreadStatus {
@@ -63,15 +64,22 @@ export function openWorker(
                     resolve();
                 }
             } else if (event.data?.type === "error")
-                fail(String(event.data.message));
+                fail(
+                    `${event.data.phase ? `${event.data.phase}: ` : ""}${String(event.data.message)}`,
+                );
             else onMessage(event.data);
         });
         worker.addEventListener("error", (event) => {
             event.preventDefault();
-            fail(
+            const message =
                 event.message ||
-                    "Worker failed (permission/CSP or runtime error)",
-            );
+                (event.error
+                    ? describeWorkerError(event.error)
+                    : "Worker script could not load or execute; check the worker asset, CSP and browser support");
+            const location = event.filename
+                ? ` (${event.filename}${event.lineno ? `:${event.lineno}:${event.colno || 0}` : ""})`
+                : "";
+            fail(message + location);
         });
         worker.addEventListener("messageerror", () =>
             fail("Worker message could not be decoded"),

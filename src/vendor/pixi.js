@@ -3,6 +3,9 @@
 // would pull in the browser/webworker extensions, whose dynamic imports make
 // Vite emit a MOSS-incompatible preload helper.
 import "../../node_modules/pixi.js/lib/environment-browser/browserAll.mjs";
+// Despite its name, this official compatibility module REPLACES generated
+// Function/eval-based shader sync code with interpreters for strict CSP.
+import "../../node_modules/pixi.js/lib/unsafe-eval/init.mjs";
 
 export { Container } from "../../node_modules/pixi.js/lib/scene/container/Container.mjs";
 export { Graphics } from "../../node_modules/pixi.js/lib/scene/graphics/shared/Graphics.mjs";

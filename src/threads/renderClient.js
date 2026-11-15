@@ -1,5 +1,6 @@
 import { getSettings, onSettingsChange } from "../settings.ts";
 import { openWorker, setThreadStatus } from "./status.ts";
+import { describeWorkerError } from "./workerRuntime.js";
 let connection = null,
     canvas = null,
     app = null,
@@ -141,7 +142,7 @@ async function configure(enabled) {
     } catch (error) {
         if (token === generation) {
             stop();
-            setThreadStatus("render", "fallback", String(error));
+            setThreadStatus("render", "fallback", describeWorkerError(error));
         }
     }
 }

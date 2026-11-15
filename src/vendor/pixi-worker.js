@@ -1,5 +1,8 @@
 // No browser DOM/events/accessibility extensions in the render worker.
 import "../../node_modules/pixi.js/lib/environment-webworker/webworkerAll.mjs";
+// Workers have their own prototypes/CSP; installing the no-eval compatibility
+// implementation in the main document alone cannot fix worker rendering.
+import "../../node_modules/pixi.js/lib/unsafe-eval/init.mjs";
 export { DOMAdapter } from "../../node_modules/pixi.js/lib/environment/adapter.mjs";
 export { WebWorkerAdapter } from "../../node_modules/pixi.js/lib/environment-webworker/WebWorkerAdapter.mjs";
 export { Container } from "../../node_modules/pixi.js/lib/scene/container/Container.mjs";
