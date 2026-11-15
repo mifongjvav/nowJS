@@ -1,6 +1,8 @@
 import { getSettings, onSettingsChange, updateSettings } from "./settings.ts";
 import type { GameSettings } from "./settings.ts";
 import { i18n } from "./i18n/index.ts";
+import { onLanguageChange } from "./i18n/index.ts";
+import { getThreadStatuses, onThreadStatus } from "./threads/status.ts";
 
 export function initSettingsMenu(root: HTMLElement): void {
     const dialog = document.createElement("mdui-dialog");
@@ -19,6 +21,7 @@ export function initSettingsMenu(root: HTMLElement): void {
                     "blur",
                     "dynamicColors",
                     "decoupledRendering",
+                    "multithreading",
                 ] as const
             )
                 .map(
@@ -30,6 +33,8 @@ export function initSettingsMenu(root: HTMLElement): void {
                 )
                 .join("")}
             <p class="now-setting-hint" data-i18n="settings.experimentalHint">${i18n.settings.experimentalHint}</p>
+            <p class="now-setting-hint" data-i18n="settings.threadHint">${i18n.settings.threadHint}</p>
+            <div id="now-thread-status" class="now-thread-status" aria-live="polite"></div>
             <label class="now-setting-slider">
                 <span><span id="now-dim-label" data-i18n="settings.backgroundDim">${i18n.settings.backgroundDim}</span><output id="now-dim-value"></output></span>
                 <input type="range" min="0" max="100" step="1" data-setting="backgroundDim" aria-labelledby="now-dim-label" />
@@ -55,6 +60,8 @@ export function initSettingsMenu(root: HTMLElement): void {
             if (typeof value === "boolean") control.checked = value;
             else control.value = String(value);
             if (key === "backgroundBlur") control.disabled = !settings.blur;
+            if (key === "decoupledRendering")
+                control.disabled = settings.multithreading;
         }
         dialog.querySelector("#now-dim-value").textContent =
             `${settings.backgroundDim}%`;
@@ -73,6 +80,41 @@ export function initSettingsMenu(root: HTMLElement): void {
     }
     sync();
     onSettingsChange(sync);
+    const syncThreads = () => {
+        const statusRoot = dialog.querySelector("#now-thread-status");
+        statusRoot.replaceChildren();
+        const labels = {
+            logic: i18n.settings.threadLogic,
+            render: i18n.settings.threadRender,
+            audio: i18n.settings.threadAudio,
+            input: i18n.settings.threadInput,
+        };
+        const states = {
+            off: i18n.settings.threadOff,
+            starting: i18n.settings.threadStarting,
+            active: i18n.settings.threadActive,
+            fallback: i18n.settings.threadFallback,
+        };
+        for (const [name, status] of Object.entries(getThreadStatuses())) {
+            const row = document.createElement("div");
+            row.dataset.thread = name;
+            row.dataset.state = status.state;
+            const title = document.createElement("span"),
+                state = document.createElement("span");
+            title.textContent = labels[name];
+            state.textContent = states[status.state];
+            row.append(title, state);
+            if (status.detail) {
+                const detail = document.createElement("small");
+                detail.textContent = status.detail;
+                row.appendChild(detail);
+            }
+            statusRoot.appendChild(row);
+        }
+    };
+    onThreadStatus(syncThreads);
+    onLanguageChange(syncThreads);
+    syncThreads();
     root.querySelector("#now-settings-btn").addEventListener("click", () => {
         dialog.setAttribute("open", "");
     });

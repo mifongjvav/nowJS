@@ -50,6 +50,11 @@ import {
 import { resetCatcherColor } from "./player.ts";
 import { FixedStepClock } from "./fixedStepClock.ts";
 import { getSettings, onSettingsChange } from "./settings.ts";
+import { logicThread } from "./threads/logicClient.ts";
+import { onThreadStatus } from "./threads/status.ts";
+import { getPlayfield } from "./layout.ts";
+import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
+import { pulseManiaLane } from "./mania.ts";
 
 const app = window.app;
 
@@ -68,6 +73,64 @@ let breakResults = [];
 let finalBreakStateApplied = false;
 const logicClock = new FixedStepClock(240);
 let logicTimer: ReturnType<typeof setInterval> | null = null;
+const workerCircles = new Map();
+
+logicThread.listen(
+    (snapshot) => {
+        if (window.gameState !== "playing" || window.isPaused || isSeeking)
+            return;
+        chartTime = snapshot.time;
+        window.chartTime = chartTime;
+        nextNoteIndex = snapshot.next;
+        lastFrameTime = snapshot.wall - performance.timeOrigin;
+        if (window.player) window.player.x = snapshot.playerX;
+        const visual = window.playerVisual;
+        if (visual && window.autoPlay && !window.currentChart?.mania) {
+            const speed = Math.max(
+                -1,
+                Math.min(1, snapshot.velocity / (4500 * window.gameScale)),
+            );
+            visual.rotation = speed * 0.16;
+            const stretch = Math.min(Math.abs(speed) * 0.08, 0.1);
+            visual.scale.set(1 + stretch, 1 - stretch * 0.55);
+        }
+        for (const event of snapshot.events) {
+            if (event.kind === "spawn") {
+                const note = window.currentChart?.notes[event.id];
+                if (note)
+                    workerCircles.set(
+                        event.id,
+                        circlePool.spawnNote(note, chartTime),
+                    );
+                continue;
+            }
+            const circle = workerCircles.get(event.id);
+            if (!circle?.active) continue;
+            if (event.kind === "hit") {
+                pulseManiaLane(circle.note.lane);
+                circlePool.performHit(circle);
+            } else if (event.kind === "tail") {
+                pulseManiaLane(circle.note.lane);
+                circlePool.performHoldTailHit(circle);
+            } else if (event.kind === "miss") circlePool.registerMiss(circle);
+            else circlePool.release(circle);
+            if (!circle.active) workerCircles.delete(event.id);
+        }
+        updateStoryboardSections(chartTime);
+        updateMediaSamples(chartTime);
+        updateManiaLogic(chartTime);
+        updateSpinnerState();
+        const chart = window.currentChart;
+        if (chart && chartTime >= chart.endTime) endGame();
+    },
+    () => {
+        if (window.gameState !== "playing" || window.isPaused) return;
+        musicStarted = true;
+        chartTime = 0;
+        window.chartTime = 0;
+        playMusic();
+    },
+);
 
 initSongSelect();
 
@@ -86,6 +149,8 @@ function startGame() {
         ui.showToast(i18n.toast.noChart);
         return;
     }
+    logicThread.stop();
+    workerCircles.clear();
     isSeeking = false;
     seekHasAudio = false;
 
@@ -107,6 +172,7 @@ function startGame() {
     }
     resetAutoPlayMotion();
     setManiaMode(chart.mania || null);
+    resetManiaInput();
     resetCatcherColor();
 
     const noteLeadIn = Math.max(0, chart.preemptMs - chart.firstNoteTime);
@@ -441,6 +507,16 @@ function updateLogic(elapsedMs: number): boolean | void {
     updateManiaLogic(chartTime);
     circlePool.update(chartTime);
 
+    updateSpinnerState();
+
+    if (chartTime >= chart.endTime) {
+        endGame();
+        return false;
+    }
+    if (rebased) return false;
+}
+
+function updateSpinnerState(): void {
     const bananasActive = circlePool.activeCircles.some(
         (circle) => circle.note?.type === "banana",
     );
@@ -453,20 +529,65 @@ function updateLogic(elapsedMs: number): boolean | void {
         playSpinnerBonus();
     }
     bananasActiveLastFrame = bananasActive;
-
-    if (chartTime >= chart.endTime) {
-        endGame();
-        return false;
-    }
-    if (rebased) return false;
 }
 
 function syncLogicScheduler(): void {
+    const playing =
+        window.gameState === "playing" && !window.isPaused && !isSeeking;
+    const threaded =
+        getSettings().multithreading && logicThread.ready && playing;
+    if (threaded && !logicThread.running) {
+        const chart = window.currentChart;
+        if (chart) {
+            if (logicTimer !== null) {
+                clearInterval(logicTimer);
+                logicTimer = null;
+            }
+            const field = getPlayfield();
+            const ids = new Map(chart.notes.map((note, id) => [note, id]));
+            workerCircles.clear();
+            const active: [number, boolean][] = [];
+            for (const circle of circlePool.activeCircles) {
+                const id = ids.get(circle.note);
+                if (id !== undefined) {
+                    workerCircles.set(id, circle);
+                    active.push([id, circle.holdActive]);
+                }
+            }
+            logicThread.start(
+                {
+                    notes: chart.notes.map(
+                        ({ time, x, type, lane, holdEndTime }) => ({
+                            time,
+                            x,
+                            type,
+                            lane,
+                            holdEndTime,
+                        }),
+                    ),
+                    mania: Boolean(chart.mania),
+                    tails: isHoldTailJudgementEnabled(),
+                    preemptMs: chart.preemptMs,
+                    auto: window.autoPlay,
+                    width: window.gameWidth,
+                    playerWidth: window.playerWidth,
+                    fieldLeft: field.left,
+                    fieldWidth: field.width,
+                    scale: window.gameScale,
+                },
+                chartTime,
+                nextNoteIndex,
+                window.player.x,
+                active,
+            );
+        }
+    } else if (!threaded && logicThread.running) logicThread.stop();
     const enabled =
         getSettings().decoupledRendering &&
         window.gameState === "playing" &&
         !window.isPaused &&
-        !isSeeking;
+        !isSeeking &&
+        !threaded;
     if (enabled && logicTimer === null) {
         logicClock.reset(lastFrameTime);
         logicTimer = setInterval(() => {
@@ -490,13 +611,23 @@ function syncLogicScheduler(): void {
 }
 
 let wasDecoupled = getSettings().decoupledRendering;
+let wasThreaded = getSettings().multithreading;
 onSettingsChange((settings) => {
-    if (wasDecoupled === settings.decoupledRendering) return;
+    if (
+        wasDecoupled === settings.decoupledRendering &&
+        wasThreaded === settings.multithreading
+    )
+        return;
     wasDecoupled = settings.decoupledRendering;
+    wasThreaded = settings.multithreading;
     lastFrameTime = performance.now();
     logicClock.reset(lastFrameTime);
     syncLogicScheduler();
 });
+onThreadStatus(syncLogicScheduler);
+window.addEventListener("nowjs-autoplay-change", () =>
+    logicThread.configure({ auto: window.autoPlay }),
+);
 
 app.ticker.add((ticker) => {
     syncLogicScheduler();
@@ -505,7 +636,7 @@ app.ticker.add((ticker) => {
     if (window.gameState !== "playing" || window.isPaused || isSeeking) return;
 
     const now = performance.now();
-    if (!getSettings().decoupledRendering) {
+    if (!getSettings().decoupledRendering && !logicThread.running) {
         updateLogic(Math.max(0, now - lastFrameTime));
         lastFrameTime = now;
     }

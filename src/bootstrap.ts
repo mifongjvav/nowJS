@@ -1,5 +1,5 @@
 import { Container, Graphics, Sprite, Text, Texture } from "./vendor/pixi.js";
-import { NowApplication } from "./app.ts";
+import { NowApplication, initRenderThread } from "./app.ts";
 import { setTheme } from "./vendor/mdui.js";
 import { getSavedResolution } from "./resolution.ts";
 import { MD3_COLORS } from "./theme.ts";
@@ -95,6 +95,7 @@ export async function startApp() {
 
     window.addEventListener("resize", resize);
     resize();
+    initRenderThread(window.app);
 
     window.gameState = "menu";
     window.isPaused = false;

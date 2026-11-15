@@ -3,6 +3,10 @@ import "../node_modules/mdui/mdui.css";
 const STYLE_ID = "nowjs-mdui-styles";
 
 const BASE_CSS = `
+    .now-thread-status { display: grid; gap: 10px; font-size: 12px; padding: 12px; border: 1px solid rgb(var(--mdui-color-outline-variant)); border-radius: 12px; }
+    .now-thread-status > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+    .now-thread-status small { flex-basis: 100%; overflow-wrap: anywhere; opacity: .7; }
+    .now-thread-status [data-state="fallback"] > span:last-of-type { color: rgb(var(--mdui-color-error)); }
     .now-settings-dialog { --mdui-dialog-max-width: 560px; }
     .now-settings-content { display: grid; gap: 18px; min-width: 0; padding: 4px 6px 4px 0; }
     .now-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; cursor: pointer; }

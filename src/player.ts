@@ -2,6 +2,8 @@ import * as PIXI from "./vendor/pixi.js";
 import { BlurFilter } from "./vendor/pixi.js";
 import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import { getSettings, onSettingsChange } from "./settings.ts";
+import { routeInput } from "./threads/inputClient.ts";
+import { sendLogicInput } from "./threads/logicClient.ts";
 
 const app = window.app;
 const WIDTH = window.gameWidth;
@@ -106,9 +108,27 @@ function movePlayer(clientX) {
 
     const rect = app.canvas.getBoundingClientRect();
     if (!rect.width) return;
-    const scaleX = WIDTH / rect.width;
-    const xInGame = (clientX - rect.left) * scaleX;
-    player.x = Math.min(WIDTH - playerW, Math.max(0, xInGame - playerW / 2));
+    routeInput(
+        {
+            kind: "pointer",
+            clientX,
+            left: rect.left,
+            cssWidth: rect.width,
+            width: WIDTH,
+            playerWidth: playerW,
+            stamp: performance.timeOrigin + performance.now(),
+        },
+        (input) => {
+            if (
+                input.kind !== "pointer" ||
+                window.gameState !== "playing" ||
+                window.isPaused ||
+                window.autoPlay
+            )
+                return;
+            if (!sendLogicInput(input)) player.x = input.x;
+        },
+    );
 }
 
 window.addEventListener("pointermove", (event) => {

@@ -51,4 +51,8 @@ test("settings validate persisted values and survive unavailable storage", async
     unsubscribe();
     updateSettings({ blur: true });
     assert.equal(notifications, 2);
+    updateSettings({ multithreading: true, decoupledRendering: false });
+    assert.equal(getSettings().decoupledRendering, true);
+    updateSettings({ multithreading: false, decoupledRendering: false });
+    assert.equal(getSettings().decoupledRendering, false);
 });

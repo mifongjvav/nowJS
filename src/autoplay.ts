@@ -301,5 +301,8 @@ export function updateAutoPlay(chartTime, deltaMS) {
 }
 
 export function renderAutoPlay(): void {
-    if (enabled && !window.currentChart?.mania) updateTrail(performance.now());
+    if (enabled && !window.currentChart?.mania) {
+        ensureTrail();
+        updateTrail(performance.now());
+    }
 }

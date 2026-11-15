@@ -6,11 +6,11 @@ import { getPlayfield } from "./layout.ts";
 import { MD3_COLORS } from "./theme.ts";
 import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
 import { setCatcherColor } from "./player.ts";
+import { CATCH_WINDOW_MS } from "./judgement.ts";
 
 const SCALE = window.gameScale;
 const RADIUS = 20 * SCALE;
 const CATCHER_WIDTH = 130 * SCALE;
-const CATCH_WINDOW_MS = 95;
 // Use most of the plate as the catch area while keeping a small edge margin.
 const CATCH_CENTER_RATIO = 0.9;
 

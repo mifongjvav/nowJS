@@ -3,6 +3,8 @@ import { circlePool } from "./circlePool.ts";
 import { getPlayfield } from "./layout.ts";
 import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import type { ManiaChartInfo } from "./domain.ts";
+import { routeInput, resetThreadInput } from "./threads/inputClient.ts";
+import { sendLogicInput } from "./threads/logicClient.ts";
 
 const SCALE = window.gameScale;
 const LANE_COUNT = 4;
@@ -237,7 +239,12 @@ export function setManiaMode(info: ManiaChartInfo | null): void {
 }
 
 export function resetManiaInput(): void {
+    resetThreadInput();
     resetInput();
+}
+
+export function pulseManiaLane(lane: number): void {
+    if (plates[lane]) plates[lane].pulse = 1;
 }
 
 function getKeyboardLane(event: KeyboardEvent): number | null {
@@ -264,7 +271,25 @@ window.addEventListener("keydown", (event) => {
     // Auto play judges mania notes itself; keyboard input only drives the
     // plate feedback in that mode so it cannot steal or mistime notes.
     if (!window.autoPlay) {
-        circlePool.pressLane(lane, window.chartTime);
+        routeInput(
+            {
+                kind: "key",
+                code: event.code,
+                down: true,
+                stamp: performance.timeOrigin + performance.now(),
+            },
+            (input) => {
+                if (
+                    input.kind !== "lane" ||
+                    window.gameState !== "playing" ||
+                    window.isPaused ||
+                    window.autoPlay
+                )
+                    return;
+                if (!sendLogicInput(input))
+                    circlePool.pressLane(input.lane, window.chartTime);
+            },
+        );
     }
 });
 
@@ -282,7 +307,25 @@ window.addEventListener("keyup", (event) => {
         window.gameState === "playing" &&
         !window.isPaused
     ) {
-        circlePool.releaseLane(lane, window.chartTime);
+        routeInput(
+            {
+                kind: "key",
+                code: event.code,
+                down: false,
+                stamp: performance.timeOrigin + performance.now(),
+            },
+            (input) => {
+                if (
+                    input.kind !== "lane" ||
+                    window.gameState !== "playing" ||
+                    window.isPaused ||
+                    window.autoPlay
+                )
+                    return;
+                if (!sendLogicInput(input))
+                    circlePool.releaseLane(input.lane, window.chartTime);
+            },
+        );
     }
 });
 

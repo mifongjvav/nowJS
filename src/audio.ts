@@ -1,5 +1,10 @@
 import { sound } from "./vendor/pixi-sound.js";
 import type { CatchHitSample, CatchNote } from "./domain.ts";
+import { ThreadAudio } from "./threads/audioClient.js";
+import { getSettings, onSettingsChange } from "./settings.ts";
+const threadedAudio = new ThreadAudio();
+let musicInWorklet = false;
+let deferredMusicResume: number | null = null;
 
 // Pause behaviour is controlled by the game itself. @pixi/sound's automatic
 // blur handling would otherwise pause only WebAudio sounds while storyboard
@@ -114,16 +119,18 @@ function playCatchLayer(alias, options) {
         return playSound(alias, options);
     }
 
-    const source = audioContext.createBufferSource();
-    const gain = audioContext.createGain();
-    const panner = audioContext.createStereoPanner
-        ? audioContext.createStereoPanner()
-        : null;
     const instanceVolume = clamp(
         (options.volume ?? 1) * (asset.volume ?? 1) * context.volume,
         0,
         1,
     );
+    if (threadedAudio.play(buffer, instanceVolume, options.pan ?? 0))
+        return null;
+    const source = audioContext.createBufferSource();
+    const gain = audioContext.createGain();
+    const panner = audioContext.createStereoPanner
+        ? audioContext.createStereoPanner()
+        : null;
 
     source.buffer = buffer;
     gain.gain.value = instanceVolume;
@@ -346,6 +353,7 @@ const GAMEPLAY_SOUND_ALIASES = [
 ];
 
 export function stopGameplaySounds() {
+    threadedAudio.command("stopFx");
     for (const source of activeCatchSources) {
         try {
             source.stop();
@@ -549,6 +557,10 @@ export function loadMusic(url) {
                 }
 
                 currentMusic = sound.find(alias);
+                // A chart switch must release old custom-sample PCM as well
+                // as the previous music voice in the worklet.
+                threadedAudio.clear();
+                musicInWorklet = false;
                 currentAlias = alias;
                 resolve(currentMusic);
             },
@@ -565,6 +577,16 @@ export function playMusic(onComplete, startMs = 0) {
     if (!currentMusic) return null;
     ensureAudioContextRunning();
     currentMusic.paused = false;
+    deferredMusicResume = null;
+    musicInWorklet = threadedAudio.play(
+        currentMusic.media?.buffer,
+        0.85 * (sound.context?.volume ?? 1) * (sound.context?.muted ? 0 : 1),
+        0,
+        true,
+        Math.max(0, startMs) / 1000,
+        onComplete,
+    );
+    if (musicInWorklet) return null;
     return currentMusic.play({
         start: Math.max(0, startMs) / 1000,
         loop: false,
@@ -579,26 +601,37 @@ export function seekMusic(positionMs, shouldPlay = true) {
 
     ensureAudioContextRunning();
     currentMusic.stop();
+    threadedAudio.command("stopMusic");
+    musicInWorklet = false;
+    deferredMusicResume = null;
     if (!shouldPlay) return false;
 
-    currentMusic.paused = false;
-    currentMusic.play({
-        start: Math.max(0, positionMs) / 1000,
-        loop: false,
-    });
+    playMusic(null, positionMs);
     return true;
 }
 
 export function pauseMusic() {
+    if (musicInWorklet) {
+        threadedAudio.command("pauseMusic");
+        return;
+    }
     if (currentMusic) currentMusic.pause();
 }
 
 export function resumeMusic() {
     ensureAudioContextRunning();
-    if (currentMusic) currentMusic.resume();
+    if (deferredMusicResume !== null) {
+        const time = deferredMusicResume;
+        deferredMusicResume = null;
+        playMusic(null, time);
+    } else if (musicInWorklet) threadedAudio.command("resumeMusic");
+    else if (currentMusic) currentMusic.resume();
 }
 
 export function stopMusic() {
+    threadedAudio.command("stopMusic");
+    musicInWorklet = false;
+    deferredMusicResume = null;
     if (!currentMusic) return;
     try {
         currentMusic.stop();
@@ -608,6 +641,9 @@ export function stopMusic() {
 }
 
 export function unloadMusic() {
+    threadedAudio.clear();
+    musicInWorklet = false;
+    deferredMusicResume = null;
     musicLoadToken += 1;
     if (currentMusic) {
         try {
@@ -622,3 +658,28 @@ export function unloadMusic() {
     currentMusic = null;
     currentAlias = null;
 }
+
+function restoreNativeMusic(): void {
+    if (!musicInWorklet) return;
+    musicInWorklet = false;
+    if (window.gameState !== "playing") return;
+    if (window.isPaused) deferredMusicResume = Math.max(0, window.chartTime);
+    else playMusic(null, Math.max(0, window.chartTime));
+}
+threadedAudio.onFailure = restoreNativeMusic;
+function configureAudioThread(enabled: boolean): void {
+    const restore = musicInWorklet;
+    void threadedAudio.configure(
+        enabled,
+        sound.useLegacy ? null : sound.context?.audioContext,
+        sound.context?.destination,
+    );
+    if (!enabled && restore) restoreNativeMusic();
+}
+let multithreadedAudio = getSettings().multithreading;
+onSettingsChange((settings) => {
+    if (multithreadedAudio === settings.multithreading) return;
+    multithreadedAudio = settings.multithreading;
+    configureAudioThread(multithreadedAudio);
+});
+configureAudioThread(multithreadedAudio);

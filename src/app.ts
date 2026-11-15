@@ -6,6 +6,7 @@ import {
     WebGLRenderer,
     isWebGLSupported,
 } from "./vendor/pixi.js";
+import { initRenderThread, renderInWorker } from "./threads/renderClient.js";
 
 // Minimal replacement for Pixi's Application. Application.init() picks a
 // renderer with dynamic import(), which makes Vite emit a preload helper built
@@ -34,6 +35,7 @@ export class NowApplication {
     }
 
     render() {
+        if (renderInWorker(this)) return;
         this.renderer.render({ container: this.stage });
     }
 
@@ -41,3 +43,5 @@ export class NowApplication {
         return this.renderer.canvas;
     }
 }
+
+export { initRenderThread };

@@ -8,6 +8,7 @@ export interface GameSettings {
     backgroundBlur: number;
     dynamicColors: boolean;
     decoupledRendering: boolean;
+    multithreading: boolean;
 }
 
 const defaults: GameSettings = {
@@ -18,6 +19,7 @@ const defaults: GameSettings = {
     backgroundBlur: 10,
     dynamicColors: true,
     decoupledRendering: false,
+    multithreading: false,
 };
 const STORAGE_KEY = "nowjs-settings";
 const listeners = new Set<(settings: Readonly<GameSettings>) => void>();
@@ -35,6 +37,7 @@ function sanitize(values: Partial<GameSettings>): GameSettings {
             Object.assign(next, { [key]: Math.max(0, Math.min(max, value)) });
         }
     }
+    if (next.multithreading) next.decoupledRendering = true;
     return next;
 }
 
@@ -51,7 +54,8 @@ export function getSettings(): Readonly<GameSettings> {
 
 export function updateSettings(values: Partial<GameSettings>): void {
     const next = sanitize(values);
-    if (Object.keys(next).every((key) => next[key] === settings[key])) return;
+    const keys = Object.keys(next) as (keyof GameSettings)[];
+    if (keys.every((key) => next[key] === settings[key])) return;
     settings = next;
     writeStorage(STORAGE_KEY, JSON.stringify(settings));
     for (const listener of listeners) listener(settings);

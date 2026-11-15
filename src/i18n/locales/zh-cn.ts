@@ -27,6 +27,17 @@ export default {
         badge: "自动",
     },
     settings: {
+        multithreading: "多线程（实验性）",
+        threadHint:
+            "启用时自动开启逻辑/渲染帧解耦。逻辑与判定、Pixi 绘制、输入预处理各用一个 Worker，音乐和打击音由 AudioWorklet 混音。DOM 输入采集、界面、场景准备仍在主线程；界面音效及故事板采样使用原生音频。可能增加延迟、内存和耗电。不支持的模块独立回退。MOSS 部署须声明 worker 权限；沙箱兼容性待实播验证。",
+        threadLogic: "逻辑 / 判定",
+        threadRender: "渲染 / 绘制",
+        threadAudio: "音频 / 混音",
+        threadInput: "输入 / 预处理",
+        threadOff: "未启用",
+        threadStarting: "初始化中 / 等待音频解锁",
+        threadActive: "独立线程已就绪",
+        threadFallback: "已回退",
         title: "设置",
         storyboard: "故事板",
         video: "视频",
@@ -37,7 +48,7 @@ export default {
         dynamicColors: "动态配色",
         decoupledRendering: "解耦合逻辑渲染帧（实验性）",
         experimentalHint:
-            "逻辑以 240Hz 固定步长独立调度，画面随屏幕刷新。仍运行于主线程，严重卡顿时会跳过部分补帧；可能增加耗电。",
+            "未开启多线程时，逻辑以 240Hz 固定步长在主线程独立调度，画面随屏幕刷新。严重卡顿时会跳过部分补帧；可能增加耗电。",
         close: "完成",
     },
     menu: {
