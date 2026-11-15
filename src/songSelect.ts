@@ -9,7 +9,7 @@ import {
     resolveArchivePath,
 } from "./osuParser.ts";
 import {
-    getAnimationFramePath,
+    getAnimationFramePaths,
     getStoryboardRange,
     normalizeStoryboardPath,
     parseStoryboard,
@@ -70,13 +70,38 @@ const PRESET_CHARTS = [
 ] satisfies PresetChart[];
 
 function isStoryboardMediaLine(line) {
-    return /^\s*(Sprite|Animation)\s*,/i.test(line);
+    return /^\s*(Sprite|Animation|[46])\s*,/i.test(line);
+}
+
+function isStoryboardContentLine(line) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("//") || trimmed.startsWith("[")) {
+        return false;
+    }
+
+    const type = (trimmed.split(",", 1)[0] || "").trim().toLowerCase();
+    return ![
+        "0",
+        "1",
+        "2",
+        "3",
+        "5",
+        "background",
+        "video",
+        "break",
+        "colour",
+        "color",
+        "sample",
+    ].includes(type);
 }
 
 function getInlineStoryboardText(parsed: ParsedBeatmap): string {
-    const inlineLines = (parsed.eventsRaw || []).filter(isStoryboardMediaLine);
-    if (!inlineLines.length) return "";
+    const rawLines = parsed.eventsRaw || [];
+    if (!rawLines.some(isStoryboardMediaLine)) return "";
 
+    // Keep sprite/animation declarations and their commands. Ordinary events
+    // (background/video/break/sample) are handled by the beatmap parser.
+    const inlineLines = rawLines.filter(isStoryboardContentLine);
     return [...(parsed.variablesRaw || []), "[Events]", ...inlineLines].join(
         "\n",
     );
@@ -90,10 +115,10 @@ function getArchiveStoryboardData(
     const sharedText = osbEntry ? decodeArchiveText(osbEntry) : "";
     const inlineText = getInlineStoryboardText(parsed);
     const shared = sharedText.trim()
-        ? parseStoryboard(sharedText)
+        ? parseStoryboard(sharedText, parsed.formatVersion)
         : { sprites: [], samples: [] };
     const beatmap = inlineText
-        ? parseStoryboard(inlineText)
+        ? parseStoryboard(inlineText, parsed.formatVersion)
         : { sprites: [], samples: [] };
 
     return {
@@ -129,7 +154,19 @@ function buildStoryboard(
                 frame < sprite.animation.frameCount;
                 frame += 1
             ) {
-                resolve(getAnimationFramePath(sprite.file, frame));
+                for (const candidate of getAnimationFramePaths(
+                    sprite.file,
+                    frame,
+                )) {
+                    const normalized = normalizeStoryboardPath(candidate);
+                    if (!normalized || fileUrls.has(normalized)) continue;
+
+                    const url = resolveUrl(normalized, candidate);
+                    if (url) {
+                        fileUrls.set(normalized, url);
+                        break;
+                    }
+                }
             }
         } else {
             resolve(sprite.file);
@@ -585,17 +622,37 @@ async function buildImportedChart(
             const osbFile = fileList.find((item) =>
                 item.name.toLowerCase().endsWith(".osb"),
             );
-            const storyboardText = osbFile
-                ? await osbFile.text()
-                : getInlineStoryboardText(parsed);
+            const storyboardParts: StoryboardData[] = [];
 
-            storyboard = buildStoryboard(storyboardText, (normalized, file) => {
-                const match = findCompanionFile(fileList, file, beatmapPath);
-                if (!match) return null;
-                const url = URL.createObjectURL(match);
-                newUrls.push(url);
-                return url;
-            });
+            if (osbFile) {
+                storyboardParts.push(
+                    parseStoryboard(await osbFile.text(), parsed.formatVersion),
+                );
+            }
+            const inlineStoryboard = getInlineStoryboardText(parsed);
+            if (inlineStoryboard) {
+                storyboardParts.push(
+                    parseStoryboard(inlineStoryboard, parsed.formatVersion),
+                );
+            }
+
+            storyboard = buildStoryboard(
+                {
+                    sprites: storyboardParts.flatMap((part) => part.sprites),
+                    samples: storyboardParts.flatMap((part) => part.samples),
+                },
+                (normalized, file) => {
+                    const match = findCompanionFile(
+                        fileList,
+                        file,
+                        beatmapPath,
+                    );
+                    if (!match) return null;
+                    const url = URL.createObjectURL(match);
+                    newUrls.push(url);
+                    return url;
+                },
+            );
         }
 
         const sampleEvents = [

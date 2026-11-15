@@ -102,13 +102,23 @@ function parseEvents(lines: string[] = []): OsuEvents {
         } else if (type === "1" || type === "video") {
             if (parts[2]) events.video = parts[2].replace(/^"|"$/g, "");
             events.videoOffset = parseNumber(parts[1], 0);
+        } else if (type === "4" || type === "sprite") {
+            const layer = (parts[1] || "").trim().toLowerCase();
+            const file = parts[3] || "";
+            if (
+                !events.background &&
+                file &&
+                (layer === "0" || layer === "background")
+            ) {
+                events.background = file.replace(/^"|"$/g, "");
+            }
         } else if (type === "2" || type === "break") {
             const start = parseNumber(parts[1]);
             const end = parseNumber(parts[2]);
             if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
                 events.breaks.push({ start, end });
             }
-        } else if (type === "sample") {
+        } else if (type === "5" || type === "sample") {
             const time = parseNumber(parts[1], Number.NaN);
             const file = parts[3] || "";
             if (Number.isFinite(time) && file) {

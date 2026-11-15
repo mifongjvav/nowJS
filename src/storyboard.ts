@@ -27,6 +27,53 @@ const LAYER_INDEX = {
     Overlay: 4,
 };
 
+// Legacy storyboards store layers/origins as numeric ids.
+const LEGACY_LAYERS = [
+    "Background",
+    "Fail",
+    "Pass",
+    "Foreground",
+    "Overlay",
+    "Overlay",
+];
+const LEGACY_ORIGINS = [
+    "TopLeft",
+    "Centre",
+    "CentreLeft",
+    "TopRight",
+    "BottomCentre",
+    "TopCentre",
+    "TopLeft",
+    "CentreRight",
+    "BottomLeft",
+    "BottomRight",
+];
+
+function normalizeLayer(value) {
+    const text = String(value || "").trim();
+    if (/^\d+$/.test(text)) {
+        return LEGACY_LAYERS[Number(text)] || "Background";
+    }
+    return text || "Background";
+}
+
+function normalizeOrigin(value) {
+    const text = String(value || "").trim();
+    if (/^\d+$/.test(text)) {
+        return LEGACY_ORIGINS[Number(text)] || "TopLeft";
+    }
+    return text || "Centre";
+}
+
+function getAnimationDelay(value, formatVersion) {
+    const delay = parseNumber(value, 0);
+    if (formatVersion > 0 && formatVersion < 6) {
+        // osu-stable converted old animation frame delays this way.
+        return Math.round(0.015 * delay) * 1.186 * (1000 / 60);
+    }
+    return delay;
+}
+
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
@@ -71,10 +118,25 @@ export function getAnimationFramePath(
     path: string,
     frameIndex: number,
 ): string {
+    return getAnimationFramePaths(path, frameIndex)[0];
+}
+
+export function getAnimationFramePaths(
+    path: string,
+    frameIndex: number,
+): string[] {
     const file = String(path || "");
     const dotIndex = file.lastIndexOf(".");
-    if (dotIndex === -1) return `${file}${frameIndex}`;
-    return `${file.slice(0, dotIndex)}${frameIndex}${file.slice(dotIndex)}`;
+    if (dotIndex === -1) {
+        return [`${file}${frameIndex}`, `${file}-${frameIndex}`];
+    }
+
+    const base = file.slice(0, dotIndex);
+    const extension = file.slice(dotIndex);
+    return [
+        `${base}${frameIndex}${extension}`,
+        `${base}-${frameIndex}${extension}`,
+    ];
 }
 
 const VALID_COMMANDS = new Set([
@@ -182,7 +244,10 @@ interface OrderReference {
     value: number;
 }
 
-export function parseStoryboard(text: string): StoryboardData {
+export function parseStoryboard(
+    text: string,
+    formatVersion = 0,
+): StoryboardData {
     const sprites = [];
     const samples = [];
     const variables = {};
@@ -214,9 +279,15 @@ export function parseStoryboard(text: string): StoryboardData {
         const parts = splitCsv(expanded);
         const type = (parts[0] || "").toUpperCase();
 
-        if (type === "SPRITE" || type === "ANIMATION") {
-            const layer = parts[1] || "Background";
-            const origin = parts[2] || "Centre";
+        if (
+            type === "SPRITE" ||
+            type === "ANIMATION" ||
+            type === "4" ||
+            type === "6"
+        ) {
+            const isAnimation = type === "ANIMATION" || type === "6";
+            const layer = normalizeLayer(parts[1]);
+            const origin = normalizeOrigin(parts[2]);
             const file = parts[3] || "";
             const x = parseNumber(parts[4], 0);
             const y = parseNumber(parts[5], 0);
@@ -230,20 +301,22 @@ export function parseStoryboard(text: string): StoryboardData {
                 y,
                 commands: [],
                 triggers: [],
-                animation:
-                    type === "ANIMATION"
-                        ? {
-                              frameCount: Math.max(
-                                  1,
-                                  Math.round(parseNumber(parts[6], 1)),
-                              ),
-                              frameDelay: parseNumber(parts[7], 0),
-                              loopType:
-                                  (parts[8] || "").toLowerCase() === "looponce"
-                                      ? "LoopOnce"
-                                      : "LoopForever",
-                          }
-                        : null,
+                animation: isAnimation
+                    ? {
+                          frameCount: Math.max(
+                              1,
+                              Math.round(parseNumber(parts[6], 1)),
+                          ),
+                          frameDelay: getAnimationDelay(
+                              parts[7],
+                              formatVersion,
+                          ),
+                          loopType:
+                              (parts[8] || "").toLowerCase() === "looponce"
+                                  ? "LoopOnce"
+                                  : "LoopForever",
+                      }
+                    : null,
             };
             sprites.push(currentSprite);
             loopStack = [];
@@ -251,7 +324,7 @@ export function parseStoryboard(text: string): StoryboardData {
             continue;
         }
 
-        if (type === "SAMPLE") {
+        if (type === "SAMPLE" || type === "5") {
             const time = parseNumber(parts[1], 0);
             const file = parts[3] || "";
             const volume = parseNumber(parts[4], 100);
@@ -928,10 +1001,13 @@ export class StoryboardPlayer {
                     frame < spriteData.animation.frameCount;
                     frame += 1
                 ) {
-                    const framePath = normalizeStoryboardPath(
-                        getAnimationFramePath(spriteData.file, frame),
-                    );
-                    if (this.fileUrls.has(framePath)) {
+                    const framePath = getAnimationFramePaths(
+                        spriteData.file,
+                        frame,
+                    )
+                        .map((path) => normalizeStoryboardPath(path))
+                        .find((path) => this.fileUrls.has(path));
+                    if (framePath) {
                         framePaths.push(framePath);
                     }
                 }
