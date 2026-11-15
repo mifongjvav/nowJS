@@ -40,6 +40,7 @@ import type {
 } from "./domain.ts";
 
 const VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogv", ".mov"];
+const PRESET_CACHE_VERSION = 2;
 const PRESET_CHARTS = [
     {
         // MOSS rejects ASCII whitespace in package paths, so the archive uses
@@ -637,14 +638,32 @@ async function loadPresetChart(preset: PresetChart): Promise<void> {
     try {
         // MOSS resolves fetch paths from the package root. Avoid document.baseURI
         // (the sandbox document is a Blob URL) and use a package-relative path.
+        // The version query bypasses stale edge/browser caches that can hold an
+        // HTML fallback for a missing asset; MOSS's package fetch ignores it.
         const response = await fetch(
-            `./preset-charts/${encodeURIComponent(preset.file)}`,
+            `./preset-charts/${encodeURIComponent(preset.file)}?v=${PRESET_CACHE_VERSION}`,
         );
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
 
-        const file = new File([await response.blob()], preset.file, {
+        const blob = await response.blob();
+        const expectedSize = Number(
+            response.headers.get("content-length") || 0,
+        );
+        if (
+            !response.headers.get("content-encoding") &&
+            expectedSize > 0 &&
+            blob.size !== expectedSize
+        ) {
+            throw new Error(i18n.error.presetIncomplete);
+        }
+        const signature = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+        if (signature[0] !== 0x50 || signature[1] !== 0x4b) {
+            throw new Error(i18n.error.presetNotZip);
+        }
+
+        const file = new File([blob], preset.file, {
             type: "application/zip",
         });
         await importFiles([file]);

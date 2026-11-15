@@ -103,6 +103,9 @@ export default {
         unsupportedFile: "只支持 .osz、.zip 或 .osu 文件",
         noPlayableObjects: "谱面中没有可游玩的物件",
         backgroundLoad: "背景图片加载失败",
+        presetNotZip:
+            "服务器返回的不是 ZIP 文件，可能是页面回退。请刷新页面后重试。",
+        presetIncomplete: "预制曲包下载不完整，请检查网络后重试。",
     },
     resolution: {
         eyebrow: "nowJS · 渲染设置",

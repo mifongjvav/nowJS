@@ -105,6 +105,10 @@ export default {
         unsupportedFile: "Only .osz, .zip, and .osu files are supported.",
         noPlayableObjects: "The beatmap has no playable objects.",
         backgroundLoad: "Failed to load the background image.",
+        presetNotZip:
+            "The server did not return a ZIP file (possibly a page fallback). Refresh the page and try again.",
+        presetIncomplete:
+            "The preset pack download was incomplete. Check your connection and try again.",
     },
     resolution: {
         eyebrow: "nowJS · Rendering",
