@@ -2,6 +2,25 @@ import { fileURLToPath, URL } from "node:url";
 
 export default {
     base: "./",
+    plugins: [
+        {
+            // Drop PixiJS's console banner and its remote-looking URL. A
+            // resolveId hook is used instead of resolve.alias because the
+            // pixi.js module imports sayHello through a deep relative path.
+            name: "moss-pixi-say-hello",
+            enforce: "pre",
+            resolveId(source) {
+                if (source.endsWith("utils/sayHello.mjs")) {
+                    return fileURLToPath(
+                        new URL(
+                            "./src/vendor/pixi-say-hello.js",
+                            import.meta.url,
+                        ),
+                    );
+                }
+            },
+        },
+    ],
     resolve: {
         alias: [
             {
@@ -11,13 +30,6 @@ export default {
                 find: /^pixi\.js$/,
                 replacement: fileURLToPath(
                     new URL("./src/vendor/pixi.js", import.meta.url),
-                ),
-            },
-            {
-                // Drop PixiJS's console banner and its remote-looking URL.
-                find: /utils\/sayHello\.mjs$/,
-                replacement: fileURLToPath(
-                    new URL("./src/vendor/pixi-say-hello.js", import.meta.url),
                 ),
             },
             {

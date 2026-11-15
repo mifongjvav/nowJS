@@ -26,6 +26,6 @@ export {
 } from "../../node_modules/pixi.js/lib/extensions/Extensions.mjs";
 export { LoaderParserPriority } from "../../node_modules/pixi.js/lib/assets/loader/parsers/LoaderParser.mjs";
 export { path } from "../../node_modules/pixi.js/lib/utils/path.mjs";
-export { default as EventEmitter } from "../../node_modules/eventemitter3/index.mjs";
+export { default as EventEmitter } from "eventemitter3";
 export { CanvasSource } from "../../node_modules/pixi.js/lib/rendering/renderers/shared/texture/sources/CanvasSource.mjs";
 export { DOMAdapter } from "../../node_modules/pixi.js/lib/environment/adapter.mjs";

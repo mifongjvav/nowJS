@@ -5,8 +5,9 @@ import { getSavedResolution } from "./resolution.ts";
 import { MD3_COLORS } from "./theme.ts";
 import { initI18n } from "./i18n/index.ts";
 
+// Keep the synchronous setup here so gameplay modules can evaluate before the
+// renderer finishes its asynchronous init. Only startApp() uses top-level await.
 setTheme("dark");
-await initI18n();
 
 // Do not wait for the resolution dialog here: MOSS needs the initial module
 // execution to finish before its loading budget runs out. The menu lets the
@@ -31,41 +32,6 @@ pipeWarmup.addChild(new Graphics().circle(0, 0, 1).fill(0xffffff));
 pipeWarmup.addChild(new Text({ text: "", style: { fontSize: 8 } }));
 window.app.stage.addChild(pipeWarmup);
 
-let resolutionSetting = window.devicePixelRatio || 1;
-if (WIDTH >= 2560) {
-    resolutionSetting = 0.75;
-} else if (WIDTH >= 1920) {
-    resolutionSetting = 1;
-} else {
-    resolutionSetting = Math.min(resolutionSetting, 1.5);
-}
-
-await window.app.init({
-    width: WIDTH,
-    height: HEIGHT,
-    resolution: resolutionSetting,
-    autoDensity: false,
-    antialias: WIDTH < 1920,
-    powerPreference: "high-performance",
-    background: MD3_COLORS.surface,
-});
-
-// Preserve the browser's native context menu on the canvas (including image
-// save/copy actions); game controls are driven by window-level listeners.
-window.app.renderer.events.autoPreventDefault = false;
-
-document.body.style.margin = "0";
-document.body.style.padding = "0";
-document.body.style.overflow = "hidden";
-document.body.style.position = "relative";
-document.body.style.background = "#0b1416";
-
-document.body.appendChild(window.app.canvas);
-
-window.app.canvas.style.position = "absolute";
-window.app.canvas.style.display = "block";
-window.app.canvas.style.zIndex = "1";
-
 window.bgLayer = new Container();
 window.gameplayLayer = new Container();
 window.storyboardLayer = new Container();
@@ -89,11 +55,50 @@ function resize() {
     window.app.canvas.style.top = `${(winH - scaledHeight) / 2}px`;
 }
 
-window.addEventListener("resize", resize);
-resize();
+export async function startApp() {
+    await initI18n();
 
-window.gameState = "menu";
-window.isPaused = false;
-window.gameplayLayer.visible = false;
-window.statsLayer.visible = false;
-window.currentChart = null;
+    let resolutionSetting = window.devicePixelRatio || 1;
+    if (WIDTH >= 2560) {
+        resolutionSetting = 0.75;
+    } else if (WIDTH >= 1920) {
+        resolutionSetting = 1;
+    } else {
+        resolutionSetting = Math.min(resolutionSetting, 1.5);
+    }
+
+    await window.app.init({
+        width: WIDTH,
+        height: HEIGHT,
+        resolution: resolutionSetting,
+        autoDensity: false,
+        antialias: WIDTH < 1920,
+        powerPreference: "high-performance",
+        background: MD3_COLORS.surface,
+    });
+
+    // Preserve the browser's native context menu on the canvas (including
+    // image save/copy actions); game controls use window-level listeners.
+    window.app.renderer.events.autoPreventDefault = false;
+
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "relative";
+    document.body.style.background = "#0b1416";
+
+    document.body.appendChild(window.app.canvas);
+
+    window.app.canvas.style.position = "absolute";
+    window.app.canvas.style.display = "block";
+    window.app.canvas.style.zIndex = "1";
+
+    window.addEventListener("resize", resize);
+    resize();
+
+    window.gameState = "menu";
+    window.isPaused = false;
+    window.gameplayLayer.visible = false;
+    window.statsLayer.visible = false;
+    window.currentChart = null;
+}
