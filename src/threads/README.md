@@ -6,6 +6,9 @@ Both Pixi entry points install the official no-eval compatibility implementation
 rendering does not require the `eval` capability. The render worker catches
 dependency-load/initialization failures before marking itself ready, and uses a
 worker timer if worker `requestAnimationFrame` is unavailable or unsupported.
+The render worker uses a project-specific ESM-only Pixi adapter rather than the
+generic adapter's CommonJS XML parser dependency. Image decoding stays on the
+main thread; XML parsing is only available if the worker host provides DOMParser.
 
 - `logic.worker.ts`: authoritative 240 Hz movement, spawning, catch/mania
   judgements and hold tails. The pure model is in `simulation.ts`. The main
