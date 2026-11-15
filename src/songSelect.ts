@@ -31,6 +31,10 @@ import {
     setVideo,
 } from "./background.ts";
 import * as ui from "./ui.ts";
+import {
+    applyThemeFromBackground,
+    resetThemeFromBackground,
+} from "./dynamicTheme.ts";
 import { format, i18n } from "./i18n/index.ts";
 import type {
     ArchiveFile,
@@ -307,6 +311,7 @@ async function selectChart(
     window.currentChart = chart;
     preloadCatchSamples(chart.notes);
     ui.setSong(chart);
+    void applyThemeFromBackground(chart.backgroundUrl);
     return true;
 }
 
@@ -842,6 +847,7 @@ export function showPresetMenu() {
     currentChart = null;
     currentVariants = null;
     window.currentChart = null;
+    resetThemeFromBackground();
     ui.setSong(null);
     ui.hideLoading();
     ui.showMenu();

@@ -34,6 +34,9 @@ import "../../node_modules/@mdui/icons/chevron-right.js";
 
 export { snackbar } from "../../node_modules/mdui/functions/snackbar.js";
 export { setTheme } from "../../node_modules/mdui/functions/setTheme.js";
+export { getColorFromImage } from "../../node_modules/mdui/functions/getColorFromImage.js";
+export { setColorScheme } from "../../node_modules/mdui/functions/setColorScheme.js";
+export { removeColorScheme } from "../../node_modules/mdui/functions/removeColorScheme.js";
 export { loadLocale } from "../../node_modules/mdui/functions/loadLocale.js";
 export { setLocale } from "../../node_modules/mdui/functions/setLocale.js";
 export { templates } from "../../node_modules/mdui/locales/zh-cn.js";
