@@ -60,6 +60,7 @@ import {
     cancelEpilepsyWarning,
 } from "./epilepsyWarning.ts";
 import type { GameChart } from "./domain.ts";
+import { shouldShowEpilepsyWarning } from "./warningPolicy.ts";
 
 const app = window.app;
 
@@ -157,7 +158,7 @@ function startGame() {
     }
     const generation = ++startupGeneration;
     cancelEpilepsyWarning();
-    if (!chart.epilepsyWarning) {
+    if (!shouldShowEpilepsyWarning(chart, getSettings())) {
         beginGame(chart);
         return;
     }

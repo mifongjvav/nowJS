@@ -51,16 +51,41 @@ export function showEpilepsyWarning(): Promise<boolean> {
     return new Promise((resolve) => {
         const started = performance.now();
         let settled = false,
+            finishing = false,
             previousSeconds = -1;
-        const finish = (proceed: boolean) => {
+        const removeListeners = () => {
+            window.removeEventListener("keydown", skipKey, true);
+            window.removeEventListener("pointerdown", skipPointer, true);
+        };
+        const remove = () => {
+            if (!overlay.isConnected) return;
+            overlay.remove();
+            cancelCurrent = null;
+        };
+        const settle = (proceed: boolean) => {
             if (settled) return;
             settled = true;
             clearInterval(timer);
-            window.removeEventListener("keydown", skipKey, true);
-            window.removeEventListener("pointerdown", skipPointer, true);
-            overlay.remove();
-            cancelCurrent = null;
+            removeListeners();
+            remove();
             resolve(proceed);
+        };
+        const finish = (proceed: boolean) => {
+            if (settled || finishing) return;
+            finishing = true;
+            clearInterval(timer);
+            removeListeners();
+            overlay.classList.add("is-leaving");
+            overlay.addEventListener(
+                "animationend",
+                (event) => {
+                    if (event.target === overlay) settle(proceed);
+                },
+                { once: true },
+            );
+            // animationend is not guaranteed under reduced motion or when the
+            // element is hidden by the host; keep dismissal bounded.
+            setTimeout(() => settle(proceed), 280);
         };
         const skipKey = (event: KeyboardEvent) => {
             if (event.repeat || event.isComposing) return;
@@ -90,7 +115,7 @@ export function showEpilepsyWarning(): Promise<boolean> {
             }
         };
         const timer = setInterval(tick, 50);
-        cancelCurrent = () => finish(false);
+        cancelCurrent = () => settle(false);
         window.addEventListener("keydown", skipKey, true);
         window.addEventListener("pointerdown", skipPointer, {
             capture: true,

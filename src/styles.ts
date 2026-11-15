@@ -3,8 +3,14 @@ import "../node_modules/mdui/mdui.css";
 const STYLE_ID = "nowjs-mdui-styles";
 
 const BASE_CSS = `
-    .now-epilepsy-warning { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: rgba(0, 0, 0, .65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #f3f6f7; text-align: center; pointer-events: auto; outline: none; overflow-y: auto; }
-    .now-epilepsy-warning > div { display: flex; flex-direction: column; align-items: center; gap: 16px; width: min(640px, 100%); line-height: 1.7; text-align: center; }
+    .now-epilepsy-warning { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: rgba(0, 0, 0, .65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #f3f6f7; text-align: center; pointer-events: auto; outline: none; overflow-y: auto; animation: now-epilepsy-overlay-in 220ms var(--mdui-motion-easing-standard-decelerate) both; }
+    .now-epilepsy-warning.is-leaving { pointer-events: none; animation: now-epilepsy-overlay-out 200ms var(--mdui-motion-easing-standard-accelerate) forwards; }
+    .now-epilepsy-warning > div { display: flex; flex-direction: column; align-items: center; gap: 16px; width: min(640px, 100%); line-height: 1.7; text-align: center; animation: now-epilepsy-content-in 360ms cubic-bezier(.2, 0, 0, 1) both; }
+    .now-epilepsy-warning.is-leaving > div { animation: now-epilepsy-content-out 200ms cubic-bezier(.3, 0, .8, .15) forwards; }
+    @keyframes now-epilepsy-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes now-epilepsy-content-in { from { opacity: 0; transform: scale(.82) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes now-epilepsy-overlay-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes now-epilepsy-content-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.06); } }
     .now-epilepsy-icon { display: block; flex-shrink: 0; width: clamp(48px, 10vmin, 80px); height: auto; color: #ffd54f; }
     .now-epilepsy-warning h2 { margin: 0; font-size: clamp(24px, 4vw, 40px); line-height: 1.3; }
     .now-epilepsy-warning p { margin: 0; font-size: 17px; }
