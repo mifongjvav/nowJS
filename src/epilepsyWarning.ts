@@ -22,6 +22,15 @@ export function showEpilepsyWarning(): Promise<boolean> {
     );
     overlay.tabIndex = -1;
     const content = document.createElement("div");
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.setAttribute("class", "now-epilepsy-icon");
+    icon.setAttribute("viewBox", "0 0 24 24");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+    icon.innerHTML = `
+        <path d="M12 2 1 21h22L12 2Z" fill="currentColor" />
+        <path d="M11 8h2v7h-2z M11 17h2v2h-2z" fill="#101619" />
+    `;
     const title = document.createElement("h2");
     title.id = "now-epilepsy-title";
     title.textContent = i18n.epilepsy.title;
@@ -34,7 +43,7 @@ export function showEpilepsyWarning(): Promise<boolean> {
     const hint = document.createElement("p");
     hint.id = "now-epilepsy-skip";
     hint.textContent = i18n.epilepsy.skip;
-    content.append(title, description, countdown, hint);
+    content.append(icon, title, description, countdown, hint);
     overlay.appendChild(content);
     (document.getElementById("nowjs-ui") || document.body).appendChild(overlay);
     overlay.focus({ preventScroll: true });

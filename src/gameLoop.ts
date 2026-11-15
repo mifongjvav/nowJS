@@ -178,12 +178,19 @@ function startGame() {
     resetManiaInput();
     resetAutoPlayMotion();
     resetBreakOverlay();
-    window.gameplayLayer.visible = false;
-    window.statsLayer.visible = false;
+    // Present a frozen game view under the warning, not the song-selection
+    // menu. Media, song clock and judgement remain stopped until dismissal.
+    resetStats();
+    setManiaMode(chart.mania || null);
+    resetCatcherColor();
+    if (window.player)
+        window.player.x = (window.gameWidth - window.playerWidth) / 2;
+    window.gameplayLayer.visible = true;
+    window.statsLayer.visible = true;
     ui.hideMenu();
     ui.hidePause();
     ui.hideResults();
-    ui.hideHud();
+    ui.showHud(chart);
     ui.hideLoading();
     void showEpilepsyWarning().then((proceed) => {
         if (
