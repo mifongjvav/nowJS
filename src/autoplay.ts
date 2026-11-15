@@ -4,6 +4,7 @@
 import * as PIXI from "./vendor/pixi.js";
 import { CATCH_WINDOW_MS, circlePool } from "./circlePool.ts";
 import { MD3_COLORS } from "./theme.ts";
+import { readStorage, writeStorage } from "./storage.ts";
 
 const STORAGE_KEY = "nowjs-autoplay";
 const TRAIL_COUNT = 7;
@@ -16,12 +17,7 @@ function clamp(value, min, max) {
 }
 
 function readStoredAutoPlay() {
-    try {
-        return localStorage.getItem(STORAGE_KEY) === "1";
-    } catch (error) {
-        console.warn("Unable to read the autoplay setting", error);
-        return false;
-    }
+    return readStorage(STORAGE_KEY) === "1";
 }
 
 let enabled = readStoredAutoPlay();
@@ -232,11 +228,7 @@ export function setAutoPlay(value, options = {}) {
     window.autoPlay = enabled;
 
     if (options.persist !== false) {
-        try {
-            localStorage.setItem(STORAGE_KEY, enabled ? "1" : "0");
-        } catch (error) {
-            console.warn("Unable to save the autoplay setting", error);
-        }
+        writeStorage(STORAGE_KEY, enabled ? "1" : "0");
     }
 
     resetMotion();

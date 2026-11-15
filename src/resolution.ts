@@ -1,5 +1,6 @@
 import "./vendor/mdui.js";
 import { injectBaseStyles } from "./styles.ts";
+import { readStorage, writeStorage } from "./storage.ts";
 import { i18n } from "./i18n/index.ts";
 import type { Resolution } from "./domain.ts";
 import {
@@ -212,7 +213,7 @@ export function showResolutionSelector(): Promise<Resolution> {
     injectResolutionStyles();
 
     return new Promise((resolve) => {
-        const storedKey = localStorage.getItem("gameResolution") || "";
+        const storedKey = readStorage("gameResolution") || "";
         const savedKey: ResolutionKey = isResolutionKey(storedKey)
             ? storedKey
             : "1080p";
@@ -365,7 +366,7 @@ export function showResolutionSelector(): Promise<Resolution> {
             .querySelector('[data-action="confirm"]')
             .addEventListener("click", () => {
                 if (selectedKey) {
-                    localStorage.setItem("gameResolution", selectedKey);
+                    writeStorage("gameResolution", selectedKey);
                 }
                 close(true);
             });
@@ -380,6 +381,6 @@ export function showResolutionSelector(): Promise<Resolution> {
 }
 
 export function getSavedResolution(): Resolution {
-    const saved = localStorage.getItem("gameResolution") || "1080p";
+    const saved = readStorage("gameResolution") || "1080p";
     return isResolutionKey(saved) ? RESOLUTIONS[saved] : RESOLUTIONS["1080p"];
 }

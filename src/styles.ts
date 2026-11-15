@@ -777,13 +777,36 @@ const BASE_CSS = `
 
     .now-sound-credit {
         flex: none;
+        padding: 0;
+        border: 0;
+        background: none;
         color: rgb(var(--mdui-color-primary));
+        font: inherit;
         text-decoration: none;
+        cursor: pointer;
     }
 
     .now-sound-credit:hover,
     .now-sound-credit:focus-visible {
         text-decoration: underline;
+    }
+
+    mdui-dialog.now-license-dialog::part(panel) {
+        width: min(42rem, calc(100vw - 4rem));
+        max-width: min(42rem, calc(100vw - 4rem));
+        box-sizing: border-box;
+    }
+
+    .now-license-text {
+        max-height: min(56vh, 32rem);
+        margin: 0;
+        overflow: auto;
+        color: rgb(var(--mdui-color-on-surface-variant));
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
     }
 
     mdui-dialog.now-compact-dialog::part(panel) {

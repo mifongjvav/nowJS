@@ -8,6 +8,12 @@ export default {
         soundCredit: "Sound: ppy/osu-resources · CC BY-NC 4.0",
         noscript: "JavaScript is required to play nowJS.",
     },
+    license: {
+        title: "Sound license",
+        loading: "Reading the license text…",
+        error: "Unable to read the license text. See osu-resources/LICENCE.md in this work package.",
+        close: "Close",
+    },
     language: {
         label: "Language",
         zhCN: "简体中文",
@@ -91,6 +97,8 @@ export default {
         importFailed: "Import failed: {{message}}",
         presetFailed: "Failed to load preset pack: {{message}}",
         noChart: "Import a beatmap first.",
+        resolutionNextLaunch:
+            "Resolution saved. It will take effect the next time you open this work.",
     },
     error: {
         archiveNoBeatmap: "No playable .osu beatmap found in the archive.",
@@ -101,7 +109,7 @@ export default {
     resolution: {
         eyebrow: "nowJS · Rendering",
         title: "Choose render resolution",
-        body: "Higher resolutions look sharper but use more GPU. The setting is saved on this device and the page reloads after changing it.",
+        body: "Higher resolutions look sharper but use more GPU. The setting is saved on this device and takes effect the next time you open this work.",
         aria: "Render resolution",
         cancel: "Cancel",
         apply: "Apply",

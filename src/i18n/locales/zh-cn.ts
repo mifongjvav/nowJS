@@ -8,6 +8,12 @@ export default {
         soundCredit: "音效：ppy/osu-resources · CC BY-NC 4.0",
         noscript: "需要启用 JavaScript 才能游玩 nowJS。",
     },
+    license: {
+        title: "音效许可",
+        loading: "正在读取许可文本…",
+        error: "无法读取许可文本，请查看作品包内的 osu-resources/LICENCE.md。",
+        close: "关闭",
+    },
     language: {
         label: "语言",
         zhCN: "简体中文",
@@ -90,6 +96,7 @@ export default {
         importFailed: "导入失败：{{message}}",
         presetFailed: "预制曲包加载失败：{{message}}",
         noChart: "请先导入谱面",
+        resolutionNextLaunch: "分辨率已保存，将在下次进入作品时生效",
     },
     error: {
         archiveNoBeatmap: "压缩包里没有找到可用的 .osu 谱面",
@@ -100,7 +107,7 @@ export default {
     resolution: {
         eyebrow: "nowJS · 渲染设置",
         title: "选择渲染分辨率",
-        body: "分辨率越高越清晰，也会占用更多显卡性能。设置会保存在本机，更改后会重新加载页面。",
+        body: "分辨率越高越清晰，也会占用更多显卡性能。设置会保存在本机，并在下次进入作品时生效。",
         aria: "渲染分辨率",
         cancel: "取消",
         apply: "应用",

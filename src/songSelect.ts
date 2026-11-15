@@ -42,7 +42,9 @@ import type {
 const VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogv", ".mov"];
 const PRESET_CHARTS = [
     {
-        file: "355322 nekodex - circles!.osz",
+        // MOSS rejects ASCII whitespace in package paths, so the archive uses
+        // a sanitized filename while the UI keeps the original beatmap title.
+        file: "355322-nekodex-circles.osz",
         label: "355322 nekodex - circles!.osz",
     },
 ] satisfies PresetChart[];
@@ -633,11 +635,11 @@ async function loadPresetChart(preset: PresetChart): Promise<void> {
     ui.showLoading(i18n.loading.reading);
 
     try {
-        const url = new URL(
-            `${import.meta.env.BASE_URL}preset-charts/${encodeURIComponent(preset.file)}`,
-            document.baseURI,
+        // MOSS resolves fetch paths from the package root. Avoid document.baseURI
+        // (the sandbox document is a Blob URL) and use a package-relative path.
+        const response = await fetch(
+            `./preset-charts/${encodeURIComponent(preset.file)}`,
         );
-        const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }

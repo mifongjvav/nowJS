@@ -1,7 +1,20 @@
 export {};
 
-import type { Application, Container, Graphics } from "pixi.js";
+import type {
+    CanvasRenderer,
+    Container,
+    Graphics,
+    Ticker,
+    WebGLRenderer,
+} from "pixi.js";
 import type { CatchNote, GameChart, GameState } from "./domain.ts";
+
+interface NowApplication {
+    stage: Container;
+    ticker: Ticker;
+    renderer: WebGLRenderer | CanvasRenderer;
+    readonly canvas: HTMLCanvasElement;
+}
 
 declare global {
     interface GameCircle extends Graphics {
@@ -21,7 +34,7 @@ declare global {
     }
 
     interface Window {
-        app: Application;
+        app: NowApplication;
         bgLayer: Container;
         gameplayLayer: Container;
         storyboardLayer: Container;

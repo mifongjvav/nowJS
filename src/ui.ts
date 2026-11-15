@@ -1,5 +1,6 @@
 import { snackbar } from "./vendor/mdui.js";
 import { injectBaseStyles } from "./styles.ts";
+import { readStorage } from "./storage.ts";
 import { RESOLUTIONS, showResolutionSelector } from "./resolution.ts";
 import {
     applyI18n,
@@ -91,7 +92,7 @@ function formatDuration(ms) {
 }
 
 function formatResolutionChip() {
-    const key = localStorage.getItem("gameResolution") || "1080p";
+    const key = readStorage("gameResolution") || "1080p";
     return RESOLUTIONS[key] ? key.toUpperCase() : "1080P";
 }
 
@@ -222,13 +223,12 @@ root.innerHTML = `
 
         <footer class="now-menu-footer">
             <span id="now-file-name">${i18n.app.footer}</span>
-            <a
+            <button
+                type="button"
                 class="now-sound-credit"
-                href="./osu-resources/LICENCE.md"
-                target="_blank"
-                rel="license noopener"
+                id="now-license-btn"
                 data-i18n="app.soundCredit"
-            >${i18n.app.soundCredit}</a>
+            >${i18n.app.soundCredit}</button>
             <span data-i18n="app.footerTech">${i18n.app.footerTech}</span>
         </footer>
     </div>
@@ -336,6 +336,29 @@ root.innerHTML = `
         </mdui-button>
     </mdui-dialog>
 
+    <mdui-dialog
+        id="now-license"
+        class="now-license-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="now-license-title"
+        close-on-esc
+        close-on-overlay-click
+    >
+        <span slot="headline" id="now-license-title" data-i18n="license.title">
+            ${i18n.license.title}
+        </span>
+        <pre class="now-license-text" id="now-license-text">${i18n.license.loading}</pre>
+        <mdui-button
+            slot="action"
+            variant="text"
+            id="now-license-close"
+            data-i18n="license.close"
+        >
+            ${i18n.license.close}
+        </mdui-button>
+    </mdui-dialog>
+
     <div class="now-loading-screen now-hidden" id="now-loading" role="status" aria-live="polite">
         <mdui-circular-progress aria-hidden="true"></mdui-circular-progress>
         <p id="now-loading-text">${i18n.loading.default}</p>
@@ -389,6 +412,10 @@ const resolutionChip = root.querySelector("#now-resolution-chip");
 const resolutionLabel = root.querySelector("#now-resolution-label");
 const fileInput = root.querySelector("#now-file-input");
 const languageMenu = root.querySelector("#now-language-menu");
+const licenseBtn = root.querySelector("#now-license-btn");
+const licenseDialog = root.querySelector("#now-license");
+const licenseText = root.querySelector("#now-license-text");
+const licenseClose = root.querySelector("#now-license-close");
 
 const pauseDialog = root.querySelector("#now-pause");
 const resultsDialog = root.querySelector("#now-results");
@@ -867,6 +894,30 @@ fileInput.addEventListener("change", () => {
     fileInput.value = "";
 });
 
+let licenseLoaded = false;
+
+licenseBtn.addEventListener("click", async () => {
+    if (!licenseLoaded) {
+        licenseText.textContent = i18n.license.loading;
+        try {
+            const response = await fetch("./osu-resources/LICENCE.md");
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            licenseText.textContent = await response.text();
+            licenseLoaded = true;
+        } catch (error) {
+            console.error("License load failed", error);
+            licenseText.textContent = i18n.license.error;
+        }
+    }
+    licenseDialog.open = true;
+});
+
+licenseClose.addEventListener("click", () => {
+    licenseDialog.open = false;
+});
+
 function activateDropHint() {
     fileInput.click();
 }
@@ -921,14 +972,13 @@ window.addEventListener("nowjs-autoplay-change", (event) => {
 
 resolutionChip.addEventListener("click", async () => {
     if (window.gameState === "playing") return;
-    const before = localStorage.getItem("gameResolution");
+    const before = readStorage("gameResolution");
     const chosen = await showResolutionSelector();
     const beforeValue = RESOLUTIONS[before] || RESOLUTIONS["1080p"];
-    if (chosen !== beforeValue) {
-        window.location.reload();
-        return;
-    }
     resolutionLabel.textContent = formatResolutionChip();
+    if (chosen !== beforeValue) {
+        showToast(i18n.toast.resolutionNextLaunch, "info");
+    }
     resolutionChip.focus({ preventScroll: true });
 });
 
