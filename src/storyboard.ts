@@ -98,8 +98,16 @@ function parseNumber(value, fallback = 0) {
 }
 
 function splitCsv(line) {
+    if (!line.includes('"')) {
+        const parts = line.split(",");
+        for (let i = 0; i < parts.length; i += 1) {
+            parts[i] = parts[i].trim();
+        }
+        return parts;
+    }
+
     const parts = [];
-    let current = "";
+    let start = 0;
     let quoted = false;
 
     for (let i = 0; i < line.length; i += 1) {
@@ -109,13 +117,11 @@ function splitCsv(line) {
             continue;
         }
         if (character === "," && !quoted) {
-            parts.push(current.trim());
-            current = "";
-        } else {
-            current += character;
+            parts.push(line.slice(start, i).replace(/"/g, "").trim());
+            start = i + 1;
         }
     }
-    parts.push(current.trim());
+    parts.push(line.slice(start).replace(/"/g, "").trim());
     return parts;
 }
 
@@ -271,8 +277,15 @@ export function parseStoryboard(
 
     const lines = String(text || "").split(/\r?\n/);
     for (const raw of lines) {
-        const indent = raw.match(/^\s*/)[0].length;
-        const original = raw.trim();
+        let indent = 0;
+        while (indent < raw.length && raw.charCodeAt(indent) <= 32) {
+            indent += 1;
+        }
+        let end = raw.length;
+        while (end > indent && raw.charCodeAt(end - 1) <= 32) {
+            end -= 1;
+        }
+        const original = raw.slice(indent, end);
         if (!original || original.startsWith("//")) continue;
         if (original.startsWith("[")) continue;
 
@@ -286,10 +299,13 @@ export function parseStoryboard(
             continue;
         }
 
-        const expanded = original.replace(
-            /\$([A-Za-z0-9_]+)/g,
-            (match, name) => variables[`$${name}`] ?? match,
-        );
+        const expanded =
+            original.indexOf("$") === -1
+                ? original
+                : original.replace(
+                      /\$([A-Za-z0-9_]+)/g,
+                      (match, name) => variables[`$${name}`] ?? match,
+                  );
         const parts = splitCsv(expanded);
         const type = (parts[0] || "").toUpperCase();
 

@@ -7,6 +7,7 @@ import {
     getMimeType,
     parseOsu,
     resolveArchivePath,
+    summarizeOsu,
 } from "./osuParser.ts";
 import {
     getAnimationFramePaths,
@@ -285,7 +286,15 @@ function findCompanionByExtension(
 }
 
 let currentChart: GameChart | null = null;
-let currentVariants: Record<PlayMode, CompiledCatchChart> | null = null;
+type ChartVariants = Partial<Record<PlayMode, CompiledCatchChart>>;
+let currentVariants: ChartVariants | null = null;
+interface PendingVariant {
+    parsed: ParsedBeatmap;
+    playMode: PlayMode;
+    resolveSample: (filename: string) => string | null;
+    variants: ChartVariants;
+}
+let pendingVariant: PendingVariant | null = null;
 let ownedUrls: string[] = [];
 let loadGeneration = 0;
 
@@ -385,7 +394,7 @@ function attachHitSampleUrls(
 
 async function selectChart(
     chart: GameChart,
-    variants: Record<PlayMode, CompiledCatchChart>,
+    variants: ChartVariants,
     newUrls: string[],
     token: number,
 ): Promise<boolean> {
@@ -442,11 +451,60 @@ export function getCurrentChart(): GameChart | null {
     return currentChart;
 }
 
+function getVariant(mode: PlayMode): CompiledCatchChart | null {
+    if (!currentChart || !currentVariants) return null;
+
+    const cached = currentVariants[mode];
+    if (cached) return cached;
+
+    const pending = pendingVariant;
+    if (
+        !pending ||
+        pending.playMode !== mode ||
+        pending.variants !== currentVariants
+    ) {
+        return null;
+    }
+
+    const compiled = compileChart(pending.parsed, mode);
+    attachHitSampleUrls(compiled.notes, pending.resolveSample);
+    currentVariants[mode] = compiled;
+    if (currentVariants.catch && currentVariants.mania) pendingVariant = null;
+    return compiled;
+}
+
+function warmPendingVariant(): void {
+    const pending = pendingVariant;
+    if (!pending || !currentVariants || pending.variants !== currentVariants) {
+        return;
+    }
+    getVariant(pending.playMode);
+}
+
+function scheduleVariantWarmup(): void {
+    if (!pendingVariant) return;
+
+    const requestIdle = (
+        window as Window & {
+            requestIdleCallback?: (
+                callback: () => void,
+                options?: { timeout: number },
+            ) => number;
+        }
+    ).requestIdleCallback;
+
+    if (typeof requestIdle === "function") {
+        requestIdle(warmPendingVariant, { timeout: 1500 });
+    } else {
+        setTimeout(warmPendingVariant, 120);
+    }
+}
+
 export function setPlayMode(mode: PlayMode): void {
     if (window.gameState !== "menu") return;
 
     const chart = currentChart;
-    const variant = currentVariants ? currentVariants[mode] : null;
+    const variant = getVariant(mode);
     if (!chart || !variant || chart.playMode === mode) return;
     if (!variant.notes.length) {
         // Keep the picker in sync if a chart has no playable notes in the
@@ -472,35 +530,6 @@ export function setPlayMode(mode: PlayMode): void {
     ui.setSong(chart);
 }
 
-function summarize(parsed: ParsedBeatmap, fileName: string) {
-    const firstRed = parsed.timingPoints.find(
-        (point) => point.uninherited && point.beatLength > 0,
-    );
-    const metadata = parsed.metadata;
-    const maniaSourceKeys =
-        parsed.general.mode === 3
-            ? clampManiaKeys(Math.round(parsed.difficulty.circleSize) || 4)
-            : undefined;
-    return {
-        metadata: {
-            ...metadata,
-            title: metadata.title || fileName.replace(/\.osu$/i, ""),
-            titleUnicode:
-                metadata.titleUnicode ||
-                metadata.title ||
-                fileName.replace(/\.osu$/i, ""),
-        },
-        bpm: firstRed ? 60000 / firstRed.beatLength : 0,
-        objectCount: parsed.hitObjects.length,
-        mode: parsed.general.mode,
-        maniaSourceKeys,
-    };
-}
-
-function clampManiaKeys(keys: number): number {
-    return Math.min(18, Math.max(1, keys));
-}
-
 async function buildImportedChart(
     file: File,
     fileList: File[],
@@ -508,6 +537,7 @@ async function buildImportedChart(
 ): Promise<GameChart | null> {
     const lowerName = file.name.toLowerCase();
     const newUrls = [];
+    const defaultSkinPromise = ensureDefaultSkinUrls();
     let parsed: ParsedBeatmap;
     let archive: ReturnType<typeof extractArchive> | null = null;
     let beatmapPath = file.webkitRelativePath || file.name;
@@ -515,32 +545,42 @@ async function buildImportedChart(
     try {
         if (lowerName.endsWith(".osz") || lowerName.endsWith(".zip")) {
             archive = extractArchive(await file.arrayBuffer());
-            const parsedList = archive.beatmaps
-                .map((entry) => ({
-                    entry,
-                    parsed: parseOsu(entry.text),
-                }))
-                .filter((item) => item.parsed.hitObjects.length > 0);
 
-            if (!parsedList.length) {
-                throw new Error(i18n.error.archiveNoBeatmap);
+            if (archive.beatmaps.length === 1) {
+                const entry = archive.beatmaps[0];
+                const candidate = parseOsu(entry.text);
+                if (!candidate.hitObjects.length) {
+                    throw new Error(i18n.error.archiveNoBeatmap);
+                }
+                beatmapPath = entry.name;
+                parsed = candidate;
+            } else {
+                const playable = archive.beatmaps
+                    .map((entry) => ({
+                        entry,
+                        summary: summarizeOsu(entry.text, entry.name),
+                    }))
+                    .filter((item) => item.summary.objectCount > 0);
+
+                if (!playable.length) {
+                    throw new Error(i18n.error.archiveNoBeatmap);
+                }
+
+                let chosen = playable[0];
+                if (playable.length > 1) {
+                    ui.hideLoading();
+                    const index = await ui.pickDifficulty(
+                        playable.map((item) => item.summary),
+                    );
+                    if (token !== loadGeneration) return null;
+                    if (index === null) return null;
+                    ui.showLoading(i18n.loading.parsing);
+                    chosen = playable[index];
+                }
+
+                beatmapPath = chosen.entry.name;
+                parsed = parseOsu(chosen.entry.text);
             }
-
-            let chosen = parsedList[0];
-            if (parsedList.length > 1) {
-                ui.hideLoading();
-                const summaries = parsedList.map((item) =>
-                    summarize(item.parsed, item.entry.name),
-                );
-                const index = await ui.pickDifficulty(summaries);
-                if (token !== loadGeneration) return null;
-                if (index === null) return null;
-                ui.showLoading(i18n.loading.parsing);
-                chosen = parsedList[index];
-            }
-
-            beatmapPath = chosen.entry.name;
-            parsed = chosen.parsed;
         } else if (lowerName.endsWith(".osu")) {
             parsed = parseOsu(await file.text());
         } else {
@@ -551,23 +591,23 @@ async function buildImportedChart(
             throw new Error(i18n.error.noPlayableObjects);
         }
 
-        await ensureDefaultSkinUrls();
-
         const defaultMode: PlayMode =
             parsed.general.mode === 3 ? "mania" : "catch";
-        const variants: Record<PlayMode, CompiledCatchChart> = {
-            catch: compileChart(parsed, "catch"),
-            mania: compileChart(parsed, "mania"),
-        };
-        let compiled = variants[defaultMode];
+        const variants: ChartVariants = {};
+        let compiled = compileChart(parsed, defaultMode);
+        variants[defaultMode] = compiled;
         if (!compiled.notes.length) {
             const fallbackMode: PlayMode =
                 defaultMode === "mania" ? "catch" : "mania";
-            if (!variants[fallbackMode].notes.length) {
+            const fallback = compileChart(parsed, fallbackMode);
+            if (!fallback.notes.length) {
                 throw new Error(i18n.error.noPlayableObjects);
             }
-            compiled = variants[fallbackMode];
+            variants[fallbackMode] = fallback;
+            compiled = fallback;
         }
+        const alternateMode: PlayMode =
+            compiled.playMode === "mania" ? "catch" : "mania";
 
         // Resolve per-object custom hit samples from the .osu hitSample
         // filename (and from the archive/companion files). Missing files fall
@@ -589,14 +629,31 @@ async function buildImportedChart(
             );
             return companion ? makeFileUrl(companion, newUrls) : null;
         };
-        attachHitSampleUrls(variants.catch.notes, resolveHitSample);
-        attachHitSampleUrls(variants.mania.notes, resolveHitSample);
-
         let audioUrl = null;
         let backgroundUrl = null;
         let audioDurationMs = 0;
         let videoUrl = null;
         let storyboard: StoryboardBundle | null = null;
+
+        attachHitSampleUrls(compiled.notes, resolveHitSample);
+        const pending: PendingVariant | null = variants[alternateMode]
+            ? null
+            : {
+                  parsed,
+                  playMode: alternateMode,
+                  resolveSample: resolveHitSample,
+                  variants,
+              };
+
+        let musicPromise: Promise<unknown> | null = null;
+        const startMusic = () => {
+            if (audioUrl && !musicPromise) {
+                musicPromise = loadMusic(audioUrl);
+                // The failure is reported when the chart awaits the load;
+                // mark the early rejection as handled in the meantime.
+                musicPromise.catch(() => undefined);
+            }
+        };
 
         if (archive) {
             const audioEntry =
@@ -613,6 +670,7 @@ async function buildImportedChart(
                 ]);
             if (audioEntry) {
                 audioUrl = makeBlobUrl(audioEntry, newUrls);
+                startMusic();
             }
 
             const backgroundEntry =
@@ -644,6 +702,7 @@ async function buildImportedChart(
                 }
             }
 
+            await defaultSkinPromise;
             storyboard = buildStoryboard(
                 getArchiveStoryboardData(archive, parsed),
                 (normalized, file) => {
@@ -668,6 +727,7 @@ async function buildImportedChart(
             if (companionAudio) {
                 audioUrl = URL.createObjectURL(companionAudio);
                 newUrls.push(audioUrl);
+                startMusic();
             }
 
             const companionImage =
@@ -712,6 +772,7 @@ async function buildImportedChart(
                 );
             }
 
+            await defaultSkinPromise;
             storyboard = buildStoryboard(
                 {
                     sprites: storyboardParts.flatMap((part) => part.sprites),
@@ -814,7 +875,9 @@ async function buildImportedChart(
         if (audioUrl) {
             ui.showLoading(i18n.loading.audio);
             try {
-                await loadMusic(audioUrl);
+                // Decoding starts as soon as the audio entry is known so it
+                // overlaps storyboard parsing and media URL creation.
+                await (musicPromise || loadMusic(audioUrl));
                 if (token !== loadGeneration) {
                     revokeUrls(newUrls);
                     return null;
@@ -881,7 +944,9 @@ async function buildImportedChart(
         });
 
         const applied = await selectChart(chart, variants, newUrls, token);
-        return applied ? chart : null;
+        if (!applied) return null;
+        pendingVariant = pending;
+        return chart;
     } catch (error) {
         revokeUrls(newUrls);
         throw error;
@@ -925,6 +990,7 @@ export async function importFiles(files: File[]): Promise<void> {
         window.gameState = "menu";
         window.gameplayLayer.visible = false;
         window.statsLayer.visible = false;
+        scheduleVariantWarmup();
     } catch (error) {
         if (token !== loadGeneration) return;
         console.error(error);
@@ -994,6 +1060,7 @@ export function initSongSelect() {
 export function showPresetMenu() {
     currentChart = null;
     currentVariants = null;
+    pendingVariant = null;
     window.currentChart = null;
     resetThemeFromBackground();
     ui.setSong(null);

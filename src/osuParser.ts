@@ -5,6 +5,7 @@ import type {
     CatchHitSample,
     CatchNote,
     CompiledCatchChart,
+    DifficultySummary,
     OsuArchive,
     OsuEvents,
     OsuHitObject,
@@ -61,8 +62,16 @@ function parseNumber(value, fallback = 0) {
 }
 
 function splitCsv(line) {
+    if (!line.includes('"')) {
+        const parts = line.split(",");
+        for (let i = 0; i < parts.length; i++) {
+            parts[i] = parts[i].trim();
+        }
+        return parts;
+    }
+
     const parts = [];
-    let current = "";
+    let start = 0;
     let quoted = false;
 
     for (let i = 0; i < line.length; i++) {
@@ -72,13 +81,11 @@ function splitCsv(line) {
             continue;
         }
         if (char === "," && !quoted) {
-            parts.push(current.trim());
-            current = "";
-        } else {
-            current += char;
+            parts.push(line.slice(start, i).replace(/"/g, "").trim());
+            start = i + 1;
         }
     }
-    parts.push(current.trim());
+    parts.push(line.slice(start).replace(/"/g, "").trim());
     return parts;
 }
 
@@ -250,22 +257,91 @@ function parseHitSample(value) {
     };
 }
 
-function getTimingSampleInfo(timingPoints, time, defaultSampleSet = "normal") {
+interface TimingIndex {
+    times: Float64Array;
+    beatLengths: Float64Array;
+    sliderVelocities: Float64Array;
+    sampleSets: Uint8Array;
+    sampleIndices: Uint32Array;
+    volumes: Float64Array;
+}
+
+const timingIndexCache = new WeakMap<TimingPoint[], TimingIndex>();
+
+function getTimingIndex(timingPoints: TimingPoint[]): TimingIndex {
+    const cached = timingIndexCache.get(timingPoints);
+    if (cached) return cached;
+
+    const length = timingPoints.length;
+    const index: TimingIndex = {
+        times: new Float64Array(length),
+        beatLengths: new Float64Array(length),
+        sliderVelocities: new Float64Array(length),
+        sampleSets: new Uint8Array(length),
+        sampleIndices: new Uint32Array(length),
+        volumes: new Float64Array(length),
+    };
+
+    // Resolve the effective timing state once per point. Hit objects only need
+    // one binary search instead of walking every preceding timing point.
+    let beatLength = 500;
+    let sliderVelocity = 1;
     let sampleSet = 0;
     let sampleIndex = 0;
     let volume = 100;
 
-    for (const point of timingPoints) {
-        if (point.time > time) break;
+    for (let i = 0; i < length; i++) {
+        const point = timingPoints[i];
+        if (point.uninherited) {
+            beatLength = point.beatLength;
+            sliderVelocity = 1;
+        } else {
+            sliderVelocity = point.sliderVelocity;
+        }
         sampleSet = point.sampleSet;
         sampleIndex = point.sampleIndex || 0;
         volume = point.volume;
+
+        index.times[i] = point.time;
+        index.beatLengths[i] = beatLength;
+        index.sliderVelocities[i] = sliderVelocity;
+        index.sampleSets[i] = sampleSet;
+        index.sampleIndices[i] = sampleIndex;
+        index.volumes[i] = volume;
+    }
+
+    timingIndexCache.set(timingPoints, index);
+    return index;
+}
+
+function findTimingIndex(times: Float64Array, time: number): number {
+    let low = 0;
+    let high = times.length;
+
+    while (low < high) {
+        const middle = (low + high) >> 1;
+        if (times[middle] <= time) low = middle + 1;
+        else high = middle;
+    }
+
+    return low - 1;
+}
+
+function getTimingSampleInfoFromIndex(
+    index: TimingIndex,
+    time: number,
+    defaultSampleSet: string,
+) {
+    const pointIndex = findTimingIndex(index.times, time);
+    if (pointIndex < 0) {
+        return { sampleSet: defaultSampleSet, sampleIndex: 0, volume: 100 };
     }
 
     return {
-        sampleSet: SAMPLE_SET_NAMES[sampleSet] || defaultSampleSet,
-        sampleIndex,
-        volume,
+        sampleSet:
+            SAMPLE_SET_NAMES[index.sampleSets[pointIndex]] || defaultSampleSet,
+        sampleIndex: index.sampleIndices[pointIndex],
+        volume: index.volumes[pointIndex],
     };
 }
 
@@ -329,7 +405,7 @@ function parseEdgeSet(value) {
 
 function buildSliderNodeSamples(
     object: OsuHitObject,
-    timingSample: ReturnType<typeof getTimingSampleInfo>,
+    timingSample: ReturnType<typeof getTimingSampleInfoFromIndex>,
     nodeIndex: number,
 ): CatchHitSample[] {
     const edgeSound = object.edgeSounds?.[nodeIndex];
@@ -359,6 +435,7 @@ function parseHitObjects(
     defaultSampleSet = "normal",
 ): OsuHitObject[] {
     const hitObjects: OsuHitObject[] = [];
+    const timingIndex = getTimingIndex(timingPoints);
 
     for (const raw of lines) {
         const line = raw.trim();
@@ -386,8 +463,8 @@ function parseHitObjects(
                   ? parts[6] || ""
                   : parts[5] || "";
         const hitSample = parseHitSample(hitSampleValue);
-        const timingSample = getTimingSampleInfo(
-            timingPoints,
+        const timingSample = getTimingSampleInfoFromIndex(
+            timingIndex,
             time,
             defaultSampleSet,
         );
@@ -511,6 +588,55 @@ export function parseOsu(text: string): ParsedBeatmap {
         timingPoints,
         hitObjects,
         colours: parseColours(sections.Colours),
+    };
+}
+
+export function summarizeOsu(text: string, fileName = ""): DifficultySummary {
+    const { sections } = splitSections(text);
+    const general = parseKeyValues(sections.General);
+    const metadata = parseKeyValues(sections.Metadata);
+    const difficulty = parseKeyValues(sections.Difficulty);
+    const fallbackTitle = fileName.replace(/\.osu$/i, "");
+    const mode = parseNumber(general.Mode, 0);
+    const circleSize = parseNumber(difficulty.CircleSize, 4);
+
+    let objectCount = 0;
+    for (const raw of sections.HitObjects || []) {
+        const line = raw.trim();
+        if (!line || line.startsWith("//")) continue;
+        const parts = line.split(",", 4);
+        if (parts.length < 4) continue;
+        if (
+            !Number.isFinite(Number(parts[0])) ||
+            !Number.isFinite(Number(parts[1])) ||
+            !Number.isFinite(Number(parts[2]))
+        ) {
+            continue;
+        }
+        objectCount += 1;
+    }
+
+    const firstRed = parseTimingPoints(sections.TimingPoints).find(
+        (point) => point.uninherited && point.beatLength > 0,
+    );
+
+    return {
+        metadata: {
+            title: metadata.Title || fallbackTitle,
+            titleUnicode:
+                metadata.TitleUnicode || metadata.Title || fallbackTitle,
+            artist: metadata.Artist || "",
+            artistUnicode: metadata.ArtistUnicode || metadata.Artist || "",
+            creator: metadata.Creator || "",
+            version: metadata.Version || "",
+            source: metadata.Source || "",
+            tags: metadata.Tags || "",
+        },
+        bpm: firstRed ? 60000 / firstRed.beatLength : 0,
+        objectCount,
+        mode,
+        maniaSourceKeys:
+            mode === 3 ? clamp(Math.round(circleSize) || 4, 1, 18) : undefined,
     };
 }
 
@@ -740,20 +866,14 @@ function pointAtLength(path, length) {
 }
 
 function getTimingAt(timingPoints, time) {
-    let beatLength = 500;
-    let sliderVelocity = 1;
+    const index = getTimingIndex(timingPoints);
+    const pointIndex = findTimingIndex(index.times, time);
+    if (pointIndex < 0) return { beatLength: 500, sliderVelocity: 1 };
 
-    for (const point of timingPoints) {
-        if (point.time > time) break;
-        if (point.uninherited) {
-            beatLength = point.beatLength;
-            sliderVelocity = 1;
-        } else {
-            sliderVelocity = point.sliderVelocity;
-        }
-    }
-
-    return { beatLength, sliderVelocity };
+    return {
+        beatLength: index.beatLengths[pointIndex],
+        sliderVelocity: index.sliderVelocities[pointIndex],
+    };
 }
 
 function getBpm(timingPoints) {
@@ -1290,6 +1410,44 @@ export function extractArchive(arrayBuffer: ArrayBuffer): OsuArchive {
     return { files, beatmaps };
 }
 
+interface ArchiveFileIndex {
+    names: string[];
+    byPath: Map<string, string>;
+    byBaseName: Map<string, string>;
+}
+
+const archiveFileIndexCache = new WeakMap<
+    Record<string, Uint8Array>,
+    ArchiveFileIndex
+>();
+
+function getArchiveFileIndex(
+    files: Record<string, Uint8Array>,
+): ArchiveFileIndex {
+    const cached = archiveFileIndexCache.get(files);
+    if (cached) return cached;
+
+    const index: ArchiveFileIndex = {
+        names: [],
+        byPath: new Map(),
+        byBaseName: new Map(),
+    };
+
+    for (const name of Object.keys(files)) {
+        index.names.push(name);
+        const lower = name.toLowerCase();
+        if (!index.byPath.has(lower)) index.byPath.set(lower, name);
+
+        const base = lower.split("/").pop();
+        if (base && !index.byBaseName.has(base)) {
+            index.byBaseName.set(base, name);
+        }
+    }
+
+    archiveFileIndexCache.set(files, index);
+    return index;
+}
+
 export function findArchiveFile(
     files: Record<string, Uint8Array>,
     wantedPath: string | null | undefined,
@@ -1299,17 +1457,15 @@ export function findArchiveFile(
     const wanted = resolveArchivePath(wantedPath, relativeTo)?.toLowerCase();
     if (!wanted) return null;
 
-    for (const [name, data] of Object.entries(files)) {
-        if (name.toLowerCase() === wanted) return { name, data };
+    const index = getArchiveFileIndex(files);
+    let name = index.byPath.get(wanted);
+    if (!name) {
+        const wantedBase = wanted.split("/").pop();
+        name = wantedBase ? index.byBaseName.get(wantedBase) : undefined;
     }
 
-    const wantedBase = wanted.split("/").pop();
-    for (const [name, data] of Object.entries(files)) {
-        const base = name.toLowerCase().split("/").pop();
-        if (base === wantedBase) return { name, data };
-    }
-
-    return null;
+    if (!name) return null;
+    return { name, data: files[name] };
 }
 
 export function findArchiveFileByExtension(
@@ -1317,10 +1473,10 @@ export function findArchiveFileByExtension(
     extensions: readonly string[],
 ): ArchiveFile | null {
     const wanted = extensions.map((extension) => extension.toLowerCase());
-    for (const [name, data] of Object.entries(files)) {
+    for (const name of getArchiveFileIndex(files).names) {
         const lower = name.toLowerCase();
         if (wanted.some((extension) => lower.endsWith(extension))) {
-            return { name, data };
+            return { name, data: files[name] };
         }
     }
     return null;
