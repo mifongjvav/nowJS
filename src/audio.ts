@@ -202,6 +202,8 @@ addSound(
 addSound("pause-loop", [`${GAMEPLAY_ROOT}/pause-loop.mp3`], true);
 addSound("restart", [`${GAMEPLAY_ROOT}/restart.wav`], true);
 addSound("resume-countdown", [`${GAMEPLAY_ROOT}/resume-countdown.wav`], true);
+addSound("sectionpass", [`${GAMEPLAY_ROOT}/sectionpass.mp3`], true);
+addSound("sectionfail", [`${GAMEPLAY_ROOT}/sectionfail.mp3`], true);
 
 addSound("rank-impact-pass", "Results/rank-impact-pass.wav", true);
 addSound("rank-impact-pass-ss", "Results/rank-impact-pass-ss.wav", true);
@@ -333,6 +335,8 @@ const GAMEPLAY_SOUND_ALIASES = [
     "spinnerbonus",
     "restart",
     "resume-countdown",
+    "sectionpass",
+    "sectionfail",
     "spinnerspin",
     ...HIT_SAMPLE_BANKS.flatMap((sampleSet) =>
         [...HIT_SOUND_NAMES, "slidertick"].map(
@@ -371,6 +375,18 @@ export function playRestart() {
 
 export function playResumeCountdown() {
     playSound("resume-countdown", { volume: 0.65 });
+}
+
+export function playSectionResult(passing: boolean) {
+    playSound(passing ? "sectionpass" : "sectionfail", { volume: 0.55 });
+}
+
+export function playBreakCountdownTick() {
+    playSound("resume-countdown", { volume: 0.55, speed: 1 });
+}
+
+export function playBreakCountdownGo() {
+    playSound("resume-countdown", { volume: 0.68, speed: 1.35 });
 }
 
 let pauseLoopPlaying = false;

@@ -1148,6 +1148,103 @@ const BASE_CSS = `
         -webkit-backdrop-filter: blur(14px) saturate(1.15);
     }
 
+    .now-break-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 8000;
+        display: grid;
+        place-items: center;
+        pointer-events: none;
+    }
+
+    .now-break-result {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+    }
+
+    .now-break-icon {
+        display: block;
+        grid-area: 1 / 1;
+        width: 120px;
+        height: 120px;
+        font-size: 120px;
+        opacity: 0;
+        will-change: opacity, transform;
+    }
+
+    .now-break-icon.is-pass {
+        color: #4dff9e;
+        filter:
+            drop-shadow(0 2px 8px rgba(0, 0, 0, 0.55))
+            drop-shadow(0 0 24px rgba(77, 255, 158, 0.65));
+    }
+
+    .now-break-icon.is-fail {
+        color: #ff4d4f;
+        filter:
+            drop-shadow(0 2px 8px rgba(0, 0, 0, 0.55))
+            drop-shadow(0 0 24px rgba(255, 77, 79, 0.65));
+    }
+
+    .now-break-icon.is-flashing {
+        animation: now-break-flash 500ms ease-in-out 4;
+    }
+
+    .now-break-countdown {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: #ffffff;
+        font-size: 120px;
+        font-weight: 800;
+        line-height: 1;
+        text-shadow:
+            0 4px 26px rgba(0, 0, 0, 0.45),
+            0 0 24px rgba(255, 255, 255, 0.22);
+    }
+
+    .now-break-countdown.is-go {
+        color: #ffd166;
+        text-shadow:
+            0 4px 26px rgba(0, 0, 0, 0.45),
+            0 0 30px rgba(255, 209, 102, 0.55);
+    }
+
+    .now-break-countdown.is-popping {
+        animation: now-break-count 360ms
+            var(--mdui-motion-easing-emphasized-decelerate);
+    }
+
+    @keyframes now-break-flash {
+        0%,
+        100% {
+            opacity: 0;
+            transform: scale(0.72);
+        }
+        40% {
+            opacity: 1;
+            transform: scale(1.08);
+        }
+        65% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes now-break-count {
+        from {
+            opacity: 0;
+            transform: scale(1.6);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
     mdui-dialog {
         --z-index: 25000;
         pointer-events: auto;

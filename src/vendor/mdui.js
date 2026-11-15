@@ -20,6 +20,7 @@ import "../../node_modules/mdui/components/switch.js";
 import "../../node_modules/mdui/components/top-app-bar.js";
 
 import "../../node_modules/@mdui/icons/check-circle.js";
+import "../../node_modules/@mdui/icons/cancel.js";
 import "../../node_modules/@mdui/icons/play-arrow.js";
 import "../../node_modules/@mdui/icons/folder-open.js";
 import "../../node_modules/@mdui/icons/music-note.js";

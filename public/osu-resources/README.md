@@ -25,6 +25,7 @@ spinner sounds.
 The remaining sounds come from the osu! default resources:
 
 - Catch banana, pause loop, restart, resume countdown
+- Break section pass/fail
 - Results impact and applause
 - UI hover/click/dialog/notification sounds
 - Song-select confirm/difficulty sounds

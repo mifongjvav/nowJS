@@ -35,6 +35,11 @@ import {
     updateMedia,
 } from "./background.ts";
 import { resetManiaInput, setManiaMode, updateMania } from "./mania.ts";
+import {
+    beginBreakOverlay,
+    resetBreakOverlay,
+    updateBreakOverlay,
+} from "./breakOverlay.ts";
 
 const app = window.app;
 
@@ -119,6 +124,7 @@ function resetStoryboardSections(time) {
     breakResults = [];
     finalBreakStateApplied = false;
     setStoryboardPassing(true);
+    resetBreakOverlay();
 }
 
 function updateStoryboardSections(time) {
@@ -137,6 +143,7 @@ function updateStoryboardSections(time) {
         const passing = total === 0 || hits / total > 0.5;
         breakResults.push(passing);
         setStoryboardPassing(passing);
+        beginBreakOverlay(passing, breaks[nextBreakIndex]);
         sectionStartHits = window.hitCount;
         sectionStartMisses = window.missCount;
         nextBreakIndex += 1;
@@ -291,6 +298,7 @@ function endGame() {
     circlePool.releaseAll();
     resetAutoPlayMotion();
     resetManiaInput();
+    resetBreakOverlay();
     ui.hideHud();
 
     const total = window.hitCount + window.missCount;
@@ -317,6 +325,7 @@ function exitToMenu() {
     resetStats();
     resetAutoPlayMotion();
     resetManiaInput();
+    resetBreakOverlay();
     setManiaMode(null);
 
     window.gameState = "menu";
@@ -390,6 +399,7 @@ app.ticker.add((ticker) => {
     window.chartTime = chartTime;
 
     updateStoryboardSections(chartTime);
+    updateBreakOverlay(chartTime);
     updateMedia(chartTime);
 
     while (
