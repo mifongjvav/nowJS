@@ -50,13 +50,21 @@ import type {
 } from "./domain.ts";
 
 const VIDEO_EXTENSIONS = [".mp4", ".webm", ".ogv", ".mov"];
-const PRESET_CACHE_VERSION = 2;
+const PRESET_CACHE_VERSION = 3;
 const PRESET_CHARTS = [
     {
         // MOSS rejects ASCII whitespace in package paths, so the archive uses
         // a sanitized filename while the UI keeps the original beatmap title.
         file: "355322-nekodex-circles.osz",
         label: "355322 nekodex - circles!.osz",
+    },
+    {
+        file: "1841885-cysmix-triangles.osz",
+        label: "1841885 cYsmix - triangles.osz",
+    },
+    {
+        file: "1011011-nekodex-new-beginnings.osz",
+        label: "1011011 nekodex - new beginnings.osz",
     },
 ] satisfies PresetChart[];
 
