@@ -55,6 +55,11 @@ import { onThreadStatus } from "./threads/status.ts";
 import { getPlayfield } from "./layout.ts";
 import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
 import { pulseManiaLane } from "./mania.ts";
+import {
+    showEpilepsyWarning,
+    cancelEpilepsyWarning,
+} from "./epilepsyWarning.ts";
+import type { GameChart } from "./domain.ts";
 
 const app = window.app;
 
@@ -74,6 +79,7 @@ let finalBreakStateApplied = false;
 const logicClock = new FixedStepClock(240);
 let logicTimer: ReturnType<typeof setInterval> | null = null;
 const workerCircles = new Map();
+let startupGeneration = 0;
 
 logicThread.listen(
     (snapshot) => {
@@ -149,6 +155,50 @@ function startGame() {
         ui.showToast(i18n.toast.noChart);
         return;
     }
+    const generation = ++startupGeneration;
+    cancelEpilepsyWarning();
+    if (!chart.epilepsyWarning) {
+        beginGame(chart);
+        return;
+    }
+
+    window.gameState = "warning";
+    window.isPaused = false;
+    chartTime = 0;
+    window.chartTime = 0;
+    isSeeking = false;
+    logicThread.stop();
+    syncLogicScheduler();
+    stopMusic();
+    stopPauseLoop();
+    stopSpinnerLoop();
+    stopGameplaySounds();
+    stopMedia();
+    circlePool.releaseAll();
+    resetManiaInput();
+    resetAutoPlayMotion();
+    resetBreakOverlay();
+    window.gameplayLayer.visible = false;
+    window.statsLayer.visible = false;
+    ui.hideMenu();
+    ui.hidePause();
+    ui.hideResults();
+    ui.hideHud();
+    ui.hideLoading();
+    void showEpilepsyWarning().then((proceed) => {
+        if (
+            !proceed ||
+            generation !== startupGeneration ||
+            getCurrentChart() !== chart ||
+            window.gameState !== "warning"
+        )
+            return;
+        beginGame(chart);
+        if (document.hidden) pauseGame(true);
+    });
+}
+
+function beginGame(chart: GameChart): void {
     logicThread.stop();
     workerCircles.clear();
     isSeeking = false;
@@ -405,6 +455,8 @@ function endGame() {
 }
 
 function exitToMenu() {
+    startupGeneration++;
+    cancelEpilepsyWarning();
     isSeeking = false;
     seekHasAudio = false;
     stopMusic();

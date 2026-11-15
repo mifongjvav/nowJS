@@ -937,6 +937,7 @@ async function buildImportedChart(
                 Number.isFinite(sampleEnd) ? sampleEnd : 0,
             ),
             widescreenStoryboard: parsed.general.widescreenStoryboard,
+            epilepsyWarning: parsed.general.epilepsyWarning,
             hasVideo: Boolean(videoUrl),
             hasStoryboard: Boolean(storyboard),
         });

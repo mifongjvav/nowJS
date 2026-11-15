@@ -560,6 +560,7 @@ export function parseOsu(text: string): ParsedBeatmap {
             mode: parseNumber(general.Mode, 0),
             sampleSet: defaultSampleSet,
             widescreenStoryboard: general.WidescreenStoryboard === "1",
+            epilepsyWarning: general.EpilepsyWarning === "1",
         },
         metadata: {
             title: metadata.Title || "",
@@ -1201,7 +1202,8 @@ function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
         for (const object of beatmap.hitObjects) {
             const isHold = Boolean(object.type & 128);
             const isCircle = Boolean(object.type & 1);
-            if (!isHold && !isCircle) continue;
+            const isSpinner = Boolean(object.type & 8);
+            if (!isHold && !isCircle && !isSpinner) continue;
 
             // osu!mania column formula from the .osu file format
             // documentation: floor(x * keyCount / 512), clamped to the valid
@@ -1219,7 +1221,7 @@ function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
                 samples: object.samples || [],
             };
 
-            if (isHold && Number.isFinite(object.endTime)) {
+            if ((isHold || isSpinner) && Number.isFinite(object.endTime)) {
                 const endTime = Math.max(note.time, object.endTime);
                 if (endTime > note.time) {
                     note.holdEndTime = endTime;
@@ -1238,7 +1240,8 @@ function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
             const isCircle = Boolean(object.type & 1);
             const isSlider = Boolean(object.type & 2);
             const isHold = Boolean(object.type & 128);
-            if (!isCircle && !isSlider && !isHold) continue;
+            const isSpinner = Boolean(object.type & 8);
+            if (!isCircle && !isSlider && !isHold && !isSpinner) continue;
 
             const note: CatchNote = {
                 time: Math.max(0, object.time),
@@ -1264,7 +1267,10 @@ function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
                         note.holdEndTime = endTime;
                     }
                 }
-            } else if (isHold && Number.isFinite(object.endTime)) {
+            } else if (
+                (isHold || isSpinner) &&
+                Number.isFinite(object.endTime)
+            ) {
                 const endTime = Math.max(note.time, object.endTime);
                 if (endTime > note.time) {
                     note.holdEndTime = endTime;

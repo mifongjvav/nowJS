@@ -26,6 +26,13 @@ export default {
         disabled: "Auto play disabled",
         badge: "AUTO",
     },
+    epilepsy: {
+        title: "Photosensitivity warning",
+        description:
+            "The beatmap author has marked this map with an epilepsy warning. Gameplay may contain rapid flashing or strong brightness changes that can trigger photosensitive seizures or other discomfort. Do not continue if you are sensitive to flashing lights.",
+        countdown: "Gameplay starts in {{seconds}} seconds",
+        skip: "Press any key to skip this notice, or tap the screen",
+    },
     settings: {
         multithreading: "Multithreading (experimental)",
         threadHint:
@@ -42,9 +49,9 @@ export default {
         storyboard: "Storyboards",
         video: "Videos",
         blur: "Blur effects",
-        backgroundDim: "Background image dimming",
+        backgroundDim: "Background dimming",
         dimHint:
-            "0% is brightest, 100% is darkest. Does not dim videos or storyboards.",
+            "0% is brightest, 100% is darkest. Applies to images, videos and storyboards, not notes or UI.",
         backgroundBlur: "Background image blur strength",
         dynamicColors: "Dynamic colors",
         decoupledRendering: "Decouple logic and rendering (experimental)",

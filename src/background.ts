@@ -8,7 +8,6 @@ import { getSettings, onSettingsChange } from "./settings.ts";
 const WIDTH = window.gameWidth;
 const HEIGHT = window.gameHeight;
 
-const MEDIA_DIM = 0.3;
 const VIDEO_SEEK_THRESHOLD = 1;
 const VIDEO_SEEK_INTERVAL_MS = 2000;
 
@@ -71,7 +70,9 @@ function ensureLayers() {
         .fill({ color: MD3_COLORS.scrim, alpha: 1 });
     dimmer.alpha = getSettings().backgroundDim / 100;
     dimmer.visible = false;
-    dimmer.zIndex = 1;
+    // Above images, video (2) and all background/foreground storyboard layers
+    // (3..4), but still below the separate gameplay layer.
+    dimmer.zIndex = 5;
 
     layer.addChild(sprite);
     layer.addChild(videoSprite);
@@ -87,10 +88,16 @@ function ensureLayers() {
 
 function updateDimmer() {
     if (!dimmer) return;
-    dimmer.alpha = videoSprite?.visible
-        ? MEDIA_DIM
-        : getSettings().backgroundDim / 100;
-    dimmer.visible = Boolean(sprite?.visible || videoSprite?.visible);
+    const dim = getSettings().backgroundDim / 100;
+    dimmer.alpha = dim;
+    dimmer.visible = Boolean(
+        sprite?.visible ||
+        videoSprite?.visible ||
+        (mediaStarted && storyboardPlayer),
+    );
+    // Authored Overlay sprites are above gameplay. Fade that container rather
+    // than covering the note field/UI with a second black full-screen mask.
+    if (storyboardPlayer) storyboardPlayer.overlayContainer.alpha = 1 - dim;
 }
 
 function updateBackgroundVisibility() {
@@ -442,8 +449,7 @@ export function setStoryboard(data, options = {}) {
     storyboardPlayer.passContainer.visible = false;
     bgLayer.addChild(storyboardPlayer.passContainer);
 
-    // The Foreground layer is still below hit objects, so it belongs in the
-    // background layer (above the background image and its dimmer).
+    // Foreground is below hit objects and below the shared media dimmer.
     storyboardPlayer.foregroundContainer.zIndex = 4;
     storyboardPlayer.foregroundContainer.visible = false;
     bgLayer.addChild(storyboardPlayer.foregroundContainer);

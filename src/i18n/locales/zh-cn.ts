@@ -26,6 +26,13 @@ export default {
         disabled: "自动游玩已关闭",
         badge: "自动",
     },
+    epilepsy: {
+        title: "光敏性癫痫警告",
+        description:
+            "谱面作者标记了光敏警告。游玩内容可能包含快速闪烁、强烈明暗变化，可能引发光敏性癫痫或其他不适。对闪光敏感的玩家请勿继续。",
+        countdown: "{{seconds}} 秒后开始游玩",
+        skip: "按任意键跳过提示，触屏可轻触屏幕",
+    },
     settings: {
         multithreading: "多线程（实验性）",
         threadHint:
@@ -42,8 +49,9 @@ export default {
         storyboard: "故事板",
         video: "视频",
         blur: "模糊效果",
-        backgroundDim: "背景图片亮度（遮罩）",
-        dimHint: "0% 最亮，100% 最暗；不影响视频和故事板。",
+        backgroundDim: "背景亮度（遮罩）",
+        dimHint:
+            "0% 最亮，100% 最暗；对图片、视频及故事板生效，不影响音符与界面。",
         backgroundBlur: "背景图片模糊程度",
         dynamicColors: "动态配色",
         decoupledRendering: "解耦合逻辑渲染帧（实验性）",

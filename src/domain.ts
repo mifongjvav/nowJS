@@ -49,6 +49,7 @@ export interface OsuGeneral {
     mode: number;
     sampleSet: string;
     widescreenStoryboard: boolean;
+    epilepsyWarning: boolean;
 }
 
 export interface OsuMetadata {
@@ -232,7 +233,7 @@ export interface GameResults {
 }
 
 export type ChartSource = "osz" | "osu";
-export type GameState = "menu" | "playing" | "ended";
+export type GameState = "menu" | "warning" | "playing" | "ended";
 
 export interface GameChart extends CompiledCatchChart {
     source: ChartSource;
@@ -259,6 +260,7 @@ export interface GameChart extends CompiledCatchChart {
     widescreenStoryboard: boolean;
     hasVideo: boolean;
     hasStoryboard: boolean;
+    epilepsyWarning: boolean;
 }
 
 export interface Resolution {

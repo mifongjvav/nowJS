@@ -3,6 +3,12 @@ import "../node_modules/mdui/mdui.css";
 const STYLE_ID = "nowjs-mdui-styles";
 
 const BASE_CSS = `
+    .now-epilepsy-warning { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: #101619; color: #f3f6f7; pointer-events: auto; outline: none; }
+    .now-epilepsy-warning > div { max-width: 640px; line-height: 1.7; }
+    .now-epilepsy-warning h2 { margin: 0 0 24px; font-size: clamp(24px, 4vw, 40px); line-height: 1.3; }
+    .now-epilepsy-warning p { font-size: 17px; }
+    .now-epilepsy-countdown { margin-top: 28px; font-weight: 700; }
+    #now-epilepsy-skip { opacity: .75; font-size: 14px; }
     .now-thread-status { display: grid; gap: 10px; font-size: 12px; padding: 12px; border: 1px solid rgb(var(--mdui-color-outline-variant)); border-radius: 12px; }
     .now-thread-status > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
     .now-thread-status small { flex-basis: 100%; overflow-wrap: anywhere; opacity: .7; }
