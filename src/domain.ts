@@ -95,6 +95,8 @@ export interface ParsedBeatmap {
     variablesRaw: string[];
     timingPoints: TimingPoint[];
     hitObjects: OsuHitObject[];
+    /** Custom combo colours from [Colours], as 0xRRGGBB values. */
+    colours: number[];
 }
 
 export type CatchNoteType = "fruit" | "droplet" | "banana";
@@ -109,6 +111,8 @@ export interface CatchNote {
     lane?: number;
     /** End time of an osu!mania hold note, if this object is a hold. */
     holdEndTime?: number;
+    /** Beatmap-defined combo/lane colour as 0xRRGGBB. */
+    color?: number;
 }
 
 export interface ManiaChartInfo {

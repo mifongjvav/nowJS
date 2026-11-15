@@ -124,6 +124,44 @@ function parseEvents(lines: string[] = []): OsuEvents {
     return events;
 }
 
+function parseColours(lines: string[] = []): number[] {
+    const colours = new Map<number, number>();
+
+    for (const raw of lines) {
+        const line = raw.trim();
+        if (!line || line.startsWith("//")) continue;
+
+        const separator = line.indexOf(":");
+        if (separator === -1) continue;
+
+        const match = line
+            .slice(0, separator)
+            .trim()
+            .match(/^Combo\s*(\d+)$/i);
+        if (!match) continue;
+
+        const parts = line
+            .slice(separator + 1)
+            .split(",")
+            .map((value) => Number(value.trim()));
+        if (
+            parts.length < 3 ||
+            !parts.slice(0, 3).every((value) => Number.isFinite(value))
+        ) {
+            continue;
+        }
+
+        const red = clamp(Math.round(parts[0]), 0, 255);
+        const green = clamp(Math.round(parts[1]), 0, 255);
+        const blue = clamp(Math.round(parts[2]), 0, 255);
+        colours.set(Number(match[1]), (red << 16) | (green << 8) | blue);
+    }
+
+    return [...colours.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([, colour]) => colour);
+}
+
 function parseTimingPoints(lines: string[] = []): TimingPoint[] {
     const timingPoints = [];
 
@@ -447,6 +485,7 @@ export function parseOsu(text: string): ParsedBeatmap {
         variablesRaw: sections.Variables || [],
         timingPoints,
         hitObjects,
+        colours: parseColours(sections.Colours),
     };
 }
 
@@ -826,8 +865,25 @@ function addSliderNotes(object, beatmap, notes) {
 export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
     const notes: CatchNote[] = [];
     const bananaRandom = createSeededRandom(1337);
+    const comboColours = beatmap.colours || [];
+    let comboIndex = -1;
 
     for (const object of beatmap.hitObjects) {
+        const isNewCombo = (object.type & 4) !== 0;
+        const comboSkip = (object.type >> 4) & 0x7;
+
+        if (isNewCombo) {
+            comboIndex =
+                comboIndex < 0 ? comboSkip : comboIndex + 1 + comboSkip;
+        } else if (comboIndex < 0) {
+            comboIndex = 0;
+        }
+
+        const colour = comboColours.length
+            ? comboColours[comboIndex % comboColours.length]
+            : undefined;
+        const noteStart = notes.length;
+
         if ((object.type & 1) !== 0 || (object.type & 128) !== 0) {
             notes.push({
                 time: object.time,
@@ -840,6 +896,14 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
             addSliderNotes(object, beatmap, notes);
         } else if (object.type & 8) {
             addBananaNotes(object, notes, bananaRandom);
+        }
+
+        if (colour !== undefined) {
+            for (let index = noteStart; index < notes.length; index++) {
+                if (notes[index].type !== "banana") {
+                    notes[index].color = colour;
+                }
+            }
         }
     }
 
@@ -863,6 +927,7 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
             type: note.type,
             scale: note.scale,
             samples: note.samples || [],
+            color: note.color,
         });
     }
 
@@ -1071,6 +1136,16 @@ function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
     }
 
     const notes = collector.finish();
+    if (beatmap.colours.length) {
+        // 4K uses the first four beatmap combo colours as lane colours.
+        for (const note of notes) {
+            if (typeof note.lane === "number") {
+                note.color =
+                    beatmap.colours[note.lane % beatmap.colours.length];
+            }
+        }
+    }
+
     const firstNoteTime = notes.length ? notes[0].time : 0;
     let lastNoteTime = 0;
     for (const note of notes) {

@@ -34,6 +34,14 @@ function drawNoteGraphics(circle, holdHeight = 0, headRadius = RADIUS) {
     circle.circle(0, 0, headRadius).fill(0xffffff);
 }
 
+function getNoteTint(note) {
+    if (note.type === "banana") return MD3_COLORS.banana;
+    if (typeof note.color === "number") return note.color;
+    if (note.holdEndTime) return MD3_COLORS.primary;
+    if (note.type === "droplet") return MD3_COLORS.primary;
+    return MD3_COLORS.onSurface;
+}
+
 class CirclePool {
     constructor(poolSize = 90) {
         this.pool = [];
@@ -85,14 +93,7 @@ class CirclePool {
                 : 0;
         drawNoteGraphics(circle, holdHeight);
 
-        circle.tint =
-            note.type === "droplet"
-                ? MD3_COLORS.primary
-                : note.type === "banana"
-                  ? MD3_COLORS.banana
-                  : note.holdEndTime
-                    ? MD3_COLORS.primary
-                    : MD3_COLORS.onSurface;
+        circle.tint = getNoteTint(note);
 
         circle.y = this.yFor(circle, chartTime);
 
@@ -315,7 +316,7 @@ class CirclePool {
 
         circle.y = judgeY;
         drawNoteGraphics(circle, holdHeight);
-        circle.tint = MD3_COLORS.primary;
+        circle.tint = getNoteTint(note);
     }
 
     updateHold(circle, chartTime) {

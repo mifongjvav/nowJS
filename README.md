@@ -38,6 +38,7 @@
     - banana
     - 视频/故事版
     - osu!mania 谱面默认转换为 4K（D F J K 打击，可开关长条尾判），也可随时切回 Catch
+    - 使用谱面自定义 combo 颜色；Mania 4K 使用前 4 个颜色作为轨道色
 - 更好的效果
     - 模糊
     - MDUI
