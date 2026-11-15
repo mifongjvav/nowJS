@@ -298,6 +298,8 @@ export function updateAutoPlay(chartTime, deltaMS) {
         visual.rotation = normalizedVelocity * 0.16;
         visual.scale.set(1 + stretch, 1 - stretch * 0.55);
     }
+}
 
-    updateTrail(performance.now());
+export function renderAutoPlay(): void {
+    if (enabled && !window.currentChart?.mania) updateTrail(performance.now());
 }

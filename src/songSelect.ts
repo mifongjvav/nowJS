@@ -403,9 +403,7 @@ async function selectChart(
         return false;
     }
 
-    await setBackground(chart.backgroundUrl, {
-        blur: !chart.hasVideo && !chart.hasStoryboard,
-    });
+    await setBackground(chart.backgroundUrl);
     if (token !== loadGeneration) {
         revokeUrls(newUrls);
         return false;

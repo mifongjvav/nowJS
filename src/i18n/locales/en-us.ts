@@ -26,6 +26,21 @@ export default {
         disabled: "Auto play disabled",
         badge: "AUTO",
     },
+    settings: {
+        title: "Settings",
+        storyboard: "Storyboards",
+        video: "Videos",
+        blur: "Blur effects",
+        backgroundDim: "Background image dimming",
+        dimHint:
+            "0% is brightest, 100% is darkest. Does not dim videos or storyboards.",
+        backgroundBlur: "Background image blur strength",
+        dynamicColors: "Dynamic colors",
+        decoupledRendering: "Decouple logic and rendering (experimental)",
+        experimentalHint:
+            "Logic uses an independent 240Hz fixed-step scheduler; rendering follows the display. Both still run on the main thread. Severe stalls skip some catch-up steps; power use may increase.",
+        close: "Done",
+    },
     menu: {
         awaitingChart: "Waiting for your beatmap",
         importPrompt: "Import a beatmap to start playing",

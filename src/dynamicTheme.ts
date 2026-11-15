@@ -1,5 +1,6 @@
 import { removeColorScheme, setColorScheme } from "./vendor/mdui.js";
 import { resetRuntimeThemeColors, setRuntimeThemeColors } from "./theme.ts";
+import { getSettings, onSettingsChange } from "./settings.ts";
 
 const DEFAULT_THEME_COLOR = "#0b1416";
 const SAMPLE_SIZE = 64;
@@ -7,6 +8,8 @@ const HUE_BINS = 12;
 
 let requestId = 0;
 let activeBackground: string | null = null;
+let requestedBackground: string | null = null;
+let requestedImage: HTMLImageElement | null = null;
 let sampleCanvas: HTMLCanvasElement | null = null;
 let sampleContext: CanvasRenderingContext2D | null = null;
 
@@ -204,6 +207,12 @@ export async function applyThemeFromBackground(
     backgroundUrl: string | null | undefined,
     image?: HTMLImageElement | null,
 ): Promise<void> {
+    requestedBackground = backgroundUrl || null;
+    requestedImage = image || null;
+    if (!getSettings().dynamicColors) {
+        clearTheme();
+        return;
+    }
     const url = backgroundUrl || null;
     if (url === activeBackground) return;
 
@@ -241,9 +250,23 @@ export async function applyThemeFromBackground(
 }
 
 export function resetThemeFromBackground(): void {
+    requestedBackground = null;
+    requestedImage = null;
+    clearTheme();
+}
+
+function clearTheme(): void {
     requestId += 1;
     activeBackground = null;
     removeColorScheme();
     resetRuntimeThemeColors();
     updateThemeMeta(null);
 }
+
+let dynamicColorsEnabled = getSettings().dynamicColors;
+onSettingsChange((settings) => {
+    if (dynamicColorsEnabled === settings.dynamicColors) return;
+    dynamicColorsEnabled = settings.dynamicColors;
+    if (!dynamicColorsEnabled) clearTheme();
+    else void applyThemeFromBackground(requestedBackground, requestedImage);
+});

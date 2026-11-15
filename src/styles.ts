@@ -3,6 +3,15 @@ import "../node_modules/mdui/mdui.css";
 const STYLE_ID = "nowjs-mdui-styles";
 
 const BASE_CSS = `
+    .now-settings-dialog { --mdui-dialog-max-width: 560px; }
+    .now-settings-content { display: grid; gap: 18px; min-width: 0; padding: 4px 6px 4px 0; }
+    .now-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; cursor: pointer; }
+    .now-setting-row mdui-switch { flex-shrink: 0; }
+    .now-setting-hint { margin: 0; font-size: 12px; line-height: 1.6; opacity: .7; }
+    .now-setting-slider { display: grid; gap: 10px; }
+    .now-setting-slider > span:first-child { display: flex; justify-content: space-between; gap: 16px; }
+    .now-setting-slider input { width: 100%; margin: 4px 0; accent-color: rgb(var(--mdui-color-primary)); }
+    .now-setting-slider:has(input:disabled) { opacity: .45; }
     :root {
         color-scheme: dark;
 
@@ -1415,6 +1424,8 @@ const BASE_CSS = `
     }
 
     @media (max-width: 600px) {
+        .now-brand { gap: 8px; }
+        .now-brand-copy p { display: none; }
         .now-menu-screen {
             padding: 8px 16px 16px;
         }

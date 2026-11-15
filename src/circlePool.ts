@@ -265,8 +265,6 @@ class CirclePool {
                     continue;
                 }
 
-                circle.y = this.yFor(circle, chartTime);
-
                 if (window.autoPlay && !circle.hasJudged && delta >= 0) {
                     // Auto play should not lose notes when a slow frame
                     // skips over the hit window; it presses as soon as the
@@ -284,8 +282,6 @@ class CirclePool {
                 }
                 continue;
             }
-
-            circle.y = this.yFor(circle, chartTime);
 
             if (
                 !circle.hasJudged &&
@@ -393,8 +389,6 @@ class CirclePool {
     }
 
     updateHold(circle, chartTime) {
-        this.refreshHoldVisual(circle, chartTime);
-
         if (window.autoPlay) {
             if (chartTime >= circle.note.holdEndTime) {
                 this.performHoldTailHit(circle);
@@ -406,6 +400,13 @@ class CirclePool {
         // release inside the tail window, like osu!mania.
         if (chartTime > circle.note.holdEndTime + CATCH_WINDOW_MS) {
             this.failHoldTail(circle);
+        }
+    }
+
+    render(chartTime) {
+        for (const circle of this.activeCircles) {
+            if (circle.holdActive) this.refreshHoldVisual(circle, chartTime);
+            else circle.y = this.yFor(circle, chartTime);
         }
     }
 

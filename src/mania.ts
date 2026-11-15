@@ -290,7 +290,7 @@ window.addEventListener("blur", () => {
     resetInput();
 });
 
-export function updateMania(chartTime: number, deltaMS: number): void {
+export function updateManiaLogic(chartTime: number): void {
     if (!maniaActive) return;
 
     const playing = window.gameState === "playing" && !window.isPaused;
@@ -314,7 +314,11 @@ export function updateMania(chartTime: number, deltaMS: number): void {
             }
         }
     }
+}
 
+export function updateMania(deltaMS: number): void {
+    if (!maniaActive) return;
+    const playing = window.gameState === "playing" && !window.isPaused;
     const deltaSeconds = Math.min(Math.max(deltaMS, 0), 100) / 1000;
 
     for (const plate of plates) {

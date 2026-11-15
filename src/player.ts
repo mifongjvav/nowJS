@@ -1,6 +1,7 @@
 import * as PIXI from "./vendor/pixi.js";
 import { BlurFilter } from "./vendor/pixi.js";
 import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
+import { getSettings, onSettingsChange } from "./settings.ts";
 
 const app = window.app;
 const WIDTH = window.gameWidth;
@@ -13,13 +14,17 @@ const playerH = 20 * SCALE;
 const player = new PIXI.Container();
 
 const glow = new PIXI.Graphics();
-glow.filters = [
+const glowFilters = [
     new BlurFilter({
         strength: 8 * SCALE,
         quality: 5,
         kernelSize: 9,
     }),
 ];
+glow.filters = getSettings().blur ? glowFilters : null;
+onSettingsChange((settings) => {
+    glow.filters = settings.blur ? glowFilters : null;
+});
 
 const body = new PIXI.Graphics();
 const accent = new PIXI.Graphics();

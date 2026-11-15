@@ -24,6 +24,7 @@ import {
     resetAutoPlayMotion,
     toggleAutoPlay,
     updateAutoPlay,
+    renderAutoPlay,
 } from "./autoplay.ts";
 import {
     pauseMedia,
@@ -33,14 +34,22 @@ import {
     startMedia,
     stopMedia,
     updateMedia,
+    updateMediaSamples,
 } from "./background.ts";
-import { resetManiaInput, setManiaMode, updateMania } from "./mania.ts";
+import {
+    resetManiaInput,
+    setManiaMode,
+    updateMania,
+    updateManiaLogic,
+} from "./mania.ts";
 import {
     beginBreakOverlay,
     resetBreakOverlay,
     updateBreakOverlay,
 } from "./breakOverlay.ts";
 import { resetCatcherColor } from "./player.ts";
+import { FixedStepClock } from "./fixedStepClock.ts";
+import { getSettings, onSettingsChange } from "./settings.ts";
 
 const app = window.app;
 
@@ -57,6 +66,8 @@ let sectionStartHits = 0;
 let sectionStartMisses = 0;
 let breakResults = [];
 let finalBreakStateApplied = false;
+const logicClock = new FixedStepClock(240);
+let logicTimer: ReturnType<typeof setInterval> | null = null;
 
 initSongSelect();
 
@@ -75,6 +86,8 @@ function startGame() {
         ui.showToast(i18n.toast.noChart);
         return;
     }
+    isSeeking = false;
+    seekHasAudio = false;
 
     ui.hideMenu();
     ui.hidePause();
@@ -101,6 +114,7 @@ function startGame() {
     const leadIn = Math.max(noteLeadIn, storyboardLeadIn);
     chartTime = -leadIn;
     lastFrameTime = performance.now();
+    logicClock.reset(lastFrameTime);
     window.chartTime = chartTime;
     nextNoteIndex = 0;
     endHandled = false;
@@ -115,6 +129,7 @@ function startGame() {
     startMedia(chartTime);
 
     if (musicStarted) playMusic();
+    syncLogicScheduler();
 }
 
 function resetStoryboardSections(time) {
@@ -174,6 +189,7 @@ function pauseGame(silent = false) {
     }
 
     window.isPaused = true;
+    syncLogicScheduler();
     pauseMusic();
     pauseMedia();
     stopSpinnerLoop();
@@ -198,7 +214,9 @@ function resumeGame() {
     resumeMusic();
     resumeMedia();
     lastFrameTime = performance.now();
+    logicClock.reset(lastFrameTime);
     ui.hidePause();
+    syncLogicScheduler();
 }
 
 function beginGameSeek() {
@@ -212,6 +230,7 @@ function beginGameSeek() {
     }
 
     isSeeking = true;
+    syncLogicScheduler();
     seekHasAudio = Boolean(window.currentChart?.audioUrl);
     pauseMusic();
     pauseMedia();
@@ -249,6 +268,7 @@ function finishGameSeek(progress) {
     chartTime = Math.max(0, Math.min(1, progress)) * chart.endTime;
     window.chartTime = chartTime;
     lastFrameTime = performance.now();
+    logicClock.reset(lastFrameTime);
     endHandled = false;
     nextNoteIndex = lowerBoundNote(chartTime + CATCH_WINDOW_MS);
     musicStarted = chartTime >= 0;
@@ -275,6 +295,7 @@ function finishGameSeek(progress) {
 
     resumeMedia();
     ui.updateHudProgress(chartTime / Math.max(1, chart.endTime));
+    syncLogicScheduler();
 }
 
 function restartGame() {
@@ -291,6 +312,7 @@ function endGame() {
     endHandled = true;
 
     window.gameState = "ended";
+    syncLogicScheduler();
     window.isPaused = false;
     stopMusic();
     stopPauseLoop();
@@ -317,6 +339,8 @@ function endGame() {
 }
 
 function exitToMenu() {
+    isSeeking = false;
+    seekHasAudio = false;
     stopMusic();
     stopPauseLoop();
     stopSpinnerLoop();
@@ -331,6 +355,7 @@ function exitToMenu() {
     setManiaMode(null);
 
     window.gameState = "menu";
+    syncLogicScheduler();
     window.isPaused = false;
     window.chartTime = 0;
     window.gameplayLayer.visible = false;
@@ -345,6 +370,7 @@ function exitToMenu() {
 
 window.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
+    if (document.querySelector("#now-settings[open]")) return;
     if (window.gameState !== "playing") return;
 
     if (window.isPaused) {
@@ -376,33 +402,30 @@ window.addEventListener("blur", () => {
     pauseGame(true);
 });
 
-app.ticker.add((ticker) => {
-    updateComboPosition();
-    animateComboScale();
-
-    if (window.gameState !== "playing" || window.isPaused || isSeeking) return;
+function updateLogic(elapsedMs: number): boolean | void {
+    if (window.gameState !== "playing" || window.isPaused || isSeeking)
+        return false;
 
     const chart = window.currentChart;
-    if (!chart) return;
+    if (!chart) return false;
 
     // Pixi's deltaMS is capped (and speed-scaled). Using it as the song clock
     // makes music/video run ahead on slow frames, causing repeated video seeks.
-    const now = performance.now();
-    chartTime += now - lastFrameTime;
-    lastFrameTime = now;
-    const delta = Math.min(ticker.deltaMS, 250);
+    chartTime += elapsedMs;
+    const delta = Math.min(elapsedMs, 250);
 
+    let rebased = false;
     if (!musicStarted && chartTime >= 0) {
         musicStarted = true;
         // Audio starts here, not at the previous frame's lead-in boundary.
         chartTime = 0;
         playMusic();
+        rebased = true;
     }
     window.chartTime = chartTime;
 
     updateStoryboardSections(chartTime);
-    updateBreakOverlay(chartTime);
-    updateMedia(chartTime);
+    updateMediaSamples(chartTime);
 
     while (
         nextNoteIndex < chart.notes.length &&
@@ -415,7 +438,7 @@ app.ticker.add((ticker) => {
     if (!chart.mania) {
         updateAutoPlay(chartTime, delta);
     }
-    updateMania(chartTime, delta);
+    updateManiaLogic(chartTime);
     circlePool.update(chartTime);
 
     const bananasActive = circlePool.activeCircles.some(
@@ -431,9 +454,78 @@ app.ticker.add((ticker) => {
     }
     bananasActiveLastFrame = bananasActive;
 
-    ui.updateHudProgress(chartTime / Math.max(1, chart.endTime));
-
     if (chartTime >= chart.endTime) {
         endGame();
+        return false;
     }
+    if (rebased) return false;
+}
+
+function syncLogicScheduler(): void {
+    const enabled =
+        getSettings().decoupledRendering &&
+        window.gameState === "playing" &&
+        !window.isPaused &&
+        !isSeeking;
+    if (enabled && logicTimer === null) {
+        logicClock.reset(lastFrameTime);
+        logicTimer = setInterval(() => {
+            if (
+                window.gameState !== "playing" ||
+                window.isPaused ||
+                isSeeking
+            ) {
+                syncLogicScheduler();
+                return;
+            }
+            const now = performance.now();
+            logicClock.advance(now, updateLogic);
+            lastFrameTime = now;
+        }, logicClock.stepMs);
+    } else if (!enabled && logicTimer !== null) {
+        clearInterval(logicTimer);
+        logicTimer = null;
+        logicClock.reset(performance.now());
+    }
+}
+
+let wasDecoupled = getSettings().decoupledRendering;
+onSettingsChange((settings) => {
+    if (wasDecoupled === settings.decoupledRendering) return;
+    wasDecoupled = settings.decoupledRendering;
+    lastFrameTime = performance.now();
+    logicClock.reset(lastFrameTime);
+    syncLogicScheduler();
+});
+
+app.ticker.add((ticker) => {
+    syncLogicScheduler();
+    updateComboPosition();
+    animateComboScale();
+    if (window.gameState !== "playing" || window.isPaused || isSeeking) return;
+
+    const now = performance.now();
+    if (!getSettings().decoupledRendering) {
+        updateLogic(Math.max(0, now - lastFrameTime));
+        lastFrameTime = now;
+    }
+    if (window.gameState !== "playing") return;
+
+    // Extrapolate only the note display between fixed ticks. Judgement and
+    // window.chartTime always use the simulated time, never this render time.
+    const renderTime =
+        chartTime +
+        (getSettings().decoupledRendering
+            ? Math.min(
+                  logicClock.stepMs * 2,
+                  logicClock.remainder + Math.max(0, now - lastFrameTime),
+              )
+            : 0);
+    circlePool.render(renderTime);
+    renderAutoPlay();
+    updateMania(ticker.deltaMS);
+    updateBreakOverlay(renderTime);
+    updateMedia(renderTime);
+    const chart = window.currentChart;
+    if (chart) ui.updateHudProgress(chartTime / Math.max(1, chart.endTime));
 });

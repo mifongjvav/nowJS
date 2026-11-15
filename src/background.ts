@@ -3,11 +3,11 @@ import { BlurFilter } from "./vendor/pixi.js";
 import { MD3_COLORS } from "./theme.ts";
 import { i18n } from "./i18n/index.ts";
 import { StoryboardPlayer } from "./storyboard.ts";
+import { getSettings, onSettingsChange } from "./settings.ts";
 
 const WIDTH = window.gameWidth;
 const HEIGHT = window.gameHeight;
 
-const BASE_DIM = 0.48;
 const MEDIA_DIM = 0.3;
 const VIDEO_SEEK_THRESHOLD = 1;
 const VIDEO_SEEK_INTERVAL_MS = 2000;
@@ -32,6 +32,9 @@ let letterbox = null;
 let currentUrl = null;
 let currentImage = null;
 let currentBlur = true;
+let currentBlurStrength = -1;
+let requestedVideo = null;
+let requestedStoryboard = null;
 let loadToken = 0;
 let mediaStarted = false;
 let mediaPaused = true;
@@ -66,7 +69,7 @@ function ensureLayers() {
     dimmer
         .rect(0, 0, WIDTH, HEIGHT)
         .fill({ color: MD3_COLORS.scrim, alpha: 1 });
-    dimmer.alpha = BASE_DIM;
+    dimmer.alpha = getSettings().backgroundDim / 100;
     dimmer.visible = false;
     dimmer.zIndex = 1;
 
@@ -82,13 +85,11 @@ function ensureLayers() {
     overlayLayer.addChild(letterbox);
 }
 
-function hasMedia() {
-    return Boolean((videoElement && !videoFailed) || storyboardPlayer);
-}
-
 function updateDimmer() {
     if (!dimmer) return;
-    dimmer.alpha = hasMedia() ? MEDIA_DIM : BASE_DIM;
+    dimmer.alpha = videoSprite?.visible
+        ? MEDIA_DIM
+        : getSettings().backgroundDim / 100;
     dimmer.visible = Boolean(sprite?.visible || videoSprite?.visible);
 }
 
@@ -145,7 +146,7 @@ function createBlurredBackgroundTexture(texture) {
     temporarySprite.scale.set(coverScale);
 
     const blurFilter = new BlurFilter({
-        strength: 10 * (window.gameScale || 1),
+        strength: getSettings().backgroundBlur * (window.gameScale || 1),
         quality: 6,
         kernelSize: 13,
     });
@@ -186,10 +187,12 @@ function setVideoSpriteSize() {
     videoSprite.position.set(WIDTH / 2, HEIGHT / 2);
 }
 
-export async function setBackground(url, options = {}) {
+export async function setBackground(url) {
     ensureLayers();
 
-    const blur = options.blur !== false;
+    const settings = getSettings();
+    const blur = settings.blur && settings.backgroundBlur > 0;
+    const blurStrength = settings.backgroundBlur;
     const token = ++loadToken;
 
     if (!url) {
@@ -200,7 +203,11 @@ export async function setBackground(url, options = {}) {
         return;
     }
 
-    if (url === currentUrl && blur === currentBlur && sprite.visible) {
+    if (
+        url === currentUrl &&
+        blur === currentBlur &&
+        blurStrength === currentBlurStrength
+    ) {
         return;
     }
 
@@ -249,6 +256,7 @@ export async function setBackground(url, options = {}) {
         }
         currentUrl = url;
         currentBlur = blur;
+        currentBlurStrength = blurStrength;
         updateBackgroundVisibility();
     } catch (error) {
         if (token !== loadToken) return;
@@ -265,6 +273,7 @@ export function getBackgroundImage(): HTMLImageElement | null {
 }
 
 export function clearVideo() {
+    requestedVideo = null;
     ensureLayers();
 
     const video = videoElement;
@@ -307,12 +316,19 @@ export function setVideo(url, offset = 0) {
         return;
     }
 
-    if (videoElement && videoElement.dataset.url === url) {
+    if (
+        getSettings().video &&
+        videoElement &&
+        videoElement.dataset.url === url
+    ) {
         videoOffset = offset || 0;
+        requestedVideo = { url, offset };
         return;
     }
 
     clearVideo();
+    requestedVideo = { url, offset };
+    if (!getSettings().video) return;
 
     const video = document.createElement("video");
     video.dataset.url = url;
@@ -359,6 +375,7 @@ export function setVideo(url, offset = 0) {
 }
 
 export function clearStoryboard() {
+    requestedStoryboard = null;
     if (!storyboardPlayer) {
         storyboardWidescreen = true;
         updateLetterbox();
@@ -386,7 +403,12 @@ export function setStoryboard(data, options = {}) {
         return;
     }
 
-    if (storyboardPlayer && storyboardData === data) {
+    if (
+        getSettings().storyboard &&
+        storyboardPlayer &&
+        storyboardData === data
+    ) {
+        requestedStoryboard = { data, options };
         storyboardReplacesBackground = Boolean(options.replacesBackground);
         storyboardWidescreen = Boolean(options.widescreen);
         updateLetterbox();
@@ -394,6 +416,8 @@ export function setStoryboard(data, options = {}) {
     }
 
     clearStoryboard();
+    requestedStoryboard = { data, options };
+    if (!getSettings().storyboard) return;
 
     storyboardData = data;
     storyboardReplacesBackground = Boolean(options.replacesBackground);
@@ -641,7 +665,7 @@ export function stopMedia() {
     updateBackgroundVisibility();
 }
 
-export function updateMedia(time) {
+export function updateMediaSamples(time) {
     if (!mediaStarted) return;
 
     if (time < lastMediaTime - 1) {
@@ -655,11 +679,19 @@ export function updateMedia(time) {
     ) {
         const sample = mediaSamples[nextSampleIndex];
         nextSampleIndex += 1;
-        if (!mediaPaused && isSampleAudible(sample)) {
+        if (
+            !mediaPaused &&
+            getSettings().storyboard &&
+            isSampleAudible(sample)
+        ) {
             playSample(sample);
         }
     }
     lastMediaTime = time;
+}
+
+export function updateMedia(time) {
+    if (!mediaStarted) return;
 
     if (storyboardPlayer) {
         storyboardPlayer.update(time);
@@ -737,3 +769,33 @@ export function updateMedia(time) {
         }
     }
 }
+
+let previousSettings = getSettings();
+let blurUpdateTimer: ReturnType<typeof setTimeout> | null = null;
+onSettingsChange((settings) => {
+    const previous = previousSettings;
+    previousSettings = settings;
+    if (previous.video !== settings.video && requestedVideo) {
+        const { url, offset } = requestedVideo;
+        setVideo(url, offset);
+    }
+    if (previous.storyboard !== settings.storyboard) {
+        if (!settings.storyboard) stopActiveSamples();
+        if (requestedStoryboard) {
+            const { data, options } = requestedStoryboard;
+            setStoryboard(data, options);
+        }
+    }
+    if (
+        previous.blur !== settings.blur ||
+        previous.backgroundBlur !== settings.backgroundBlur
+    ) {
+        if (blurUpdateTimer !== null) clearTimeout(blurUpdateTimer);
+        blurUpdateTimer = setTimeout(() => {
+            blurUpdateTimer = null;
+            if (currentUrl) void setBackground(currentUrl);
+        }, 100);
+    }
+    updateDimmer();
+    updateBackgroundVisibility();
+});

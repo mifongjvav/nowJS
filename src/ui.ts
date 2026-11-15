@@ -1,5 +1,6 @@
 import { snackbar } from "./vendor/mdui.js";
 import { injectBaseStyles } from "./styles.ts";
+import { initSettingsMenu } from "./settingsMenu.ts";
 import { readStorage } from "./storage.ts";
 import { RESOLUTIONS, showResolutionSelector } from "./resolution.ts";
 import {
@@ -121,6 +122,9 @@ root.innerHTML = `
                 </div>
             </div>
             <div class="now-top-actions">
+                <mdui-button-icon id="now-settings-btn" aria-label="${i18n.settings.title}" data-i18n-aria-label="settings.title">
+                    <mdui-icon-settings aria-hidden="true"></mdui-icon-settings>
+                </mdui-button-icon>
                 <mdui-dropdown>
                     <mdui-button-icon
                         slot="trigger"
@@ -429,6 +433,7 @@ root.innerHTML = `
 `;
 
 document.body.appendChild(root);
+initSettingsMenu(root);
 
 const menu = root.querySelector("#now-menu");
 const songCover = root.querySelector("#now-song-cover");
@@ -456,6 +461,7 @@ const licenseText = root.querySelector("#now-license-text");
 const licenseClose = root.querySelector("#now-license-close");
 
 const pauseDialog = root.querySelector("#now-pause");
+const settingsDialog = root.querySelector("#now-settings");
 const resultsDialog = root.querySelector("#now-results");
 const difficultyDialog = root.querySelector("#now-difficulty");
 const difficultyList = root.querySelector("#now-difficulty-list");
@@ -550,10 +556,15 @@ document.addEventListener("click", (event) => {
     }
 });
 
-for (const dialog of [pauseDialog, difficultyDialog]) {
+for (const dialog of [pauseDialog, difficultyDialog, settingsDialog]) {
     dialog.addEventListener("opened", () => playUiDialogOpen());
 }
-for (const dialog of [pauseDialog, resultsDialog, difficultyDialog]) {
+for (const dialog of [
+    pauseDialog,
+    resultsDialog,
+    difficultyDialog,
+    settingsDialog,
+]) {
     dialog.addEventListener("closed", () => playUiDialogClose());
 }
 

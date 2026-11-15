@@ -26,6 +26,20 @@ export default {
         disabled: "自动游玩已关闭",
         badge: "自动",
     },
+    settings: {
+        title: "设置",
+        storyboard: "故事板",
+        video: "视频",
+        blur: "模糊效果",
+        backgroundDim: "背景图片亮度（遮罩）",
+        dimHint: "0% 最亮，100% 最暗；不影响视频和故事板。",
+        backgroundBlur: "背景图片模糊程度",
+        dynamicColors: "动态配色",
+        decoupledRendering: "解耦合逻辑渲染帧（实验性）",
+        experimentalHint:
+            "逻辑以 240Hz 固定步长独立调度，画面随屏幕刷新。仍运行于主线程，严重卡顿时会跳过部分补帧；可能增加耗电。",
+        close: "完成",
+    },
     menu: {
         awaitingChart: "等待你的谱面",
         importPrompt: "导入谱面，开始演奏",
