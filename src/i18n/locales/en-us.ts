@@ -39,7 +39,7 @@ export default {
         dropHint:
             "Drag and drop .osz / .osu here (.osu can include audio and a background image)",
         playHint:
-            "Move the mouse to catch fruit · Esc to pause · A for auto play · Imported beatmaps sync with the music",
+            "Move the mouse to catch fruit · Esc to pause · A for auto play · mania beatmaps are converted to 4K and played with D F J K",
         importedBadge: "Imported",
         multipleFiles: "{{name}} (+{{count}} files)",
         chartReady: "Beatmap ready",
@@ -52,6 +52,7 @@ export default {
         duration: "Length",
         difficulty: "Difficulty",
         mapper: "Mapper",
+        mode: "Mode",
     },
     unknown: {
         title: "Unknown track",
@@ -83,6 +84,7 @@ export default {
         defaultName: "Difficulty {{index}}",
         bpm: "{{bpm}} BPM",
         objects: "{{count}} objects",
+        maniaConverted: "mania {{keys}}K → 4K",
         cancel: "Cancel",
     },
     loading: {
@@ -98,6 +100,9 @@ export default {
         importFailed: "Import failed: {{message}}",
         presetFailed: "Failed to load preset pack: {{message}}",
         noChart: "Import a beatmap first.",
+        maniaDetected: "osu!mania beatmap detected: {{keys}}K",
+        maniaConverted:
+            "osu!mania beatmap detected: {{keys}}K converted to {{laneCount}}K",
         resolutionNextLaunch:
             "Resolution saved. It will take effect the next time you open this work.",
     },

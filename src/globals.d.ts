@@ -29,6 +29,7 @@ declare global {
     interface CirclePoolController {
         activeCircles: GameCircle[];
         spawnNote(note: CatchNote, chartTime: number): GameCircle;
+        pressLane(lane: number, chartTime: number): boolean;
         releaseAll(): void;
         update(chartTime: number): void;
     }

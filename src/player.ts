@@ -67,6 +67,7 @@ window.playerWidth = playerW;
 function movePlayer(clientX) {
     if (window.gameState !== "playing" || window.isPaused) return;
     if (window.autoPlay) return;
+    if (window.currentChart && window.currentChart.mania) return;
 
     const rect = app.canvas.getBoundingClientRect();
     if (!rect.width) return;

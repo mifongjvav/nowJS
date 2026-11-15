@@ -597,6 +597,14 @@ export function setSong(chart: GameChart | null): void {
     );
     if (metadata.version) addMeta(i18n.meta.difficulty, metadata.version);
     if (metadata.creator) addMeta(i18n.meta.mapper, metadata.creator);
+    if (currentSong.mania) {
+        addMeta(
+            i18n.meta.mode,
+            currentSong.mania.sourceKeys === currentSong.mania.laneCount
+                ? `osu!mania ${currentSong.mania.laneCount}K`
+                : `osu!mania ${currentSong.mania.sourceKeys}K → ${currentSong.mania.laneCount}K`,
+        );
+    }
 
     startBtn.disabled = false;
     startLabel.textContent = i18n.menu.start;
@@ -821,6 +829,14 @@ export function pickDifficulty(
                 metadata.version ||
                 format(i18n.difficulty.defaultName, { index: index + 1 });
             const creator = metadata.creator || i18n.unknown.mapper;
+            const maniaInfo =
+                item.mode === 3
+                    ? item.maniaSourceKeys && item.maniaSourceKeys !== 4
+                        ? ` · ${format(i18n.difficulty.maniaConverted, {
+                              keys: item.maniaSourceKeys,
+                          })}`
+                        : " · osu!mania 4K"
+                    : "";
             const row = document.createElement("mdui-list-item");
 
             row.setAttribute(
@@ -833,7 +849,7 @@ export function pickDifficulty(
                     bpm: Math.round(item.bpm),
                 })} · ${format(i18n.difficulty.objects, {
                     count: item.objectCount,
-                })}`,
+                })}${maniaInfo}`,
             );
 
             const chevron = document.createElement("mdui-icon-chevron-right");

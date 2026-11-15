@@ -33,6 +33,7 @@ import {
     stopMedia,
     updateMedia,
 } from "./background.ts";
+import { resetManiaInput, setManiaMode, updateMania } from "./mania.ts";
 
 const app = window.app;
 
@@ -80,6 +81,7 @@ function startGame() {
         window.player.x = (window.gameWidth - window.playerWidth) / 2;
     }
     resetAutoPlayMotion();
+    setManiaMode(chart.mania || null);
 
     const noteLeadIn = Math.max(0, chart.preemptMs - chart.firstNoteTime);
     const storyboardLeadIn = Math.max(0, -(chart.storyboardStartTime || 0));
@@ -116,6 +118,7 @@ function pauseGame(silent = false) {
     pauseMedia();
     stopSpinnerLoop();
     stopGameplaySounds();
+    resetManiaInput();
     bananasActiveLastFrame = false;
 
     if (silent) {
@@ -153,6 +156,7 @@ function beginGameSeek() {
     pauseMusic();
     pauseMedia();
     stopSpinnerLoop();
+    resetManiaInput();
     bananasActiveLastFrame = false;
     circlePool.releaseAll();
     resetAutoPlayMotion();
@@ -194,6 +198,7 @@ function finishGameSeek(progress) {
     resetStats();
     resetAutoPlayMotion();
     circlePool.releaseAll();
+    resetManiaInput();
     stopSpinnerLoop();
     bananasActiveLastFrame = false;
 
@@ -233,6 +238,7 @@ function endGame() {
     pauseMedia();
     circlePool.releaseAll();
     resetAutoPlayMotion();
+    resetManiaInput();
     ui.hideHud();
 
     const total = window.hitCount + window.missCount;
@@ -258,6 +264,8 @@ function exitToMenu() {
     circlePool.releaseAll();
     resetStats();
     resetAutoPlayMotion();
+    resetManiaInput();
+    setManiaMode(null);
 
     window.gameState = "menu";
     window.isPaused = false;
@@ -339,7 +347,10 @@ app.ticker.add((ticker) => {
         nextNoteIndex += 1;
     }
 
-    updateAutoPlay(chartTime, delta);
+    if (!chart.mania) {
+        updateAutoPlay(chartTime, delta);
+    }
+    updateMania(chartTime, delta);
     circlePool.update(chartTime);
 
     const bananasActive = circlePool.activeCircles.some(

@@ -318,7 +318,7 @@ function parseHitObjects(
         const hitSampleValue =
             type & 2
                 ? parts[10] || ""
-                : type & 8
+                : type & 8 || type & 128
                   ? parts[6] || ""
                   : parts[5] || "";
         const hitSample = parseHitSample(hitSampleValue);
@@ -385,6 +385,9 @@ function parseHitObjects(
                     buildSliderNodeSamples(object, timingSample, nodeIndex),
             );
         } else if (type & 8) {
+            object.endTime = Math.max(time, parseNumber(parts[5], time));
+        } else if (type & 128) {
+            // osu!mania hold note: x,y,time,type,hitSound,endTime,hitSample
             object.endTime = Math.max(time, parseNumber(parts[5], time));
         }
 
@@ -878,7 +881,161 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
         metadata: beatmap.metadata,
         difficulty: beatmap.difficulty,
         mode: beatmap.general.mode,
+        mania: null,
     };
+}
+
+const MANIA_LANE_COUNT = 4;
+const MANIA_KEY_LABELS = ["D", "F", "J", "K"];
+const MANIA_CHORD_TOLERANCE_MS = 1;
+
+function getManiaSourceKeys(beatmap: ParsedBeatmap): number {
+    // The key count of a mania beatmap is stored in CircleSize.
+    return clamp(Math.round(beatmap.difficulty.circleSize) || 4, 1, 18);
+}
+
+function mapManiaColumn(column: number, sourceKeys: number): number {
+    if (sourceKeys <= MANIA_LANE_COUNT) {
+        // Center narrower layouts in the 4K playfield.
+        const offset = Math.round((MANIA_LANE_COUNT - sourceKeys) / 2);
+        return clamp(column + offset, 0, MANIA_LANE_COUNT - 1);
+    }
+
+    // Preserve the horizontal position of each source column and snap it to
+    // the nearest 4K lane. This keeps chords and hand balance recognizable.
+    const position = ((column + 0.5) / sourceKeys) * MANIA_LANE_COUNT;
+    return clamp(Math.round(position - 0.5), 0, MANIA_LANE_COUNT - 1);
+}
+
+interface ManiaCandidate {
+    note: CatchNote;
+    targetLane: number;
+}
+
+function resolveManiaChord(candidates: ManiaCandidate[]): CatchNote[] {
+    const used = new Set<number>();
+    const notes: CatchNote[] = [];
+
+    for (const candidate of candidates) {
+        let lane = candidate.targetLane;
+
+        if (used.has(lane)) {
+            // A wider key mode can collapse several columns onto one 4K lane.
+            // Move the extra note to the nearest free lane so simultaneous
+            // chords stay playable. More than four notes at once cannot be
+            // represented in 4K; the extra objects are folded away.
+            let bestLane = -1;
+            let bestDistance = Infinity;
+            for (let index = 0; index < MANIA_LANE_COUNT; index++) {
+                if (used.has(index)) continue;
+                const distance = Math.abs(index - lane);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestLane = index;
+                }
+            }
+            if (bestLane === -1) continue;
+            lane = bestLane;
+        }
+
+        used.add(lane);
+        notes.push({
+            ...candidate.note,
+            x: (lane + 0.5) * (512 / MANIA_LANE_COUNT),
+            lane,
+        });
+    }
+
+    return notes;
+}
+
+function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
+    const sourceKeys = getManiaSourceKeys(beatmap);
+    const notes: CatchNote[] = [];
+    const candidates: ManiaCandidate[] = [];
+    let chordStart = Number.NaN;
+
+    const flushChord = () => {
+        if (!candidates.length) return;
+        notes.push(...resolveManiaChord(candidates));
+        candidates.length = 0;
+    };
+
+    for (const object of beatmap.hitObjects) {
+        const isHold = Boolean(object.type & 128);
+        const isCircle = Boolean(object.type & 1);
+        if (!isHold && !isCircle) continue;
+
+        // osu!mania column formula from the .osu file format documentation:
+        // floor(x * keyCount / 512), clamped to the valid column range.
+        const column = clamp(
+            Math.floor((object.x * sourceKeys) / 512),
+            0,
+            sourceKeys - 1,
+        );
+        const note: CatchNote = {
+            time: Math.max(0, object.time),
+            x: 0,
+            type: "fruit",
+            scale: 1,
+            samples: object.samples || [],
+            lane: mapManiaColumn(column, sourceKeys),
+        };
+
+        if (isHold && Number.isFinite(object.endTime)) {
+            const endTime = Math.max(note.time, object.endTime);
+            if (endTime > note.time) {
+                note.holdEndTime = endTime;
+            }
+        }
+
+        if (
+            Number.isNaN(chordStart) ||
+            note.time - chordStart > MANIA_CHORD_TOLERANCE_MS
+        ) {
+            flushChord();
+            chordStart = note.time;
+        }
+
+        candidates.push({
+            note,
+            targetLane: note.lane as number,
+        });
+    }
+    flushChord();
+
+    const firstNoteTime = notes.length ? notes[0].time : 0;
+    let lastNoteTime = 0;
+    for (const note of notes) {
+        lastNoteTime = Math.max(lastNoteTime, note.holdEndTime ?? note.time);
+    }
+
+    const approachRate = beatmap.difficulty.approachRate;
+    const preemptMs = clamp(2000 - (approachRate - 5) * 70, 1300, 2150);
+
+    return {
+        notes,
+        firstNoteTime,
+        lastNoteTime,
+        bpm: Math.round(getBpm(beatmap.timingPoints)),
+        preemptMs,
+        objectCount: beatmap.hitObjects.length,
+        lengthMs: Math.max(0, lastNoteTime - firstNoteTime),
+        metadata: beatmap.metadata,
+        difficulty: beatmap.difficulty,
+        mode: beatmap.general.mode,
+        mania: {
+            sourceKeys,
+            laneCount: MANIA_LANE_COUNT,
+            keyLabels: [...MANIA_KEY_LABELS],
+        },
+    };
+}
+
+export function compileChart(beatmap: ParsedBeatmap): CompiledCatchChart {
+    return beatmap.general.mode === 3
+        ? compileManiaChart(beatmap)
+        : compileCatchChart(beatmap);
 }
 
 function normalizeArchivePath(path: string, relativeTo = ""): string | null {

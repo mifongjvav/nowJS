@@ -38,7 +38,7 @@ export default {
         presetsHint: "点击曲包即可开始导入",
         dropHint: "将 .osz / .osu 拖放到窗口中（.osu 可附带音频与背景图）",
         playHint:
-            "鼠标移动接住水果 · Esc 暂停 · A 自动游玩 · 导入的谱面会自动同步音乐",
+            "鼠标移动接住水果 · Esc 暂停 · A 自动游玩 · mania 谱面会自动转为 4K，使用 D F J K 打击",
         importedBadge: "已导入",
         multipleFiles: "{{name}} 等 {{count}} 个文件",
         chartReady: "谱面已就绪",
@@ -51,6 +51,7 @@ export default {
         duration: "时长",
         difficulty: "难度",
         mapper: "谱师",
+        mode: "模式",
     },
     unknown: {
         title: "未知曲目",
@@ -82,6 +83,7 @@ export default {
         defaultName: "难度 {{index}}",
         bpm: "{{bpm}} BPM",
         objects: "{{count}} 物件",
+        maniaConverted: "mania {{keys}}K → 4K",
         cancel: "取消",
     },
     loading: {
@@ -97,6 +99,9 @@ export default {
         importFailed: "导入失败：{{message}}",
         presetFailed: "预制曲包加载失败：{{message}}",
         noChart: "请先导入谱面",
+        maniaDetected: "检测到 osu!mania 谱面：{{keys}}K",
+        maniaConverted:
+            "检测到 osu!mania 谱面：{{keys}}K 已转换为 {{laneCount}}K",
         resolutionNextLaunch: "分辨率已保存，将在下次进入作品时生效",
     },
     error: {

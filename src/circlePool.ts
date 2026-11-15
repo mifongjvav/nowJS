@@ -55,12 +55,32 @@ class CirclePool {
         circle.x = field.left + (x / 512) * field.width;
         circle.displayRadius = RADIUS * scale;
         circle.scale.set(scale);
+
+        circle.clear();
+        if (note.holdEndTime && note.holdEndTime > note.time) {
+            const holdHeight =
+                ((note.holdEndTime - note.time) / 1000) * circle.fallSpeed;
+            const holdWidth = RADIUS * 0.72;
+            circle
+                .roundRect(
+                    -holdWidth / 2,
+                    -holdHeight,
+                    holdWidth,
+                    holdHeight,
+                    holdWidth / 2,
+                )
+                .fill(0xffffff);
+        }
+        circle.circle(0, 0, RADIUS).fill(0xffffff);
+
         circle.tint =
             note.type === "droplet"
                 ? MD3_COLORS.primary
                 : note.type === "banana"
                   ? MD3_COLORS.banana
-                  : MD3_COLORS.onSurface;
+                  : note.holdEndTime
+                    ? MD3_COLORS.primary
+                    : MD3_COLORS.onSurface;
 
         circle.y = this.yFor(circle, chartTime);
 
@@ -100,17 +120,67 @@ class CirclePool {
         return Math.abs(circle.x - playerCenter) <= catchHalfWidth;
     }
 
+    pressLane(lane, chartTime) {
+        const chart = window.currentChart;
+        if (!chart || !chart.mania) return false;
+
+        let target = null;
+        let bestDelta = Infinity;
+
+        for (const circle of this.activeCircles) {
+            if (circle.hasJudged || !circle.note) continue;
+            if (circle.note.lane !== lane) continue;
+
+            const delta = chartTime - circle.noteTime;
+            if (delta < -CATCH_WINDOW_MS || delta > CATCH_WINDOW_MS) continue;
+
+            const distance = Math.abs(delta);
+            if (distance < bestDelta) {
+                bestDelta = distance;
+                target = circle;
+            }
+        }
+
+        if (!target) return false;
+
+        this.performHit(target);
+        return true;
+    }
+
     update(chartTime) {
         if (window.gameState !== "playing" || window.isPaused) return;
 
         const player = window.player;
         if (!player) return;
+        const mania = Boolean(window.currentChart && window.currentChart.mania);
 
         for (let i = this.activeCircles.length - 1; i >= 0; i--) {
             const circle = this.activeCircles[i];
             circle.y = this.yFor(circle, chartTime);
 
             const delta = chartTime - circle.noteTime;
+
+            if (mania) {
+                // Mania notes are only collected when their lane key is
+                // pressed (or by auto play). The plates stay still, so the
+                // catch overlap test must not judge them automatically.
+                if (window.autoPlay && !circle.hasJudged && delta >= 0) {
+                    // Auto play should not lose notes when a slow frame
+                    // skips over the hit window; it presses as soon as the
+                    // note becomes due (or as late as the next frame).
+                    this.performHit(circle);
+                    continue;
+                }
+
+                if (delta > CATCH_WINDOW_MS) {
+                    if (circle.note.type === "banana") {
+                        this.release(circle);
+                    } else {
+                        this.registerMiss(circle);
+                    }
+                }
+                continue;
+            }
 
             if (
                 !circle.hasJudged &&
@@ -153,13 +223,25 @@ class CirclePool {
         const player = window.player;
         const playfieldWidth = 512 * window.gameScale;
         const leftBound = (window.gameWidth - playfieldWidth) / 2;
+        const chart = window.currentChart;
+        const lane = circle.note.lane;
+        let catcherX = player.x;
+        let catcherWidth = window.playerWidth || CATCHER_WIDTH;
+
+        if (chart && chart.mania && typeof lane === "number" && lane >= 0) {
+            const field = getPlayfield();
+            const laneWidth = field.width / chart.mania.laneCount;
+            catcherX = field.left + laneWidth * lane;
+            catcherWidth = laneWidth;
+        }
+
         const now = performance.now();
         if (now - this.lastCatchSound > 18) {
             this.lastCatchSound = now;
             playCatchSound(
                 circle.note,
-                player.x,
-                window.playerWidth || CATCHER_WIDTH,
+                catcherX,
+                catcherWidth,
                 leftBound,
                 playfieldWidth,
             );

@@ -90,10 +90,18 @@ export function showMiss() {
 export function updateComboPosition() {
     const player = window.player;
     if (player) {
-        comboText.x = player.x + 50 * SCALE;
-        comboText.y = player.y - 150 * SCALE;
-        missPopup.x = player.x + 50 * SCALE;
-        missPopup.y = player.y - 150 * SCALE;
+        const mania =
+            window.gameState === "playing" &&
+            Boolean(window.currentChart && window.currentChart.mania);
+        const centerX = mania ? window.gameWidth / 2 : player.x + 50 * SCALE;
+        const topY = mania
+            ? (window.judgeLine ? window.judgeLine.y : player.y) - 150 * SCALE
+            : player.y - 150 * SCALE;
+
+        comboText.x = centerX;
+        comboText.y = topY;
+        missPopup.x = centerX;
+        missPopup.y = topY;
     }
 }
 

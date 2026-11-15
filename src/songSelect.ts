@@ -1,5 +1,5 @@
 import {
-    compileCatchChart,
+    compileChart,
     decodeArchiveText,
     extractArchive,
     findArchiveFile,
@@ -306,6 +306,10 @@ function summarize(parsed: ParsedBeatmap, fileName: string) {
         (point) => point.uninherited && point.beatLength > 0,
     );
     const metadata = parsed.metadata;
+    const maniaSourceKeys =
+        parsed.general.mode === 3
+            ? clampManiaKeys(Math.round(parsed.difficulty.circleSize) || 4)
+            : undefined;
     return {
         metadata: {
             ...metadata,
@@ -317,7 +321,13 @@ function summarize(parsed: ParsedBeatmap, fileName: string) {
         },
         bpm: firstRed ? 60000 / firstRed.beatLength : 0,
         objectCount: parsed.hitObjects.length,
+        mode: parsed.general.mode,
+        maniaSourceKeys,
     };
+}
+
+function clampManiaKeys(keys: number): number {
+    return Math.min(18, Math.max(1, keys));
 }
 
 async function buildImportedChart(
@@ -370,7 +380,7 @@ async function buildImportedChart(
             throw new Error(i18n.error.noPlayableObjects);
         }
 
-        const compiled = compileCatchChart(parsed);
+        const compiled = compileChart(parsed);
         if (!compiled.notes.length) {
             throw new Error(i18n.error.noPlayableObjects);
         }
@@ -639,6 +649,8 @@ async function buildImportedChart(
             lastNoteTime: compiled.lastNoteTime,
             lengthMs: compiled.lengthMs,
             preemptMs: compiled.preemptMs,
+            mode: compiled.mode,
+            mania: compiled.mania,
             audioUrl,
             audioDurationMs,
             backgroundUrl,
@@ -693,6 +705,18 @@ export async function importFiles(files: File[]): Promise<void> {
         ui.hideLoading();
         ui.setSong(chart);
         ui.showMenu();
+        if (chart.mania) {
+            const maniaMessage =
+                chart.mania.sourceKeys === chart.mania.laneCount
+                    ? format(i18n.toast.maniaDetected, {
+                          keys: chart.mania.sourceKeys,
+                      })
+                    : format(i18n.toast.maniaConverted, {
+                          keys: chart.mania.sourceKeys,
+                          laneCount: chart.mania.laneCount,
+                      });
+            ui.showToast(maniaMessage, "info");
+        }
         playSongSelectConfirm();
         window.gameState = "menu";
         window.gameplayLayer.visible = false;

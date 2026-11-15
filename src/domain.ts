@@ -105,6 +105,16 @@ export interface CatchNote {
     type: CatchNoteType;
     scale: number;
     samples: CatchHitSample[];
+    /** 0-based mania lane after conversion to 4K. */
+    lane?: number;
+    /** End time of an osu!mania hold note, if this object is a hold. */
+    holdEndTime?: number;
+}
+
+export interface ManiaChartInfo {
+    sourceKeys: number;
+    laneCount: number;
+    keyLabels: string[];
 }
 
 export interface CompiledCatchChart {
@@ -118,6 +128,7 @@ export interface CompiledCatchChart {
     metadata: OsuMetadata;
     difficulty: OsuDifficulty;
     mode: number;
+    mania: ManiaChartInfo | null;
 }
 
 export interface ArchiveFile {
@@ -198,6 +209,8 @@ export interface DifficultySummary {
     metadata: OsuMetadata;
     bpm: number;
     objectCount: number;
+    mode?: number;
+    maniaSourceKeys?: number;
 }
 
 export interface GameResults {

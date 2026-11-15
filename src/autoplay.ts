@@ -251,6 +251,7 @@ export function resetAutoPlayMotion() {
 
 export function updateAutoPlay(chartTime, deltaMS) {
     if (!enabled) return;
+    if (window.currentChart && window.currentChart.mania) return;
 
     const player = window.player;
     const playerWidth = window.playerWidth;

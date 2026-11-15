@@ -5,6 +5,7 @@
 import { startApp } from "./bootstrap.ts";
 import "./player.ts";
 import "./line.ts";
+import "./mania.ts";
 import "./circlePool.ts";
 import "./stats.ts";
 import "./ui.ts";
