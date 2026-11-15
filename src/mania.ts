@@ -1,7 +1,7 @@
 import * as PIXI from "./vendor/pixi.js";
 import { circlePool } from "./circlePool.ts";
 import { getPlayfield } from "./layout.ts";
-import { MD3_COLORS } from "./theme.ts";
+import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import type { ManiaChartInfo } from "./domain.ts";
 
 const SCALE = window.gameScale;
@@ -30,17 +30,23 @@ const layer = new PIXI.Container();
 layer.visible = false;
 
 const guides = new PIXI.Graphics();
-for (let lane = 1; lane < LANE_COUNT; lane++) {
-    const x = field.left + laneWidth * lane;
-    guides
-        .rect(x - 0.5 * SCALE, 0, SCALE, judgeY)
-        .fill({ color: MD3_COLORS.onSurface, alpha: 0.08 });
+function drawGuides(): void {
+    guides.clear();
+    for (let lane = 1; lane < LANE_COUNT; lane++) {
+        const x = field.left + laneWidth * lane;
+        guides
+            .rect(x - 0.5 * SCALE, 0, SCALE, judgeY)
+            .fill({ color: MD3_COLORS.onSurface, alpha: 0.08 });
+    }
 }
+drawGuides();
 layer.addChild(guides);
 
 interface LanePlate {
+    lane: number;
     visual: PIXI.Container;
     glow: PIXI.Graphics;
+    body: PIXI.Graphics;
     accent: PIXI.Graphics;
     label: PIXI.Text;
     pressed: boolean;
@@ -49,6 +55,10 @@ interface LanePlate {
 }
 
 const plates: LanePlate[] = [];
+const laneColors: Array<number | null> = Array.from(
+    { length: LANE_COUNT },
+    () => null,
+);
 
 for (let lane = 0; lane < LANE_COUNT; lane++) {
     const container = new PIXI.Container();
@@ -101,8 +111,10 @@ for (let lane = 0; lane < LANE_COUNT; lane++) {
     container.addChild(visual, label);
     layer.addChild(container);
     plates.push({
+        lane,
         visual,
         glow,
+        body,
         accent,
         label,
         pressed: false,
@@ -123,6 +135,69 @@ gameplayLayer.addChildAt(
 );
 
 let maniaActive = false;
+
+function drawPlateAccent(plate: LanePlate): void {
+    const color = laneColors[plate.lane] ?? MD3_COLORS.primary;
+    plate.accent.clear();
+    plate.accent
+        .roundRect(
+            0,
+            PLATE_HEIGHT * 0.52,
+            plateWidth,
+            PLATE_HEIGHT * 0.48,
+            5 * SCALE,
+        )
+        .fill({ color, alpha: 1 });
+}
+
+function drawPlateBase(plate: LanePlate): void {
+    plate.glow.clear();
+    plate.glow
+        .roundRect(
+            -8 * SCALE,
+            -8 * SCALE,
+            plateWidth + 16 * SCALE,
+            PLATE_HEIGHT + 16 * SCALE,
+            12 * SCALE,
+        )
+        .fill({ color: MD3_COLORS.primary, alpha: 1 });
+
+    plate.body.clear();
+    plate.body
+        .roundRect(0, 0, plateWidth, PLATE_HEIGHT, 5 * SCALE)
+        .fill(MD3_COLORS.onSurface);
+
+    plate.label.style.fill = MD3_COLORS.onSurface;
+    drawPlateAccent(plate);
+}
+
+function drawAllPlates(): void {
+    drawGuides();
+    for (const plate of plates) {
+        drawPlateBase(plate);
+    }
+}
+
+function refreshLaneColors(): void {
+    for (let lane = 0; lane < LANE_COUNT; lane++) {
+        laneColors[lane] = null;
+    }
+
+    for (const note of window.currentChart?.notes || []) {
+        if (
+            typeof note.lane === "number" &&
+            note.lane >= 0 &&
+            note.lane < LANE_COUNT &&
+            typeof note.color === "number" &&
+            laneColors[note.lane] === null
+        ) {
+            laneColors[note.lane] = note.color;
+        }
+    }
+}
+
+drawAllPlates();
+window.addEventListener(THEME_CHANGE_EVENT, drawAllPlates);
 
 function applyPlateVisual(plate: LanePlate): void {
     const press = plate.press;
@@ -148,6 +223,16 @@ export function setManiaMode(info: ManiaChartInfo | null): void {
     if (window.player) {
         window.player.visible = !maniaActive;
     }
+
+    if (maniaActive) {
+        refreshLaneColors();
+    } else {
+        for (let lane = 0; lane < LANE_COUNT; lane++) {
+            laneColors[lane] = null;
+        }
+    }
+
+    drawAllPlates();
     resetInput();
 }
 

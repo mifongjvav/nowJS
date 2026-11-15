@@ -40,6 +40,7 @@ import {
     resetBreakOverlay,
     updateBreakOverlay,
 } from "./breakOverlay.ts";
+import { resetCatcherColor } from "./player.ts";
 
 const app = window.app;
 
@@ -93,6 +94,7 @@ function startGame() {
     }
     resetAutoPlayMotion();
     setManiaMode(chart.mania || null);
+    resetCatcherColor();
 
     const noteLeadIn = Math.max(0, chart.preemptMs - chart.firstNoteTime);
     const storyboardLeadIn = Math.max(0, -(chart.storyboardStartTime || 0));

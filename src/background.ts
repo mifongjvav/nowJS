@@ -27,6 +27,8 @@ let storyboardPlayer = null;
 let storyboardData = null;
 let storyboardReplacesBackground = false;
 let storyboardPassing = true;
+let storyboardWidescreen = true;
+let letterbox = null;
 let currentUrl = null;
 let currentImage = null;
 let currentBlur = true;
@@ -71,6 +73,13 @@ function ensureLayers() {
     layer.addChild(sprite);
     layer.addChild(videoSprite);
     layer.addChild(dimmer);
+
+    const overlayLayer = window.storyboardLayer || window.gameplayLayer;
+    overlayLayer.sortableChildren = true;
+    letterbox = new PIXI.Graphics();
+    letterbox.zIndex = 100;
+    letterbox.visible = false;
+    overlayLayer.addChild(letterbox);
 }
 
 function hasMedia() {
@@ -94,6 +103,24 @@ function updateBackgroundVisibility() {
             (storyboardReplacesBackground || videoSprite.visible)
         );
     updateDimmer();
+}
+
+function updateLetterbox() {
+    if (!letterbox) return;
+
+    const enabled =
+        mediaStarted && Boolean(storyboardPlayer) && !storyboardWidescreen;
+    const scale = HEIGHT / 480;
+    const areaWidth = 640 * scale;
+    const areaX = (WIDTH - areaWidth) / 2;
+    const barWidth = Math.max(0, areaX);
+
+    letterbox.clear();
+    letterbox.visible = enabled && barWidth > 0;
+    if (!letterbox.visible) return;
+
+    letterbox.rect(0, 0, barWidth, HEIGHT).fill(0x000000);
+    letterbox.rect(WIDTH - barWidth, 0, barWidth, HEIGHT).fill(0x000000);
 }
 
 function loadTexture(url) {
@@ -332,7 +359,11 @@ export function setVideo(url, offset = 0) {
 }
 
 export function clearStoryboard() {
-    if (!storyboardPlayer) return;
+    if (!storyboardPlayer) {
+        storyboardWidescreen = true;
+        updateLetterbox();
+        return;
+    }
 
     storyboardPlayer.backgroundContainer.removeFromParent();
     storyboardPlayer.failContainer.removeFromParent();
@@ -344,7 +375,9 @@ export function clearStoryboard() {
     storyboardData = null;
     storyboardReplacesBackground = false;
     storyboardPassing = true;
+    storyboardWidescreen = true;
     updateDimmer();
+    updateLetterbox();
 }
 
 export function setStoryboard(data, options = {}) {
@@ -355,6 +388,8 @@ export function setStoryboard(data, options = {}) {
 
     if (storyboardPlayer && storyboardData === data) {
         storyboardReplacesBackground = Boolean(options.replacesBackground);
+        storyboardWidescreen = Boolean(options.widescreen);
+        updateLetterbox();
         return;
     }
 
@@ -362,6 +397,7 @@ export function setStoryboard(data, options = {}) {
 
     storyboardData = data;
     storyboardReplacesBackground = Boolean(options.replacesBackground);
+    storyboardWidescreen = Boolean(options.widescreen);
     storyboardPlayer = new StoryboardPlayer(data, {
         fileUrls: options.fileUrls,
         backgroundFile: options.backgroundFile,
@@ -394,6 +430,7 @@ export function setStoryboard(data, options = {}) {
     overlayLayer.addChild(storyboardPlayer.overlayContainer);
 
     updateDimmer();
+    updateLetterbox();
 }
 
 export function setStoryboardPassing(passing: boolean): void {
@@ -433,6 +470,8 @@ function stopActiveSamples() {
 }
 
 function playSample(sample) {
+    if (mediaPaused) return;
+
     const audio = new Audio(sample.url);
     audio.volume = clamp((sample.volume ?? 100) / 100, 0, 1);
     audio.preload = "auto";
@@ -443,8 +482,14 @@ function playSample(sample) {
 
     activeSampleAudio.add(audio);
     const promise = audio.play();
-    if (promise && typeof promise.catch === "function") {
-        promise.catch(cleanup);
+    if (promise && typeof promise.then === "function") {
+        promise
+            .then(() => {
+                // play() is asynchronous. If the game was paused while the
+                // sample was loading, stop it as soon as it becomes playable.
+                if (mediaPaused) audio.pause();
+            })
+            .catch(cleanup);
     }
 }
 
@@ -499,6 +544,7 @@ export function startMedia(time = 0) {
         storyboardPlayer.overlayContainer.visible = true;
     }
 
+    updateLetterbox();
     updateMedia(time);
 }
 
@@ -591,6 +637,7 @@ export function stopMedia() {
         storyboardPlayer.resetTriggers();
     }
 
+    updateLetterbox();
     updateBackgroundVisibility();
 }
 

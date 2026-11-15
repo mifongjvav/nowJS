@@ -1,5 +1,5 @@
 import * as PIXI from "./vendor/pixi.js";
-import { MD3_COLORS } from "./theme.ts";
+import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import { i18n, onLanguageChange } from "./i18n/index.ts";
 
 const layer = window.statsLayer || window.gameplayLayer || window.app.stage;
@@ -12,13 +12,19 @@ window.missCount = 0;
 window.bananaCount = 0;
 
 const statsAccent = new PIXI.Graphics();
-statsAccent
-    .roundRect(14 * SCALE, 22 * SCALE, 3 * SCALE, 52 * SCALE, 2 * SCALE)
-    .fill({
-        color: MD3_COLORS.primary,
-        alpha: 0.8,
-    });
 layer.addChild(statsAccent);
+
+function drawStatsAccent(): void {
+    statsAccent.clear();
+    statsAccent
+        .roundRect(14 * SCALE, 22 * SCALE, 3 * SCALE, 52 * SCALE, 2 * SCALE)
+        .fill({
+            color: MD3_COLORS.primary,
+            alpha: 0.8,
+        });
+}
+
+drawStatsAccent();
 
 const hitText = new PIXI.Text({
     text: `${i18n.stats.hit}: 0`,
@@ -63,6 +69,17 @@ const missPopup = new PIXI.Text({
 missPopup.anchor.set(0.5);
 missPopup.visible = false;
 layer.addChild(missPopup);
+
+function applyThemeColors(): void {
+    drawStatsAccent();
+    hitText.style.fill = MD3_COLORS.onSurface;
+    missCountText.style.fill = MD3_COLORS.error;
+    comboText.style.fill = MD3_COLORS.onSurface;
+    missPopup.style.fill = MD3_COLORS.error;
+}
+
+applyThemeColors();
+window.addEventListener(THEME_CHANGE_EVENT, applyThemeColors);
 
 let comboCurrentScale = 1;
 let missCurrentScale = 1;

@@ -5,6 +5,7 @@ import { triggerStoryboardHit } from "./background.ts";
 import { getPlayfield } from "./layout.ts";
 import { MD3_COLORS } from "./theme.ts";
 import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
+import { setCatcherColor } from "./player.ts";
 
 const SCALE = window.gameScale;
 const RADIUS = 20 * SCALE;
@@ -233,7 +234,10 @@ class CirclePool {
             const endTime = circle.note.holdEndTime;
             if (!Number.isFinite(endTime)) continue;
 
-            if (chartTime >= endTime - CATCH_WINDOW_MS) {
+            if (
+                chartTime >= endTime - CATCH_WINDOW_MS &&
+                chartTime <= endTime + CATCH_WINDOW_MS
+            ) {
                 this.performHoldTailHit(circle);
             } else {
                 this.failHoldTail(circle);
@@ -305,6 +309,14 @@ class CirclePool {
     }
 
     registerMiss(circle) {
+        if (window.currentChart && !window.currentChart.mania) {
+            setCatcherColor(
+                typeof circle.note.color === "number"
+                    ? circle.note.color
+                    : null,
+            );
+        }
+
         this.release(circle);
         const now = performance.now();
         const brokeCombo = window.combo > 0;
@@ -382,8 +394,18 @@ class CirclePool {
 
     updateHold(circle, chartTime) {
         this.refreshHoldVisual(circle, chartTime);
-        if (chartTime >= circle.note.holdEndTime) {
-            this.performHoldTailHit(circle);
+
+        if (window.autoPlay) {
+            if (chartTime >= circle.note.holdEndTime) {
+                this.performHoldTailHit(circle);
+            }
+            return;
+        }
+
+        // Holding the key forever is not a tail hit: the player has to
+        // release inside the tail window, like osu!mania.
+        if (chartTime > circle.note.holdEndTime + CATCH_WINDOW_MS) {
+            this.failHoldTail(circle);
         }
     }
 
@@ -415,6 +437,14 @@ class CirclePool {
             circle.hasJudged = true;
             this.release(circle);
             return;
+        }
+
+        if (window.currentChart && !window.currentChart.mania) {
+            setCatcherColor(
+                typeof circle.note.color === "number"
+                    ? circle.note.color
+                    : null,
+            );
         }
 
         window.hitCount++;

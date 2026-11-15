@@ -1,7 +1,7 @@
 // Numeric mirrors of the nowJS palette mapped onto the MDUI/MD3 tokens in styles.js.
 // PixiJS needs numeric colors; CSS custom properties are the source of truth
 // for the HTML UI, while these values keep the in-game renderer on the same scheme.
-export const MD3_COLORS = {
+export const DEFAULT_MD3_COLORS = {
     primary: 0x7af7ff,
     onPrimary: 0x00363a,
     primaryContainer: 0x004f54,
@@ -18,4 +18,23 @@ export const MD3_COLORS = {
     onSurfaceVariant: 0xbfc8ca,
     outlineVariant: 0x3f494b,
     scrim: 0x000000,
-} as const satisfies Record<string, number>;
+} as const;
+
+export type Md3ColorKey = keyof typeof DEFAULT_MD3_COLORS;
+export type Md3Palette = Record<Md3ColorKey, number>;
+
+export const MD3_COLORS: Md3Palette = { ...DEFAULT_MD3_COLORS };
+export const THEME_CHANGE_EVENT = "nowjs-theme-change";
+
+export function setRuntimeThemeColors(
+    colors: Partial<Record<Md3ColorKey, number>>,
+): void {
+    Object.assign(MD3_COLORS, colors);
+    window.dispatchEvent(
+        new CustomEvent(THEME_CHANGE_EVENT, { detail: { ...MD3_COLORS } }),
+    );
+}
+
+export function resetRuntimeThemeColors(): void {
+    setRuntimeThemeColors(DEFAULT_MD3_COLORS);
+}

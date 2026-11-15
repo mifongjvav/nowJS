@@ -1,4 +1,5 @@
 import { removeColorScheme, setColorScheme } from "./vendor/mdui.js";
+import { resetRuntimeThemeColors, setRuntimeThemeColors } from "./theme.ts";
 
 const DEFAULT_THEME_COLOR = "#0b1416";
 const SAMPLE_SIZE = 64;
@@ -143,6 +144,57 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     });
 }
 
+function parseCssColor(value: string): number | null {
+    const parts = value
+        .trim()
+        .split(/\s*,\s*/)
+        .map((part) => Number(part));
+    if (parts.length < 3 || !parts.slice(0, 3).every(Number.isFinite)) {
+        return null;
+    }
+
+    const red = clampChannel(parts[0]);
+    const green = clampChannel(parts[1]);
+    const blue = clampChannel(parts[2]);
+    return (red << 16) | (green << 8) | blue;
+}
+
+function applyMduiPaletteToPixi(): void {
+    const style = getComputedStyle(document.documentElement);
+    const read = (name: string): number | null =>
+        parseCssColor(style.getPropertyValue(`--mdui-color-${name}`)) ??
+        parseCssColor(style.getPropertyValue(`--mdui-color-${name}-dark`));
+
+    const colors: Record<string, number> = {};
+    for (const name of [
+        "primary",
+        "on-primary",
+        "primary-container",
+        "on-primary-container",
+        "secondary",
+        "on-secondary",
+        "secondary-container",
+        "on-secondary-container",
+        "tertiary",
+        "error",
+        "surface",
+        "on-surface",
+        "on-surface-variant",
+        "outline-variant",
+    ]) {
+        const color = read(name);
+        if (color === null) continue;
+        const key = name.replace(/-([a-z])/g, (_, letter) =>
+            letter.toUpperCase(),
+        );
+        colors[key] = color;
+    }
+
+    if (Object.keys(colors).length > 0) {
+        setRuntimeThemeColors(colors);
+    }
+}
+
 function updateThemeMeta(color: string | null): void {
     const meta = document.querySelector('meta[name="theme-color"]');
     meta?.setAttribute("content", color || DEFAULT_THEME_COLOR);
@@ -160,6 +212,7 @@ export async function applyThemeFromBackground(
 
     if (!url) {
         removeColorScheme();
+        resetRuntimeThemeColors();
         updateThemeMeta(null);
         return;
     }
@@ -175,12 +228,14 @@ export async function applyThemeFromBackground(
         if (token !== requestId) return;
 
         setColorScheme(color);
+        applyMduiPaletteToPixi();
         updateThemeMeta(color);
     } catch (error) {
         if (token !== requestId) return;
         activeBackground = null;
         console.warn("无法从谱面背景提取主题色", error);
         removeColorScheme();
+        resetRuntimeThemeColors();
         updateThemeMeta(null);
     }
 }
@@ -189,5 +244,6 @@ export function resetThemeFromBackground(): void {
     requestId += 1;
     activeBackground = null;
     removeColorScheme();
+    resetRuntimeThemeColors();
     updateThemeMeta(null);
 }
