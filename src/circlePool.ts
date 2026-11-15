@@ -13,62 +13,86 @@ const CATCH_WINDOW_MS = 95;
 // Use most of the plate as the catch area while keeping a small edge margin.
 const CATCH_CENTER_RATIO = 0.9;
 
+function getOutlineColor(color) {
+    const red = (color >> 16) & 0xff;
+    const green = (color >> 8) & 0xff;
+    const blue = color & 0xff;
+    const luma = red * 0.299 + green * 0.587 + blue * 0.114;
+    return luma > 222 ? MD3_COLORS.surface : 0xffffff;
+}
+
+function shadeColor(color, amount) {
+    const red = clampColor(((color >> 16) & 0xff) * (1 + amount));
+    const green = clampColor(((color >> 8) & 0xff) * (1 + amount));
+    const blue = clampColor((color & 0xff) * (1 + amount));
+    return (red << 16) | (green << 8) | blue;
+}
+
+function clampColor(value) {
+    return Math.max(0, Math.min(255, Math.round(value)));
+}
+
 function drawNoteGraphics(circle, holdHeight, color) {
     circle.clear();
+    const outline = getOutlineColor(color);
+    const outlineWidth = 2.5 * SCALE;
 
     if (holdHeight > 0.5) {
-        // Holds use the same width as the note head and are drawn as a
-        // rounded progress bar with an outer glow and a white outline.
+        // Holds match the note-head diameter and use a clean capsule with a
+        // soft multi-layer glow and a thin outline.
         const holdWidth = RADIUS * 2;
         const barHeight = Math.max(holdHeight, holdWidth);
         const radius = holdWidth / 2;
-        const glow = 4 * SCALE;
-        const border = Math.max(2 * SCALE, RADIUS * 0.16);
-        const innerWidth = Math.max(2 * SCALE, holdWidth - border * 2);
-        const innerHeight = Math.max(2 * SCALE, barHeight - border * 2);
+        const glowLayers = [
+            { expand: 7 * SCALE, alpha: 0.04 },
+            { expand: 4.5 * SCALE, alpha: 0.06 },
+            { expand: 2.5 * SCALE, alpha: 0.09 },
+        ];
 
-        circle
-            .roundRect(
-                -radius - glow,
-                -barHeight - glow,
-                holdWidth + glow * 2,
-                barHeight + glow * 2,
-                radius + glow,
-            )
-            .fill({ color, alpha: 0.16 });
+        for (const layer of glowLayers) {
+            circle
+                .roundRect(
+                    -radius - layer.expand,
+                    -barHeight - layer.expand,
+                    holdWidth + layer.expand * 2,
+                    barHeight + layer.expand * 2,
+                    radius + layer.expand,
+                )
+                .fill({ color, alpha: layer.alpha });
+        }
+
         circle
             .roundRect(-radius, -barHeight, holdWidth, barHeight, radius)
-            .fill({ color: 0xffffff, alpha: 0.92 });
-        circle
-            .roundRect(
-                -innerWidth / 2,
-                -barHeight + border,
-                innerWidth,
-                innerHeight,
-                innerWidth / 2,
-            )
-            .fill({ color });
-
-        const coreWidth = Math.max(2 * SCALE, innerWidth * 0.34);
-        circle
-            .roundRect(
-                -coreWidth / 2,
-                -barHeight + border * 2,
-                coreWidth,
-                Math.max(0, barHeight - border * 4),
-                coreWidth / 2,
-            )
-            .fill({ color: 0xffffff, alpha: 0.14 });
+            .fill(color)
+            .stroke({
+                width: outlineWidth,
+                color: outline,
+                alpha: 0.88,
+            });
         return;
     }
 
-    circle.circle(0, 0, RADIUS * 1.28).fill({ color, alpha: 0.15 });
-    circle.circle(0, 0, RADIUS).fill({ color: 0xffffff, alpha: 0.92 });
-    circle.circle(0, 0, RADIUS * 0.8).fill({ color });
-    circle.circle(0, 0, RADIUS * 0.34).fill({ color: 0xffffff, alpha: 0.18 });
+    const glowLayers = [
+        { scale: 1.42, alpha: 0.04 },
+        { scale: 1.28, alpha: 0.06 },
+        { scale: 1.14, alpha: 0.09 },
+    ];
+
+    for (const layer of glowLayers) {
+        circle
+            .circle(0, 0, RADIUS * layer.scale)
+            .fill({ color, alpha: layer.alpha });
+    }
+
+    circle.circle(0, 0, RADIUS).fill(color).stroke({
+        width: outlineWidth,
+        color: outline,
+        alpha: 0.88,
+    });
     circle
-        .circle(-RADIUS * 0.3, -RADIUS * 0.32, RADIUS * 0.16)
-        .fill({ color: 0xffffff, alpha: 0.78 });
+        .circle(0, 0, RADIUS * 0.64)
+        .fill({ color: shadeColor(color, -0.2), alpha: 0.9 });
+    circle.circle(0, 0, RADIUS * 0.2).fill({ color: 0xffffff, alpha: 0.9 });
 }
 
 function getNoteColor(note) {
