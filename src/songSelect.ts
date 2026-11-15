@@ -25,6 +25,7 @@ import {
 import {
     clearStoryboard,
     clearVideo,
+    getBackgroundImage,
     setBackground,
     setSamples,
     setStoryboard,
@@ -290,6 +291,10 @@ async function selectChart(
         return false;
     }
 
+    // The image is already decoded for the playfield, so reuse it here
+    // instead of loading and quantising the full-size background again.
+    void applyThemeFromBackground(chart.backgroundUrl, getBackgroundImage());
+
     setSamples(chart.samples || []);
 
     if (chart.videoUrl) {
@@ -319,7 +324,6 @@ async function selectChart(
     window.currentChart = chart;
     preloadCatchSamples(chart.notes);
     ui.setSong(chart);
-    void applyThemeFromBackground(chart.backgroundUrl);
     return true;
 }
 

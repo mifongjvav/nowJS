@@ -27,6 +27,7 @@ let storyboardPlayer = null;
 let storyboardData = null;
 let storyboardReplacesBackground = false;
 let currentUrl = null;
+let currentImage = null;
 let currentBlur = true;
 let loadToken = 0;
 let mediaStarted = false;
@@ -98,7 +99,8 @@ function loadTexture(url) {
     return new Promise((resolve, reject) => {
         const image = new Image();
         image.decoding = "async";
-        image.onload = () => resolve(PIXI.Texture.from(image));
+        image.onload = () =>
+            resolve({ texture: PIXI.Texture.from(image), image });
         image.onerror = () => reject(new Error(i18n.error.backgroundLoad));
         image.src = url;
     });
@@ -164,6 +166,7 @@ export async function setBackground(url, options = {}) {
 
     if (!url) {
         currentUrl = null;
+        currentImage = null;
         sprite.visible = false;
         updateDimmer();
         return;
@@ -174,12 +177,13 @@ export async function setBackground(url, options = {}) {
     }
 
     try {
-        const sourceTexture = await loadTexture(url);
+        const { texture: sourceTexture, image } = await loadTexture(url);
         if (token !== loadToken) {
             sourceTexture.destroy(true);
             return;
         }
 
+        currentImage = image;
         let displayTexture = sourceTexture;
         let baked = false;
 
@@ -222,9 +226,14 @@ export async function setBackground(url, options = {}) {
         if (token !== loadToken) return;
         console.warn(error.message);
         currentUrl = null;
+        currentImage = null;
         sprite.visible = false;
         updateDimmer();
     }
+}
+
+export function getBackgroundImage(): HTMLImageElement | null {
+    return currentImage;
 }
 
 export function clearVideo() {
