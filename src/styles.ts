@@ -28,6 +28,7 @@ const BASE_CSS = `
     .now-thread-status [data-state="fallback"] > span:last-of-type { color: rgb(var(--mdui-color-error)); }
     .now-settings-dialog { --mdui-dialog-max-width: 560px; }
     .now-settings-content { display: grid; gap: 18px; min-width: 0; padding: 4px 6px 4px 0; }
+    .now-setting-block { display: grid; gap: 6px; }
     .now-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; cursor: pointer; }
     .now-setting-row mdui-switch { flex-shrink: 0; }
     .now-setting-hint { margin: 0; font-size: 12px; line-height: 1.6; opacity: .7; }

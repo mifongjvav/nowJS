@@ -49,6 +49,9 @@ export default {
         storyboard: "故事板",
         video: "视频",
         blur: "模糊效果",
+        photosensitive: "我是光敏性患者",
+        photosensitiveHint:
+            "带光敏性癫痫警告的谱面会自动使用至少 95% 的背景遮罩，并跳过开场警告。",
         backgroundDim: "背景亮度（遮罩）",
         dimHint:
             "0% 最亮，100% 最暗；对图片、视频及故事板生效，不影响音符与界面。",

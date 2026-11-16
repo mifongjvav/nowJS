@@ -19,18 +19,22 @@ export function initSettingsMenu(root: HTMLElement): void {
                     "storyboard",
                     "video",
                     "blur",
+                    "photosensitive",
                     "dynamicColors",
                     "decoupledRendering",
                     "multithreading",
                 ] as const
             )
-                .map(
-                    (key) => `
+                .map((key) => {
+                    const row = `
                     <label class="now-setting-row">
                         <span id="now-setting-${key}" data-i18n="settings.${key}">${i18n.settings[key]}</span>
                         <mdui-switch data-setting="${key}" aria-labelledby="now-setting-${key}"></mdui-switch>
-                    </label>`,
-                )
+                    </label>`;
+                    return key === "photosensitive"
+                        ? `<div class="now-setting-block">${row}<p class="now-setting-hint" data-i18n="settings.photosensitiveHint">${i18n.settings.photosensitiveHint}</p></div>`
+                        : row;
+                })
                 .join("")}
             <p class="now-setting-hint" data-i18n="settings.experimentalHint">${i18n.settings.experimentalHint}</p>
             <p class="now-setting-hint" data-i18n="settings.threadHint">${i18n.settings.threadHint}</p>

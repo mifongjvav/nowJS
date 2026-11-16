@@ -49,6 +49,9 @@ export default {
         storyboard: "Storyboards",
         video: "Videos",
         blur: "Blur effects",
+        photosensitive: "I am photosensitive",
+        photosensitiveHint:
+            "Charts with a photosensitivity warning use at least 95% background dimming and skip the opening notice.",
         backgroundDim: "Background dimming",
         dimHint:
             "0% is brightest, 100% is darkest. Applies to images, videos and storyboards, not notes or UI.",

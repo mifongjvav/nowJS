@@ -28,6 +28,7 @@ import {
     clearVideo,
     getBackgroundImage,
     setBackground,
+    setEpilepsyWarningChart,
     setSamples,
     setStoryboard,
     setVideo,
@@ -408,6 +409,7 @@ async function selectChart(
         revokeUrls(newUrls);
         return false;
     }
+    setEpilepsyWarningChart(chart.epilepsyWarning);
 
     // The image is already decoded for the playfield, so reuse it here
     // instead of loading and quantising the full-size background again.
@@ -1061,6 +1063,7 @@ export function showPresetMenu() {
     currentVariants = null;
     pendingVariant = null;
     window.currentChart = null;
+    setEpilepsyWarningChart(false);
     resetThemeFromBackground();
     ui.setSong(null);
     ui.hideLoading();

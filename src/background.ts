@@ -4,6 +4,7 @@ import { MD3_COLORS } from "./theme.ts";
 import { i18n } from "./i18n/index.ts";
 import { StoryboardPlayer } from "./storyboard.ts";
 import { getSettings, onSettingsChange } from "./settings.ts";
+import { effectiveBackgroundDim } from "./warningPolicy.ts";
 
 const WIDTH = window.gameWidth;
 const HEIGHT = window.gameHeight;
@@ -32,6 +33,7 @@ let currentUrl = null;
 let currentImage = null;
 let currentBlur = true;
 let currentBlurStrength = -1;
+let epilepsyWarningChart = false;
 let requestedVideo = null;
 let requestedStoryboard = null;
 let loadToken = 0;
@@ -44,6 +46,24 @@ const activeSampleAudio = new Set();
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
+}
+
+function getEffectiveDim(): number {
+    const settings = getSettings();
+    return (
+        effectiveBackgroundDim(
+            settings.backgroundDim,
+            settings.photosensitive,
+            epilepsyWarningChart,
+        ) / 100
+    );
+}
+
+export function setEpilepsyWarningChart(value: boolean): void {
+    const next = Boolean(value);
+    if (next === epilepsyWarningChart) return;
+    epilepsyWarningChart = next;
+    updateDimmer();
 }
 
 function ensureLayers() {
@@ -68,7 +88,7 @@ function ensureLayers() {
     dimmer
         .rect(0, 0, WIDTH, HEIGHT)
         .fill({ color: MD3_COLORS.scrim, alpha: 1 });
-    dimmer.alpha = getSettings().backgroundDim / 100;
+    dimmer.alpha = getEffectiveDim();
     dimmer.visible = false;
     // Above images, video (2) and all background/foreground storyboard layers
     // (3..4), but still below the separate gameplay layer.
@@ -88,7 +108,7 @@ function ensureLayers() {
 
 function updateDimmer() {
     if (!dimmer) return;
-    const dim = getSettings().backgroundDim / 100;
+    const dim = getEffectiveDim();
     dimmer.alpha = dim;
     dimmer.visible = Boolean(
         sprite?.visible ||

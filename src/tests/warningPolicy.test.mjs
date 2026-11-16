@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { shouldShowEpilepsyWarning } from "../warningPolicy.ts";
+import {
+    effectiveBackgroundDim,
+    PHOTOSENSITIVE_DIM,
+    shouldShowEpilepsyWarning,
+} from "../warningPolicy.ts";
 
 const baseChart = {
     epilepsyWarning: true,
@@ -9,6 +13,7 @@ const baseChart = {
 };
 const baseSettings = {
     backgroundDim: 48,
+    photosensitive: false,
     storyboard: true,
     video: true,
 };
@@ -49,6 +54,21 @@ test("background dimming at 95% or above hides the warning", () => {
         shouldShowEpilepsyWarning(baseChart, {
             ...baseSettings,
             backgroundDim: 100,
+        }),
+        false,
+    );
+});
+
+test("photosensitive mode forces warned charts to a safe dim and skips the notice", () => {
+    assert.equal(effectiveBackgroundDim(48, true, true), PHOTOSENSITIVE_DIM);
+    assert.equal(effectiveBackgroundDim(100, true, true), 100);
+    assert.equal(effectiveBackgroundDim(48, true, false), 48);
+    assert.equal(effectiveBackgroundDim(48, false, true), 48);
+    assert.equal(
+        shouldShowEpilepsyWarning(baseChart, {
+            ...baseSettings,
+            backgroundDim: 20,
+            photosensitive: true,
         }),
         false,
     );

@@ -4,6 +4,7 @@ export interface GameSettings {
     storyboard: boolean;
     video: boolean;
     blur: boolean;
+    photosensitive: boolean;
     backgroundDim: number;
     backgroundBlur: number;
     dynamicColors: boolean;
@@ -15,6 +16,7 @@ const defaults: GameSettings = {
     storyboard: true,
     video: true,
     blur: true,
+    photosensitive: false,
     backgroundDim: 48,
     backgroundBlur: 10,
     dynamicColors: true,

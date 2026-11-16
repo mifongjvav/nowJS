@@ -29,13 +29,16 @@ test("settings validate persisted values and survive unavailable storage", async
     assert.equal(getSettings().video, false);
     assert.equal(getSettings().blur, true);
     assert.equal(getSettings().decoupledRendering, false);
+    assert.equal(getSettings().photosensitive, false);
     let notifications = 0;
     const unsubscribe = onSettingsChange(() => notifications++);
     updateSettings({
         backgroundDim: 35,
         backgroundBlur: 12,
         decoupledRendering: true,
+        photosensitive: true,
     });
+    assert.equal(getSettings().photosensitive, true);
     assert.equal(notifications, 1);
     assert.equal(JSON.parse(stored.get("nowjs-settings")).backgroundDim, 35);
     updateSettings({ backgroundDim: NaN, backgroundBlur: Infinity });
