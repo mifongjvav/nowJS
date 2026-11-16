@@ -58,6 +58,33 @@ test("worker autoplay sweeps every banana in a long shower", () => {
     assert.equal(sim.events.filter((event) => event.kind === "miss").length, 0);
 });
 
+test("autoplay teleports to catch dense fruits without misses", () => {
+    let seed = 99;
+    const random = () =>
+        (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const notes = Array.from({ length: 200 }, (_, index) => ({
+        time: 1000 + index * 50,
+        x: random() * 512,
+        type: "fruit",
+    }));
+    const sim = new Simulation(
+        config(notes, {
+            mania: false,
+            auto: true,
+            fieldLeft: 160,
+            fieldWidth: 960,
+            preemptMs: 2000,
+        }),
+    );
+    sim.reset(-1000);
+    for (let step = 0; step < 3600; step++) sim.step(1000 / 240);
+    assert.equal(
+        sim.events.filter((event) => event.kind === "hit").length,
+        notes.length,
+    );
+    assert.equal(sim.events.filter((event) => event.kind === "miss").length, 0);
+});
+
 test("manual head/tail judgements and early releases have one authoritative result", () => {
     const note = {
         time: 1000,

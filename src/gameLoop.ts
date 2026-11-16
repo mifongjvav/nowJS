@@ -540,7 +540,6 @@ function updateLogic(elapsedMs: number): boolean | void {
     // Pixi's deltaMS is capped (and speed-scaled). Using it as the song clock
     // makes music/video run ahead on slow frames, causing repeated video seeks.
     chartTime += elapsedMs;
-    const delta = Math.min(elapsedMs, 250);
 
     let rebased = false;
     if (!musicStarted && chartTime >= 0) {
@@ -564,7 +563,7 @@ function updateLogic(elapsedMs: number): boolean | void {
     }
 
     if (!chart.mania) {
-        updateAutoPlay(chartTime, delta);
+        updateAutoPlay(chartTime, elapsedMs);
     }
     updateManiaLogic(chartTime);
     circlePool.update(chartTime);

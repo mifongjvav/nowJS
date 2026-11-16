@@ -6,6 +6,8 @@ import {
     AUTOPLAY_FRUIT_MAX_SPEED,
     AUTOPLAY_FRUIT_OMEGA,
     AUTOPLAY_FRUIT_ZETA,
+    AUTOPLAY_TELEPORT_DISTANCE_RATIO,
+    AUTOPLAY_TELEPORT_URGENT_MS,
 } from "../autoplayTuning.ts";
 export interface SimNote {
     time: number;
@@ -183,6 +185,19 @@ export class Simulation {
         const maxX =
             config.fieldLeft + config.fieldWidth - config.playerWidth / 2;
         targetX = clamp(targetX, minX, maxX);
+        const distance = Math.abs(targetX - this.playerX);
+        const timeUntilCatch = first - this.time;
+        const catchHalfWidth = (config.playerWidth * 0.9) / 2;
+        if (
+            cluster.length > 0 &&
+            (distance > config.playerWidth * AUTOPLAY_TELEPORT_DISTANCE_RATIO ||
+                (timeUntilCatch <= AUTOPLAY_TELEPORT_URGENT_MS &&
+                    distance > catchHalfWidth))
+        ) {
+            this.playerX = targetX;
+            this.velocity = 0;
+            return;
+        }
         const chasingBanana = useBananas && candidates.length > 0;
         const omega = chasingBanana
             ? AUTOPLAY_BANANA_OMEGA
