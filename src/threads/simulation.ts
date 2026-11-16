@@ -1,4 +1,12 @@
 import { CATCH_WINDOW_MS as WINDOW } from "../judgement.ts";
+import {
+    AUTOPLAY_BANANA_MAX_SPEED,
+    AUTOPLAY_BANANA_OMEGA,
+    AUTOPLAY_BANANA_ZETA,
+    AUTOPLAY_FRUIT_MAX_SPEED,
+    AUTOPLAY_FRUIT_OMEGA,
+    AUTOPLAY_FRUIT_ZETA,
+} from "../autoplayTuning.ts";
 export interface SimNote {
     time: number;
     x: number;
@@ -169,14 +177,22 @@ export class Simulation {
                 config.playerWidth / 2;
         }
         targetX = clamp(targetX, 0, config.width - config.playerWidth);
-        const seconds = Math.min(deltaMs, 40) / 1000;
+        const chasingBanana = useBananas && candidates.length > 0;
+        const omega = chasingBanana
+            ? AUTOPLAY_BANANA_OMEGA
+            : AUTOPLAY_FRUIT_OMEGA;
+        const zeta = chasingBanana ? AUTOPLAY_BANANA_ZETA : AUTOPLAY_FRUIT_ZETA;
+        const damping = 2 * zeta * omega;
+        const maxSpeed =
+            (chasingBanana
+                ? AUTOPLAY_BANANA_MAX_SPEED
+                : AUTOPLAY_FRUIT_MAX_SPEED) * config.scale;
+        const seconds = deltaMs / 1000;
         this.velocity +=
-            (400 * (targetX - this.playerX) - 36 * this.velocity) * seconds;
-        this.velocity = clamp(
-            this.velocity,
-            -7000 * config.scale,
-            7000 * config.scale,
-        );
+            (omega * omega * (targetX - this.playerX) -
+                damping * this.velocity) *
+            seconds;
+        this.velocity = clamp(this.velocity, -maxSpeed, maxSpeed);
         const next = this.playerX + this.velocity * seconds;
         this.playerX = clamp(next, 0, config.width - config.playerWidth);
         if (next !== this.playerX)

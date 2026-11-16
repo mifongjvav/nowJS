@@ -32,6 +32,32 @@ test("worker model judges dense autoplay independently of presentation", () => {
     assert.equal(sim.events.filter((e) => e.kind === "miss").length, 0);
     assert.equal(sim.active.size, 0);
 });
+test("worker autoplay sweeps every banana in a long shower", () => {
+    let seed = 1337;
+    const random = () =>
+        (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const notes = [];
+    for (let time = 1000; time <= 11000; time += 78.125) {
+        notes.push({ time, x: random() * 512, type: "banana" });
+    }
+    const sim = new Simulation(
+        config(notes, {
+            mania: false,
+            auto: true,
+            preemptMs: 2000,
+            fieldLeft: (1280 - 512) / 2,
+            fieldWidth: 512,
+        }),
+    );
+    sim.reset(-1000);
+    for (let step = 0; step < 3000; step++) sim.step(1000 / 240);
+    assert.equal(
+        sim.events.filter((event) => event.kind === "hit").length,
+        notes.length,
+    );
+    assert.equal(sim.events.filter((event) => event.kind === "miss").length, 0);
+});
+
 test("manual head/tail judgements and early releases have one authoritative result", () => {
     const note = {
         time: 1000,

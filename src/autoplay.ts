@@ -5,12 +5,20 @@ import * as PIXI from "./vendor/pixi.js";
 import { CATCH_WINDOW_MS, circlePool } from "./circlePool.ts";
 import { MD3_COLORS } from "./theme.ts";
 import { readStorage, writeStorage } from "./storage.ts";
+import {
+    AUTOPLAY_BANANA_MAX_SPEED,
+    AUTOPLAY_BANANA_OMEGA,
+    AUTOPLAY_BANANA_ZETA,
+    AUTOPLAY_FRUIT_MAX_SPEED,
+    AUTOPLAY_FRUIT_OMEGA,
+    AUTOPLAY_FRUIT_ZETA,
+    AUTOPLAY_MAX_STEP_MS,
+    AUTOPLAY_MAX_SUBSTEP_SECONDS,
+} from "./autoplayTuning.ts";
 
 const STORAGE_KEY = "nowjs-autoplay";
 const TRAIL_COUNT = 7;
 const TRAIL_AGE_MS = 150;
-const SPRING_OMEGA = 20;
-const SPRING_ZETA = 0.9;
 
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -114,16 +122,20 @@ function findTarget(chartTime, playerCenter) {
     const fruitIsUrgent = fruits.length && earliestFruit - chartTime <= 450;
     let candidates;
     let earliest;
+    let bananaTarget;
 
     if (bananas.length && !fruitIsUrgent) {
         candidates = bananas;
         earliest = earliestBanana;
+        bananaTarget = true;
     } else if (fruits.length) {
         candidates = fruits;
         earliest = earliestFruit;
+        bananaTarget = false;
     } else {
         candidates = bananas;
         earliest = earliestBanana;
+        bananaTarget = true;
     }
 
     if (!candidates.length) return null;
@@ -142,7 +154,7 @@ function findTarget(chartTime, playerCenter) {
 
     const playerWidth = window.playerWidth || 100;
     if (maxX - minX <= playerWidth * 0.8) {
-        return { x: (minX + maxX) / 2 };
+        return { x: (minX + maxX) / 2, banana: bananaTarget };
     }
 
     let best = cluster[0];
@@ -155,7 +167,7 @@ function findTarget(chartTime, playerCenter) {
         }
     }
 
-    return { x: best.x };
+    return { x: best.x, banana: bananaTarget };
 }
 
 function updateTrail(now) {
@@ -260,35 +272,79 @@ export function updateAutoPlay(chartTime, deltaMS) {
 
     ensureTrail();
 
-    const deltaSeconds = clamp(deltaMS, 0, 40) / 1000;
-    if (deltaSeconds <= 0) return;
+    const elapsedSeconds = clamp(deltaMS, 0, AUTOPLAY_MAX_STEP_MS) / 1000;
+    if (elapsedSeconds <= 0) return;
 
-    const playerCenter = player.x + playerWidth / 2;
-    const target = findTarget(chartTime, playerCenter);
     const maxX = gameWidth - playerWidth;
-    const targetX = target
-        ? clamp(target.x - playerWidth / 2, 0, maxX)
-        : clamp((gameWidth - playerWidth) / 2, 0, maxX);
+    const centerX = clamp((gameWidth - playerWidth) / 2, 0, maxX);
+    const scale = window.gameScale || 1;
 
-    const omega = SPRING_OMEGA;
-    const damping = 2 * SPRING_ZETA * omega;
-    const acceleration =
-        omega * omega * (targetX - player.x) - damping * velocity;
+    // A slow render frame must not slow the catcher down. Integrate at a
+    // fixed high rate, and re-evaluate the target inside each substep so the
+    // banana sequence is still followed when the render frame is 100 ms+.
+    const substeps = Math.max(
+        1,
+        Math.ceil(elapsedSeconds / AUTOPLAY_MAX_SUBSTEP_SECONDS),
+    );
+    const deltaSeconds = elapsedSeconds / substeps;
+    const elapsedMs = elapsedSeconds * 1000;
+    const bananaCircles = circlePool.activeCircles.filter(
+        (circle) =>
+            circle.active &&
+            !circle.hasJudged &&
+            circle.note?.type === "banana" &&
+            Math.abs(circle.note.time - chartTime) <=
+                CATCH_WINDOW_MS + elapsedMs + 1,
+    );
 
-    velocity += acceleration * deltaSeconds;
+    for (let step = 0; step < substeps; step += 1) {
+        const stepTime =
+            chartTime - elapsedMs + (step + 1) * deltaSeconds * 1000;
+        const target = findTarget(stepTime, player.x + playerWidth / 2);
+        const targetX = target
+            ? clamp(target.x - playerWidth / 2, 0, maxX)
+            : centerX;
+        const chasingBanana = Boolean(target?.banana);
+        const omega = chasingBanana
+            ? AUTOPLAY_BANANA_OMEGA
+            : AUTOPLAY_FRUIT_OMEGA;
+        const zeta = chasingBanana ? AUTOPLAY_BANANA_ZETA : AUTOPLAY_FRUIT_ZETA;
+        const damping = 2 * zeta * omega;
+        const maxSpeed =
+            (chasingBanana
+                ? AUTOPLAY_BANANA_MAX_SPEED
+                : AUTOPLAY_FRUIT_MAX_SPEED) * scale;
+        const acceleration =
+            omega * omega * (targetX - player.x) - damping * velocity;
+        velocity = clamp(
+            velocity + acceleration * deltaSeconds,
+            -maxSpeed,
+            maxSpeed,
+        );
 
-    const maxSpeed = 7000 * (window.gameScale || 1);
-    velocity = clamp(velocity, -maxSpeed, maxSpeed);
+        const nextX = player.x + velocity * deltaSeconds;
+        if (nextX < 0) {
+            player.x = 0;
+            velocity = Math.max(0, velocity);
+        } else if (nextX > maxX) {
+            player.x = maxX;
+            velocity = Math.min(0, velocity);
+        } else {
+            player.x = nextX;
+        }
 
-    let nextX = player.x + velocity * deltaSeconds;
-    if (nextX < 0) {
-        nextX = 0;
-        velocity = Math.max(0, velocity);
-    } else if (nextX > maxX) {
-        nextX = maxX;
-        velocity = Math.min(0, velocity);
+        // Bonus bananas can otherwise be skipped between slow logic frames.
+        // The normal circlePool pass still handles fruits and misses.
+        for (const circle of bananaCircles) {
+            if (!circle.active || circle.hasJudged) continue;
+            if (
+                Math.abs(stepTime - circle.note.time) <= CATCH_WINDOW_MS &&
+                circlePool.overlaps(circle, player)
+            ) {
+                circlePool.performHit(circle);
+            }
+        }
     }
-    player.x = nextX;
 
     const visual = window.playerVisual;
     if (visual) {
