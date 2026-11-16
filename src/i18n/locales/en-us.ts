@@ -34,7 +34,7 @@ export default {
         skip: "Press any key to skip this notice, or tap the screen",
     },
     settings: {
-        multithreading: "Multithreading (experimental)",
+        multithreading: "Multithreading",
         threadHint:
             "Automatically enables decoupled logic/rendering. Logic/judgement, Pixi drawing and input preprocessing each use a Worker; music and hit samples are mixed in an AudioWorklet. DOM input capture, UI and scene preparation remain on the main thread; UI/storyboard sounds use native audio. Latency, memory and power use may increase. Unsupported modules fall back independently. MOSS requires the worker capability; sandbox playback remains to be verified.",
         threadLogic: "Logic / judgement",
@@ -46,6 +46,9 @@ export default {
         threadActive: "Dedicated thread ready",
         threadFallback: "Fallback",
         title: "Settings",
+        groupDisplay: "Display",
+        groupAccessibility: "Accessibility",
+        groupExperimental: "Experimental",
         storyboard: "Storyboards",
         video: "Videos",
         blur: "Blur effects",
@@ -57,7 +60,7 @@ export default {
             "0% is brightest, 100% is darkest. Applies to images, videos and storyboards, not notes or UI.",
         backgroundBlur: "Background image blur strength",
         dynamicColors: "Dynamic colors",
-        decoupledRendering: "Decouple logic and rendering (experimental)",
+        decoupledRendering: "Decouple logic and rendering",
         experimentalHint:
             "With multithreading off, logic uses an independent 240Hz fixed-step scheduler on the main thread; rendering follows the display. Severe stalls skip some catch-up steps; power use may increase.",
         close: "Done",

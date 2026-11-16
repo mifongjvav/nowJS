@@ -4,6 +4,35 @@ import { i18n } from "./i18n/index.ts";
 import { onLanguageChange } from "./i18n/index.ts";
 import { getThreadStatuses, onThreadStatus } from "./threads/status.ts";
 
+type SwitchKey =
+    | "storyboard"
+    | "video"
+    | "blur"
+    | "photosensitive"
+    | "dynamicColors"
+    | "decoupledRendering"
+    | "multithreading";
+
+function switchRow(key: SwitchKey): string {
+    return `
+        <label class="now-setting-row">
+            <span id="now-setting-${key}" data-i18n="settings.${key}">${i18n.settings[key]}</span>
+            <mdui-switch data-setting="${key}" aria-labelledby="now-setting-${key}"></mdui-switch>
+        </label>`;
+}
+
+function settingsGroup(
+    name: string,
+    titleKey: "groupDisplay" | "groupAccessibility" | "groupExperimental",
+    body: string,
+): string {
+    return `
+        <section class="now-settings-group" aria-labelledby="now-settings-group-${name}">
+            <h3 id="now-settings-group-${name}" data-i18n="settings.${titleKey}">${i18n.settings[titleKey]}</h3>
+            <div class="now-settings-group-body">${body}</div>
+        </section>`;
+}
+
 export function initSettingsMenu(root: HTMLElement): void {
     const dialog = document.createElement("mdui-dialog");
     dialog.id = "now-settings";
@@ -11,43 +40,34 @@ export function initSettingsMenu(root: HTMLElement): void {
     dialog.setAttribute("close-on-esc", "");
     dialog.setAttribute("close-on-overlay-click", "");
     dialog.setAttribute("aria-labelledby", "now-settings-title");
+    const displayBody = `
+        ${(["storyboard", "video", "blur"] as const).map(switchRow).join("")}
+        <label class="now-setting-slider">
+            <span><span id="now-blur-label" data-i18n="settings.backgroundBlur">${i18n.settings.backgroundBlur}</span><output id="now-blur-value"></output></span>
+            <input type="range" min="0" max="30" step="1" data-setting="backgroundBlur" aria-labelledby="now-blur-label" />
+        </label>
+        <label class="now-setting-slider">
+            <span><span id="now-dim-label" data-i18n="settings.backgroundDim">${i18n.settings.backgroundDim}</span><output id="now-dim-value"></output></span>
+            <input type="range" min="0" max="100" step="1" data-setting="backgroundDim" aria-labelledby="now-dim-label" />
+            <span class="now-setting-hint" data-i18n="settings.dimHint">${i18n.settings.dimHint}</span>
+        </label>
+        ${switchRow("dynamicColors")}`;
+    const accessibilityBody = `
+        <div class="now-setting-block">
+            ${switchRow("photosensitive")}
+            <p class="now-setting-hint" data-i18n="settings.photosensitiveHint">${i18n.settings.photosensitiveHint}</p>
+        </div>`;
+    const experimentalBody = `
+        ${(["decoupledRendering", "multithreading"] as const).map(switchRow).join("")}
+        <p class="now-setting-hint" data-i18n="settings.experimentalHint">${i18n.settings.experimentalHint}</p>
+        <p class="now-setting-hint" data-i18n="settings.threadHint">${i18n.settings.threadHint}</p>
+        <div id="now-thread-status" class="now-thread-status" aria-live="polite"></div>`;
     dialog.innerHTML = `
         <span slot="headline" id="now-settings-title" data-i18n="settings.title">${i18n.settings.title}</span>
         <div class="now-settings-content">
-            ${(
-                [
-                    "storyboard",
-                    "video",
-                    "blur",
-                    "photosensitive",
-                    "dynamicColors",
-                    "decoupledRendering",
-                    "multithreading",
-                ] as const
-            )
-                .map((key) => {
-                    const row = `
-                    <label class="now-setting-row">
-                        <span id="now-setting-${key}" data-i18n="settings.${key}">${i18n.settings[key]}</span>
-                        <mdui-switch data-setting="${key}" aria-labelledby="now-setting-${key}"></mdui-switch>
-                    </label>`;
-                    return key === "photosensitive"
-                        ? `<div class="now-setting-block">${row}<p class="now-setting-hint" data-i18n="settings.photosensitiveHint">${i18n.settings.photosensitiveHint}</p></div>`
-                        : row;
-                })
-                .join("")}
-            <p class="now-setting-hint" data-i18n="settings.experimentalHint">${i18n.settings.experimentalHint}</p>
-            <p class="now-setting-hint" data-i18n="settings.threadHint">${i18n.settings.threadHint}</p>
-            <div id="now-thread-status" class="now-thread-status" aria-live="polite"></div>
-            <label class="now-setting-slider">
-                <span><span id="now-dim-label" data-i18n="settings.backgroundDim">${i18n.settings.backgroundDim}</span><output id="now-dim-value"></output></span>
-                <input type="range" min="0" max="100" step="1" data-setting="backgroundDim" aria-labelledby="now-dim-label" />
-                <span class="now-setting-hint" data-i18n="settings.dimHint">${i18n.settings.dimHint}</span>
-            </label>
-            <label class="now-setting-slider">
-                <span><span id="now-blur-label" data-i18n="settings.backgroundBlur">${i18n.settings.backgroundBlur}</span><output id="now-blur-value"></output></span>
-                <input type="range" min="0" max="30" step="1" data-setting="backgroundBlur" aria-labelledby="now-blur-label" />
-            </label>
+            ${settingsGroup("display", "groupDisplay", displayBody)}
+            ${settingsGroup("accessibility", "groupAccessibility", accessibilityBody)}
+            ${settingsGroup("experimental", "groupExperimental", experimentalBody)}
         </div>
         <mdui-button slot="action" variant="text" id="now-settings-close" data-i18n="settings.close">${i18n.settings.close}</mdui-button>
     `;

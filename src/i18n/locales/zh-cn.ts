@@ -34,7 +34,7 @@ export default {
         skip: "按任意键跳过提示，触屏可轻触屏幕",
     },
     settings: {
-        multithreading: "多线程（实验性）",
+        multithreading: "多线程",
         threadHint:
             "启用时自动开启逻辑/渲染帧解耦。逻辑与判定、Pixi 绘制、输入预处理各用一个 Worker，音乐和打击音由 AudioWorklet 混音。DOM 输入采集、界面、场景准备仍在主线程；界面音效及故事板采样使用原生音频。可能增加延迟、内存和耗电。不支持的模块独立回退。MOSS 部署须声明 worker 权限；沙箱兼容性待实播验证。",
         threadLogic: "逻辑 / 判定",
@@ -46,6 +46,9 @@ export default {
         threadActive: "独立线程已就绪",
         threadFallback: "已回退",
         title: "设置",
+        groupDisplay: "画面",
+        groupAccessibility: "无障碍",
+        groupExperimental: "实验性",
         storyboard: "故事板",
         video: "视频",
         blur: "模糊效果",
@@ -57,7 +60,7 @@ export default {
             "0% 最亮，100% 最暗；对图片、视频及故事板生效，不影响音符与界面。",
         backgroundBlur: "背景图片模糊程度",
         dynamicColors: "动态配色",
-        decoupledRendering: "解耦合逻辑渲染帧（实验性）",
+        decoupledRendering: "解耦合逻辑渲染帧",
         experimentalHint:
             "未开启多线程时，逻辑以 240Hz 固定步长在主线程独立调度，画面随屏幕刷新。严重卡顿时会跳过部分补帧；可能增加耗电。",
         close: "完成",
