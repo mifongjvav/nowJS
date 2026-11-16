@@ -80,12 +80,14 @@ export class Simulation {
     }
     input(input: NormalInput, time: number): void {
         if (input.kind === "pointer") {
-            if (!this.config.auto && !this.config.mania)
-                this.playerX = clamp(
-                    input.x,
-                    0,
-                    this.config.width - this.config.playerWidth,
-                );
+            if (!this.config.auto && !this.config.mania) {
+                const minX = this.config.fieldLeft;
+                const maxX =
+                    this.config.fieldLeft +
+                    this.config.fieldWidth -
+                    this.config.playerWidth;
+                this.playerX = clamp(input.x, minX, maxX);
+            }
             return;
         }
         if (!this.config.mania || this.config.auto) return;
@@ -176,7 +178,9 @@ export class Simulation {
                     : xFor(nearest)) -
                 config.playerWidth / 2;
         }
-        targetX = clamp(targetX, 0, config.width - config.playerWidth);
+        const minX = config.fieldLeft;
+        const maxX = config.fieldLeft + config.fieldWidth - config.playerWidth;
+        targetX = clamp(targetX, minX, maxX);
         const chasingBanana = useBananas && candidates.length > 0;
         const omega = chasingBanana
             ? AUTOPLAY_BANANA_OMEGA
@@ -194,10 +198,10 @@ export class Simulation {
             seconds;
         this.velocity = clamp(this.velocity, -maxSpeed, maxSpeed);
         const next = this.playerX + this.velocity * seconds;
-        this.playerX = clamp(next, 0, config.width - config.playerWidth);
+        this.playerX = clamp(next, minX, maxX);
         if (next !== this.playerX)
             this.velocity =
-                next < 0
+                next < minX
                     ? Math.max(0, this.velocity)
                     : Math.min(0, this.velocity);
     }

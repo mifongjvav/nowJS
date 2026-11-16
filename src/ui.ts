@@ -3,6 +3,7 @@ import { injectBaseStyles } from "./styles.ts";
 import { initSettingsMenu } from "./settingsMenu.ts";
 import { readStorage } from "./storage.ts";
 import { RESOLUTIONS, showResolutionSelector } from "./resolution.ts";
+import { getCatchPlayfield, getPlayfield } from "./layout.ts";
 import {
     applyI18n,
     format,
@@ -421,6 +422,10 @@ root.innerHTML = `
             <span data-i18n="autoplay.badge">${i18n.autoplay.badge}</span>
         </div>
         <div class="now-hud-song" id="now-hud-song"></div>
+        <div class="now-hud-accuracy" id="now-hud-accuracy">
+            <span data-i18n="hud.accuracy">${i18n.hud.accuracy}</span>
+            <strong id="now-hud-accuracy-value">100.00%</strong>
+        </div>
     </div>
 
     <input
@@ -473,6 +478,7 @@ const loadingScreen = root.querySelector("#now-loading");
 const loadingText = root.querySelector("#now-loading-text");
 const hud = root.querySelector("#now-hud");
 const hudSong = root.querySelector("#now-hud-song");
+const hudAccuracyValue = root.querySelector("#now-hud-accuracy-value");
 const hudProgress = root.querySelector("#now-hud-progress");
 const autoplayBtn = root.querySelector("#now-autoplay-btn");
 const hudAuto = root.querySelector("#now-hud-auto");
@@ -618,6 +624,7 @@ function syncModePicker(chart: GameChart | null): void {
         modePicker.value = mode;
     }
     modePicker.disabled = !chart;
+    holdTailRow.classList.toggle("now-hidden", !chart || mode !== "mania");
 }
 
 export function setSong(chart: GameChart | null): void {
@@ -759,12 +766,38 @@ export function showToast(message, type = "error") {
     toast.dataset.type = type;
 }
 
+function updateHudAccuracy() {
+    const total = window.hitCount + window.missCount;
+    const accuracy = total > 0 ? window.hitCount / total : 1;
+    hudAccuracyValue.textContent = `${(accuracy * 100).toFixed(2)}%`;
+}
+
+function updateHudAccuracyPosition() {
+    const canvas = window.app?.canvas;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const field = window.currentChart?.mania
+        ? getPlayfield()
+        : getCatchPlayfield();
+    const fieldRight =
+        rect.left + (field.right / window.gameWidth) * rect.width;
+    const accuracy = hudAccuracyValue.closest(".now-hud-accuracy");
+    if (!accuracy) return;
+    accuracy.style.right = `${Math.max(16, window.innerWidth - fieldRight + 16)}px`;
+    accuracy.style.top = `${Math.max(16, rect.top + 54)}px`;
+}
+
+window.addEventListener("resize", updateHudAccuracyPosition);
+
 export function showHud(chart) {
     const metadata = (chart && chart.metadata) || {};
     hudSong.textContent = metadata.titleUnicode || metadata.title || "";
     hudProgress.value = 0;
     hudProgress.setAttribute("aria-valuenow", "0");
     hudAuto.classList.toggle("now-hidden", !isAutoPlayEnabled());
+    updateHudAccuracy();
+    updateHudAccuracyPosition();
     updateHudScrubbable();
     showElement(hud);
 }
@@ -777,6 +810,7 @@ export function hideHud() {
 }
 
 export function updateHudProgress(progress) {
+    updateHudAccuracy();
     if (hudScrubbing) return;
 
     const value = Math.min(1, Math.max(0, progress));
@@ -1050,7 +1084,12 @@ modePicker.addEventListener("change", () => {
     if (!currentSong) return;
 
     const mode = String(modePicker.value);
-    if (mode !== "catch" && mode !== "mania") return;
+    if (mode !== "catch" && mode !== "mania") {
+        // Segmented controls can report an empty value when the active button
+        // is pressed again. The game always needs a concrete mode.
+        syncModePicker(currentSong);
+        return;
+    }
     if (currentSong.playMode === mode) return;
 
     callbacks.modeChange(mode);

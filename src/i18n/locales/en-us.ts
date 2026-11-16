@@ -26,6 +26,9 @@ export default {
         disabled: "Auto play disabled",
         badge: "AUTO",
     },
+    break: {
+        ready: "Ready?",
+    },
     epilepsy: {
         title: "Photosensitivity warning",
         description:
@@ -198,6 +201,7 @@ export default {
     },
     hud: {
         progress: "Song progress",
+        accuracy: "Accuracy",
     },
     stats: {
         hit: "Hit",

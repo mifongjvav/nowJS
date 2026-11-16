@@ -3,6 +3,7 @@ import {
     playBreakCountdownTick,
     playSectionResult,
 } from "./audio.ts";
+import { i18n } from "./i18n/index.ts";
 
 interface BreakInfo {
     start: number;
@@ -88,7 +89,7 @@ export function beginBreakOverlay(
 export function updateBreakOverlay(time: number): void {
     if (!activeBreak || !overlay || !result || !countdown) return;
 
-    const { end } = activeBreak;
+    const { start, end } = activeBreak;
 
     if (!goShown && time >= resultHideAt) {
         result.style.visibility = "hidden";
@@ -115,6 +116,13 @@ export function updateBreakOverlay(time: number): void {
         if (count !== lastCountdown) {
             lastCountdown = count;
             showCountdown(String(count));
+            playBreakCountdownTick();
+        }
+    } else if (end - start >= 4000 && time >= end - 4000) {
+        result.style.visibility = "hidden";
+        if (lastCountdown !== 0) {
+            lastCountdown = 0;
+            showCountdown(i18n.break.ready);
             playBreakCountdownTick();
         }
     }

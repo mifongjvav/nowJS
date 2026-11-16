@@ -1188,6 +1188,34 @@ const BASE_CSS = `
         -webkit-backdrop-filter: blur(14px) saturate(1.15);
     }
 
+    .now-hud-accuracy {
+        position: absolute;
+        top: 54px;
+        right: 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: var(--mdui-shape-corner-small);
+        background: color-mix(
+            in srgb,
+            rgb(var(--mdui-color-surface-container)) 74%,
+            transparent
+        );
+        color: rgb(var(--mdui-color-on-surface-variant));
+        font-size: var(--mdui-typescale-label-medium-size);
+        line-height: var(--mdui-typescale-label-medium-line-height);
+        letter-spacing: var(--mdui-typescale-label-medium-tracking);
+        font-variant-numeric: tabular-nums;
+        backdrop-filter: blur(14px) saturate(1.15);
+        -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    }
+
+    .now-hud-accuracy strong {
+        color: rgb(var(--mdui-color-primary));
+        font-weight: 700;
+    }
+
     .now-break-overlay {
         position: fixed;
         inset: 0;

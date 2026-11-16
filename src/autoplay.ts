@@ -5,6 +5,7 @@ import * as PIXI from "./vendor/pixi.js";
 import { CATCH_WINDOW_MS, circlePool } from "./circlePool.ts";
 import { MD3_COLORS } from "./theme.ts";
 import { readStorage, writeStorage } from "./storage.ts";
+import { getCatchPlayfield } from "./layout.ts";
 import {
     AUTOPLAY_BANANA_MAX_SPEED,
     AUTOPLAY_BANANA_OMEGA,
@@ -275,8 +276,10 @@ export function updateAutoPlay(chartTime, deltaMS) {
     const elapsedSeconds = clamp(deltaMS, 0, AUTOPLAY_MAX_STEP_MS) / 1000;
     if (elapsedSeconds <= 0) return;
 
-    const maxX = gameWidth - playerWidth;
-    const centerX = clamp((gameWidth - playerWidth) / 2, 0, maxX);
+    const field = getCatchPlayfield();
+    const minX = field.left;
+    const maxX = field.right - playerWidth;
+    const centerX = clamp(field.center - playerWidth / 2, minX, maxX);
     const scale = window.gameScale || 1;
 
     // A slow render frame must not slow the catcher down. Integrate at a
@@ -302,7 +305,7 @@ export function updateAutoPlay(chartTime, deltaMS) {
             chartTime - elapsedMs + (step + 1) * deltaSeconds * 1000;
         const target = findTarget(stepTime, player.x + playerWidth / 2);
         const targetX = target
-            ? clamp(target.x - playerWidth / 2, 0, maxX)
+            ? clamp(target.x - playerWidth / 2, minX, maxX)
             : centerX;
         const chasingBanana = Boolean(target?.banana);
         const omega = chasingBanana
@@ -323,8 +326,8 @@ export function updateAutoPlay(chartTime, deltaMS) {
         );
 
         const nextX = player.x + velocity * deltaSeconds;
-        if (nextX < 0) {
-            player.x = 0;
+        if (nextX < minX) {
+            player.x = minX;
             velocity = Math.max(0, velocity);
         } else if (nextX > maxX) {
             player.x = maxX;

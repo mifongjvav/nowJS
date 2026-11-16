@@ -8,6 +8,8 @@ export type RawInput =
           cssWidth: number;
           width: number;
           playerWidth: number;
+          fieldLeft?: number;
+          fieldWidth?: number;
           stamp: number;
       };
 const KEYS: Record<string, number> = { KeyD: 0, KeyF: 1, KeyJ: 2, KeyK: 3 };
@@ -19,13 +21,15 @@ export function normalizeInput(raw: RawInput): NormalInput | null {
             : { kind: "lane", lane, down: raw.down, stamp: raw.stamp };
     }
     if (!(raw.cssWidth > 0)) return null;
+    const fieldLeft = raw.fieldLeft ?? 0;
+    const fieldWidth = raw.fieldWidth ?? raw.width;
     return {
         kind: "pointer",
         stamp: raw.stamp,
         x: Math.max(
-            0,
+            fieldLeft,
             Math.min(
-                raw.width - raw.playerWidth,
+                fieldLeft + fieldWidth - raw.playerWidth,
                 ((raw.clientX - raw.left) * raw.width) / raw.cssWidth -
                     raw.playerWidth / 2,
             ),

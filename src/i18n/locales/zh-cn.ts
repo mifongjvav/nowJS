@@ -26,6 +26,9 @@ export default {
         disabled: "自动游玩已关闭",
         badge: "自动",
     },
+    break: {
+        ready: "Ready?",
+    },
     epilepsy: {
         title: "光敏性癫痫警告",
         description:
@@ -195,6 +198,7 @@ export default {
     },
     hud: {
         progress: "歌曲进度",
+        accuracy: "准确率",
     },
     stats: {
         hit: "Hit",

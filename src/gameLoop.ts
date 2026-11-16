@@ -52,7 +52,8 @@ import { FixedStepClock } from "./fixedStepClock.ts";
 import { getSettings, onSettingsChange } from "./settings.ts";
 import { logicThread } from "./threads/logicClient.ts";
 import { onThreadStatus } from "./threads/status.ts";
-import { getPlayfield } from "./layout.ts";
+import { getCatchPlayfield, getPlayfield } from "./layout.ts";
+import { refreshJudgeLine } from "./line.ts";
 import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
 import { pulseManiaLane } from "./mania.ts";
 import {
@@ -230,6 +231,7 @@ function beginGame(chart: GameChart): void {
     }
     resetAutoPlayMotion();
     setManiaMode(chart.mania || null);
+    refreshJudgeLine();
     resetManiaInput();
     resetCatcherColor();
 
@@ -603,7 +605,7 @@ function syncLogicScheduler(): void {
                 clearInterval(logicTimer);
                 logicTimer = null;
             }
-            const field = getPlayfield();
+            const field = chart.mania ? getPlayfield() : getCatchPlayfield();
             const ids = new Map(chart.notes.map((note, id) => [note, id]));
             workerCircles.clear();
             const active: [number, boolean][] = [];

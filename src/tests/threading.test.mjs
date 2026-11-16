@@ -45,8 +45,8 @@ test("worker autoplay sweeps every banana in a long shower", () => {
             mania: false,
             auto: true,
             preemptMs: 2000,
-            fieldLeft: (1280 - 512) / 2,
-            fieldWidth: 512,
+            fieldLeft: (1280 - 960) / 2,
+            fieldWidth: 960,
         }),
     );
     sim.reset(-1000);
@@ -133,6 +133,35 @@ test("catch overlap and pointer processing use the same pixel coordinates", () =
     });
     assert.equal(input.x, 590);
     assert.equal(input.stamp, 123);
+    sim.input(input, 0);
+    const boundedLeft = normalizeInput({
+        kind: "pointer",
+        clientX: 0,
+        left: 0,
+        cssWidth: 1280,
+        width: 1280,
+        playerWidth: 100,
+        fieldLeft: 160,
+        fieldWidth: 960,
+        stamp: 1,
+    });
+    const boundedRight = normalizeInput({
+        kind: "pointer",
+        clientX: 1280,
+        left: 0,
+        cssWidth: 1280,
+        width: 1280,
+        playerWidth: 100,
+        fieldLeft: 160,
+        fieldWidth: 960,
+        stamp: 2,
+    });
+    assert.equal(boundedLeft.x, 160);
+    assert.equal(boundedRight.x, 1020);
+    sim.input(boundedLeft, 0);
+    assert.equal(sim.playerX, 384);
+    sim.input(boundedRight, 0);
+    assert.equal(sim.playerX, 512 - 100 + 384);
     sim.input(input, 0);
     sim.step(1000);
     assert.equal(sim.events.at(-1).kind, "hit");

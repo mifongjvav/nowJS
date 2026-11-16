@@ -2,7 +2,7 @@ import * as PIXI from "./vendor/pixi.js";
 import { showMiss, updateStatsDisplay } from "./stats.ts";
 import { playCatchSound, playComboBreak } from "./audio.ts";
 import { triggerStoryboardHit } from "./background.ts";
-import { getPlayfield } from "./layout.ts";
+import { getCatchPlayfield, getPlayfield } from "./layout.ts";
 import { MD3_COLORS } from "./theme.ts";
 import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
 import { setCatcherColor } from "./player.ts";
@@ -133,7 +133,9 @@ class CirclePool {
         let circle = this.pool.find((item) => !item.active);
         if (!circle) circle = this.createCircle();
 
-        const field = getPlayfield();
+        const field = window.currentChart?.mania
+            ? getPlayfield()
+            : getCatchPlayfield();
         const x = Math.max(0, Math.min(512, note.x));
         const scale = note.scale || 1;
 
@@ -330,15 +332,15 @@ class CirclePool {
 
     playHitEffects(circle) {
         const player = window.player;
-        const playfieldWidth = 512 * window.gameScale;
-        const leftBound = (window.gameWidth - playfieldWidth) / 2;
         const chart = window.currentChart;
+        const field = chart?.mania ? getPlayfield() : getCatchPlayfield();
+        const playfieldWidth = field.width;
+        const leftBound = field.left;
         const lane = circle.note.lane;
         let catcherX = player.x;
         let catcherWidth = window.playerWidth || CATCHER_WIDTH;
 
         if (chart && chart.mania && typeof lane === "number" && lane >= 0) {
-            const field = getPlayfield();
             const laneWidth = field.width / chart.mania.laneCount;
             catcherX = field.left + laneWidth * lane;
             catcherWidth = laneWidth;
