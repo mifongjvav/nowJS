@@ -30,6 +30,8 @@ test("settings validate persisted values and survive unavailable storage", async
     assert.equal(getSettings().blur, true);
     assert.equal(getSettings().decoupledRendering, false);
     assert.equal(getSettings().photosensitive, false);
+    assert.equal(getSettings().ignoreWebgpuVideoRisk, false);
+    assert.equal(getSettings().renderer, "auto");
     let notifications = 0;
     const unsubscribe = onSettingsChange(() => notifications++);
     updateSettings({
@@ -37,8 +39,15 @@ test("settings validate persisted values and survive unavailable storage", async
         backgroundBlur: 12,
         decoupledRendering: true,
         photosensitive: true,
+        ignoreWebgpuVideoRisk: true,
+        renderer: "webgl2",
     });
     assert.equal(getSettings().photosensitive, true);
+    assert.equal(getSettings().ignoreWebgpuVideoRisk, true);
+    assert.equal(getSettings().renderer, "webgl2");
+    updateSettings({ renderer: "not-a-renderer" });
+    assert.equal(getSettings().renderer, "webgl2");
+    assert.equal(JSON.parse(stored.get("nowjs-settings")).renderer, "webgl2");
     assert.equal(notifications, 1);
     assert.equal(JSON.parse(stored.get("nowjs-settings")).backgroundDim, 35);
     updateSettings({ backgroundDim: NaN, backgroundBlur: Infinity });

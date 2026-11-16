@@ -1,10 +1,14 @@
 import { readStorage, writeStorage } from "./storage.ts";
+import { isRendererSetting } from "./rendererSelection.ts";
+import type { RendererSetting } from "./rendererSelection.ts";
 
 export interface GameSettings {
+    renderer: RendererSetting;
     storyboard: boolean;
     video: boolean;
     blur: boolean;
     photosensitive: boolean;
+    ignoreWebgpuVideoRisk: boolean;
     backgroundDim: number;
     backgroundBlur: number;
     dynamicColors: boolean;
@@ -13,10 +17,12 @@ export interface GameSettings {
 }
 
 const defaults: GameSettings = {
+    renderer: "auto",
     storyboard: true,
     video: true,
     blur: true,
     photosensitive: false,
+    ignoreWebgpuVideoRisk: false,
     backgroundDim: 48,
     backgroundBlur: 10,
     dynamicColors: true,
@@ -31,7 +37,9 @@ function sanitize(values: Partial<GameSettings>): GameSettings {
     const next = { ...settings };
     for (const key of Object.keys(defaults) as (keyof GameSettings)[]) {
         const value = values[key];
-        if (typeof defaults[key] === "boolean") {
+        if (key === "renderer") {
+            if (isRendererSetting(value)) next.renderer = value;
+        } else if (typeof defaults[key] === "boolean") {
             if (typeof value === "boolean")
                 Object.assign(next, { [key]: value });
         } else if (typeof value === "number" && Number.isFinite(value)) {

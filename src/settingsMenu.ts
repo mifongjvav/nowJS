@@ -1,14 +1,16 @@
 import { getSettings, onSettingsChange, updateSettings } from "./settings.ts";
 import type { GameSettings } from "./settings.ts";
-import { i18n } from "./i18n/index.ts";
+import { format, i18n } from "./i18n/index.ts";
 import { onLanguageChange } from "./i18n/index.ts";
 import { getThreadStatuses, onThreadStatus } from "./threads/status.ts";
+import { getActiveRendererLabel } from "./rendererSelection.ts";
 
 type SwitchKey =
     | "storyboard"
     | "video"
     | "blur"
     | "photosensitive"
+    | "ignoreWebgpuVideoRisk"
     | "dynamicColors"
     | "decoupledRendering"
     | "multithreading";
@@ -40,7 +42,31 @@ export function initSettingsMenu(root: HTMLElement): void {
     dialog.setAttribute("close-on-esc", "");
     dialog.setAttribute("close-on-overlay-click", "");
     dialog.setAttribute("aria-labelledby", "now-settings-title");
+    const rendererOptions = [
+        ["auto", i18n.settings.rendererAuto, "settings.rendererAuto"],
+        ["webgpu", i18n.settings.rendererWebgpu, "settings.rendererWebgpu"],
+        ["webgl2", "WebGL 2", null],
+        ["webgl1", "WebGL 1", null],
+        ["canvas", "Canvas", null],
+    ]
+        .map(
+            ([value, label, i18nKey]) =>
+                `<option value="${value}"${i18nKey ? ` data-i18n="${i18nKey}"` : ""}>${label}</option>`,
+        )
+        .join("");
     const displayBody = `
+        <div class="now-setting-block">
+            <label class="now-setting-select-row">
+                <span id="now-renderer-label" data-i18n="settings.renderer">${i18n.settings.renderer}</span>
+                <select data-setting="renderer" aria-labelledby="now-renderer-label">${rendererOptions}</select>
+            </label>
+            <p class="now-setting-hint" data-i18n="settings.rendererHint">${i18n.settings.rendererHint}</p>
+            <p id="now-renderer-status" class="now-setting-hint"></p>
+            <div id="now-webgpu-video-risk" class="now-setting-block now-hidden">
+                ${switchRow("ignoreWebgpuVideoRisk")}
+                <p class="now-setting-hint" data-i18n="settings.ignoreWebgpuVideoRiskHint">${i18n.settings.ignoreWebgpuVideoRiskHint}</p>
+            </div>
+        </div>
         ${(["storyboard", "video", "blur"] as const).map(switchRow).join("")}
         <label class="now-setting-slider">
             <span><span id="now-blur-label" data-i18n="settings.backgroundBlur">${i18n.settings.backgroundBlur}</span><output id="now-blur-value"></output></span>
@@ -73,11 +99,19 @@ export function initSettingsMenu(root: HTMLElement): void {
     `;
     root.appendChild(dialog);
 
-    const controls = dialog.querySelectorAll<
-        HTMLInputElement & { checked: boolean }
-    >("[data-setting]");
+    type SettingControl = Element & {
+        checked?: boolean;
+        value?: string;
+        disabled?: boolean;
+    };
+    const controls = dialog.querySelectorAll<SettingControl>("[data-setting]");
+    const webgpuVideoRiskRow = dialog.querySelector("#now-webgpu-video-risk");
     const sync = () => {
         const settings = getSettings();
+        webgpuVideoRiskRow.classList.toggle(
+            "now-hidden",
+            settings.renderer !== "webgpu",
+        );
         for (const control of controls) {
             const key = control.dataset.setting as keyof GameSettings;
             const value = settings[key];
@@ -95,14 +129,26 @@ export function initSettingsMenu(root: HTMLElement): void {
     };
     for (const control of controls) {
         const key = control.dataset.setting as keyof GameSettings;
-        const numeric = control.tagName === "INPUT";
-        control.addEventListener(numeric ? "input" : "change", () => {
-            updateSettings({
-                [key]: numeric ? Number(control.value) : control.checked,
-            });
+        const isRange =
+            control instanceof HTMLInputElement && control.type === "range";
+        control.addEventListener(isRange ? "input" : "change", () => {
+            const value =
+                control instanceof HTMLSelectElement
+                    ? control.value
+                    : isRange
+                      ? Number(control.value)
+                      : Boolean(control.checked);
+            updateSettings({ [key]: value });
         });
     }
     sync();
+    const rendererStatus = dialog.querySelector("#now-renderer-status");
+    const syncRendererStatus = () => {
+        rendererStatus.textContent = format(i18n.settings.rendererCurrent, {
+            renderer: getActiveRendererLabel(window.app?.renderer),
+        });
+    };
+    syncRendererStatus();
     onSettingsChange(sync);
     const syncThreads = () => {
         const statusRoot = dialog.querySelector("#now-thread-status");
@@ -137,9 +183,18 @@ export function initSettingsMenu(root: HTMLElement): void {
         }
     };
     onThreadStatus(syncThreads);
-    onLanguageChange(syncThreads);
+    onLanguageChange(() => {
+        syncThreads();
+        syncRendererStatus();
+    });
     syncThreads();
+    dialog.addEventListener("opened", () => {
+        sync();
+        syncRendererStatus();
+    });
     root.querySelector("#now-settings-btn").addEventListener("click", () => {
+        sync();
+        syncRendererStatus();
         dialog.setAttribute("open", "");
     });
     dialog

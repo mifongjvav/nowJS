@@ -6,13 +6,14 @@ import type {
     Graphics,
     Ticker,
     WebGLRenderer,
+    WebGPURenderer,
 } from "pixi.js";
 import type { CatchNote, GameChart, GameState } from "./domain.ts";
 
 interface NowApplication {
     stage: Container;
     ticker: Ticker;
-    renderer: WebGLRenderer | CanvasRenderer;
+    renderer: WebGLRenderer | WebGPURenderer | CanvasRenderer;
     readonly canvas: HTMLCanvasElement;
 }
 

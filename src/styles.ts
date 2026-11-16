@@ -34,6 +34,8 @@ const BASE_CSS = `
     .now-settings-group h3::before { content: ""; width: 3px; height: 14px; border-radius: 2px; background: currentColor; }
     .now-settings-group-body { display: grid; gap: 18px; }
     .now-setting-block { display: grid; gap: 6px; }
+    .now-setting-select-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+    .now-setting-select-row select { min-width: 150px; height: 40px; padding: 0 32px 0 12px; border: 1px solid rgb(var(--mdui-color-outline)); border-radius: 8px; background: rgb(var(--mdui-color-surface-container-high)); color: rgb(var(--mdui-color-on-surface)); font: inherit; cursor: pointer; }
     .now-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; cursor: pointer; }
     .now-setting-row mdui-switch { flex-shrink: 0; }
     .now-setting-hint { margin: 0; font-size: 12px; line-height: 1.6; opacity: .7; }
@@ -1537,6 +1539,8 @@ const BASE_CSS = `
     }
 
     @media (max-width: 400px) {
+        .now-setting-select-row { flex-wrap: wrap; }
+        .now-setting-select-row select { width: 100%; }
         .now-menu-main {
             justify-content: flex-start;
         }

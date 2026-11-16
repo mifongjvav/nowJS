@@ -49,6 +49,15 @@ export default {
         groupDisplay: "画面",
         groupAccessibility: "无障碍",
         groupExperimental: "实验性",
+        renderer: "渲染器",
+        rendererAuto: "自动（推荐）",
+        rendererWebgpu: "WebGPU（实验性）",
+        rendererHint:
+            "重新载入后生效。不可用时自动回退；多线程的渲染线程固定使用 WebGL；WebGPU 下默认禁用视频。",
+        rendererCurrent: "当前主渲染器：{{renderer}}",
+        ignoreWebgpuVideoRisk: "无视风险启用视频",
+        ignoreWebgpuVideoRiskHint:
+            "WebGPU 视频在部分设备上会导致渲染中断或黑屏。开启后下次载入谱面仍会加载视频。",
         storyboard: "故事板",
         video: "视频",
         blur: "模糊效果",
@@ -148,6 +157,8 @@ export default {
         maniaConverted:
             "检测到 osu!mania 谱面：{{keys}}K 已转换为 {{laneCount}}K",
         resolutionNextLaunch: "分辨率已保存，将在下次进入作品时生效",
+        webgpuVideoDisabled:
+            "WebGPU 渲染器下已禁用视频；可在设置中开启“无视风险启用视频”",
     },
     error: {
         archiveNoBeatmap: "压缩包里没有找到可用的 .osu 谱面",

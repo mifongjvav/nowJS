@@ -49,6 +49,15 @@ export default {
         groupDisplay: "Display",
         groupAccessibility: "Accessibility",
         groupExperimental: "Experimental",
+        renderer: "Renderer",
+        rendererAuto: "Automatic (recommended)",
+        rendererWebgpu: "WebGPU (experimental)",
+        rendererHint:
+            "Takes effect after reload. Falls back automatically if unavailable; the multithreaded render worker always uses WebGL; WebGPU disables video by default.",
+        rendererCurrent: "Current main renderer: {{renderer}}",
+        ignoreWebgpuVideoRisk: "Enable video anyway (ignore risk)",
+        ignoreWebgpuVideoRiskHint:
+            "WebGPU video can cause rendering interruptions or a black screen on some devices. When enabled, the next loaded chart will still play its video.",
         storyboard: "Storyboards",
         video: "Videos",
         blur: "Blur effects",
@@ -150,6 +159,8 @@ export default {
             "osu!mania beatmap detected: {{keys}}K converted to {{laneCount}}K",
         resolutionNextLaunch:
             "Resolution saved. It will take effect the next time you open this work.",
+        webgpuVideoDisabled:
+            "Video is disabled with the WebGPU renderer. Enable “Enable video anyway” in Settings to override.",
     },
     error: {
         archiveNoBeatmap: "No playable .osu beatmap found in the archive.",

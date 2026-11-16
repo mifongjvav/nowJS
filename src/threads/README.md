@@ -16,7 +16,9 @@ main thread; XML parsing is only available if the worker host provides DOMParser
   second judgement loop. Session IDs discard stale results after pause, seek,
   restart and exit. Audio startup rebases the simulation clock.
 - `render.worker.js`: a separate Pixi WebGL renderer owns a transferred
-  OffscreenCanvas. DOM/UI, scene preparation, image/video decoding and the
+  OffscreenCanvas. The main renderer selection (auto/WebGL 1/2/WebGPU/Canvas)
+  is independent; this worker currently always uses WebGL. WebGPU charts skip
+  video unless the explicit risk override is enabled. DOM/UI, scene preparation, image/video decoding and the
   prepared background-blur texture remain on the main/browser side. The scene
   bridge supports the graphics, text, sprites and blur filters used by this
   project, not arbitrary Pixi plugins. It sends only one scene at a time, caches

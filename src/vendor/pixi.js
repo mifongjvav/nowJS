@@ -16,6 +16,7 @@ export { VideoSource } from "../../node_modules/pixi.js/lib/rendering/renderers/
 export { Rectangle } from "../../node_modules/pixi.js/lib/maths/shapes/Rectangle.mjs";
 export { BlurFilter } from "../../node_modules/pixi.js/lib/filters/defaults/blur/BlurFilter.mjs";
 export { WebGLRenderer } from "../../node_modules/pixi.js/lib/rendering/renderers/gl/WebGLRenderer.mjs";
+export { WebGPURenderer } from "../../node_modules/pixi.js/lib/rendering/renderers/gpu/WebGPURenderer.mjs";
 export { CanvasRenderer } from "../../node_modules/pixi.js/lib/rendering/renderers/canvas/CanvasRenderer.mjs";
 export { Ticker } from "../../node_modules/pixi.js/lib/ticker/Ticker.mjs";
 export { UPDATE_PRIORITY } from "../../node_modules/pixi.js/lib/ticker/const.mjs";

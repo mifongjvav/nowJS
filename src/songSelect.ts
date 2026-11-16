@@ -39,6 +39,7 @@ import {
     resetThemeFromBackground,
 } from "./dynamicTheme.ts";
 import { format, i18n } from "./i18n/index.ts";
+import { getSettings } from "./settings.ts";
 import type {
     ArchiveFile,
     CatchHitSample,
@@ -416,6 +417,25 @@ async function selectChart(
     void applyThemeFromBackground(chart.backgroundUrl, getBackgroundImage());
 
     setSamples(chart.samples || []);
+
+    // Pixi's WebGPU video texture path can lose the device on some drivers.
+    // Keep the chart playable with its static background/storyboard instead.
+    const webgpuVideoDisabled =
+        Boolean(chart.videoUrl) &&
+        window.app?.renderer?.name === "webgpu" &&
+        !getSettings().ignoreWebgpuVideoRisk;
+    if (webgpuVideoDisabled) {
+        const disabledUrl = chart.videoUrl;
+        chart.videoUrl = null;
+        chart.videoOffset = 0;
+        chart.hasVideo = false;
+        if (disabledUrl) {
+            const index = newUrls.indexOf(disabledUrl);
+            if (index !== -1) newUrls.splice(index, 1);
+            URL.revokeObjectURL(disabledUrl);
+        }
+        ui.showToast(i18n.toast.webgpuVideoDisabled, "info");
+    }
 
     if (chart.videoUrl) {
         setVideo(chart.videoUrl, chart.videoOffset || 0);
