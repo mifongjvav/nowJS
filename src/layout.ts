@@ -35,6 +35,20 @@ export function getCatchPlayfield(): Playfield {
     };
 }
 
+// The catcher's centre must reach both field edges, so half of the plate is
+// allowed to overhang into the side margin. Keeping the whole plate inside
+// made notes at x=0/x=512 impossible to catch.
+export function getCatchPlayerRange(playerWidth: number): {
+    minX: number;
+    maxX: number;
+} {
+    const field = getCatchPlayfield();
+    return {
+        minX: field.left - playerWidth / 2,
+        maxX: field.right - playerWidth / 2,
+    };
+}
+
 export function osuXToScreen(x: number): number {
     const field = getPlayfield();
     const clamped = Math.min(OSU_PLAYFIELD_WIDTH, Math.max(0, x));

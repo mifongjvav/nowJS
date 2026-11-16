@@ -81,11 +81,12 @@ export class Simulation {
     input(input: NormalInput, time: number): void {
         if (input.kind === "pointer") {
             if (!this.config.auto && !this.config.mania) {
-                const minX = this.config.fieldLeft;
+                const minX =
+                    this.config.fieldLeft - this.config.playerWidth / 2;
                 const maxX =
                     this.config.fieldLeft +
                     this.config.fieldWidth -
-                    this.config.playerWidth;
+                    this.config.playerWidth / 2;
                 this.playerX = clamp(input.x, minX, maxX);
             }
             return;
@@ -178,8 +179,9 @@ export class Simulation {
                     : xFor(nearest)) -
                 config.playerWidth / 2;
         }
-        const minX = config.fieldLeft;
-        const maxX = config.fieldLeft + config.fieldWidth - config.playerWidth;
+        const minX = config.fieldLeft - config.playerWidth / 2;
+        const maxX =
+            config.fieldLeft + config.fieldWidth - config.playerWidth / 2;
         targetX = clamp(targetX, minX, maxX);
         const chasingBanana = useBananas && candidates.length > 0;
         const omega = chasingBanana

@@ -277,8 +277,8 @@ export function updateAutoPlay(chartTime, deltaMS) {
     if (elapsedSeconds <= 0) return;
 
     const field = getCatchPlayfield();
-    const minX = field.left;
-    const maxX = field.right - playerWidth;
+    const minX = field.left - playerWidth / 2;
+    const maxX = field.right - playerWidth / 2;
     const centerX = clamp(field.center - playerWidth / 2, minX, maxX);
     const scale = window.gameScale || 1;
 

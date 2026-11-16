@@ -4,7 +4,7 @@ import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import { getSettings, onSettingsChange } from "./settings.ts";
 import { routeInput } from "./threads/inputClient.ts";
 import { sendLogicInput } from "./threads/logicClient.ts";
-import { getCatchPlayfield } from "./layout.ts";
+import { getCatchPlayerRange } from "./layout.ts";
 
 const app = window.app;
 const WIDTH = window.gameWidth;
@@ -109,7 +109,7 @@ function movePlayer(clientX) {
 
     const rect = app.canvas.getBoundingClientRect();
     if (!rect.width) return;
-    const field = getCatchPlayfield();
+    const range = getCatchPlayerRange(playerW);
     routeInput(
         {
             kind: "pointer",
@@ -118,8 +118,8 @@ function movePlayer(clientX) {
             cssWidth: rect.width,
             width: WIDTH,
             playerWidth: playerW,
-            fieldLeft: field.left,
-            fieldWidth: field.width,
+            minX: range.minX,
+            maxX: range.maxX,
             stamp: performance.timeOrigin + performance.now(),
         },
         (input) => {

@@ -120,6 +120,8 @@ test("catch overlap and pointer processing use the same pixel coordinates", () =
         config([{ time: 1000, x: 256, type: "fruit" }], {
             mania: false,
             auto: false,
+            fieldLeft: 160,
+            fieldWidth: 960,
         }),
     );
     const input = normalizeInput({
@@ -158,13 +160,57 @@ test("catch overlap and pointer processing use the same pixel coordinates", () =
     });
     assert.equal(boundedLeft.x, 160);
     assert.equal(boundedRight.x, 1020);
+    const overhangLeft = normalizeInput({
+        kind: "pointer",
+        clientX: 0,
+        left: 0,
+        cssWidth: 1280,
+        width: 1280,
+        playerWidth: 100,
+        minX: 110,
+        maxX: 1070,
+        stamp: 3,
+    });
+    const overhangRight = normalizeInput({
+        kind: "pointer",
+        clientX: 1280,
+        left: 0,
+        cssWidth: 1280,
+        width: 1280,
+        playerWidth: 100,
+        minX: 110,
+        maxX: 1070,
+        stamp: 4,
+    });
+    assert.equal(overhangLeft.x, 110);
+    assert.equal(overhangRight.x, 1070);
     sim.input(boundedLeft, 0);
-    assert.equal(sim.playerX, 384);
+    assert.equal(sim.playerX, 160);
     sim.input(boundedRight, 0);
-    assert.equal(sim.playerX, 512 - 100 + 384);
+    assert.equal(sim.playerX, 1020);
+    sim.input(overhangLeft, 0);
+    assert.equal(sim.playerX, 110);
+    sim.input(overhangRight, 0);
+    assert.equal(sim.playerX, 1070);
     sim.input(input, 0);
     sim.step(1000);
     assert.equal(sim.events.at(-1).kind, "hit");
+    for (const [noteX, inputX] of [
+        [0, 110],
+        [512, 1070],
+    ]) {
+        const edgeSim = new Simulation(
+            config([{ time: 1000, x: noteX, type: "fruit" }], {
+                mania: false,
+                auto: false,
+                fieldLeft: 160,
+                fieldWidth: 960,
+            }),
+        );
+        edgeSim.input({ kind: "pointer", x: inputX, stamp: 0 }, 0);
+        edgeSim.step(1000);
+        assert.equal(edgeSim.events.at(-1).kind, "hit");
+    }
     assert.equal(
         normalizeInput({ kind: "key", code: "KeyJ", down: false, stamp: 99 })
             .lane,

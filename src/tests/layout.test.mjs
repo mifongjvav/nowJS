@@ -5,7 +5,8 @@ Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: { gameWidth: 1280, gameHeight: 720, gameScale: 1 },
 });
-const { getCatchPlayfield, getPlayfield } = await import("../layout.ts");
+const { getCatchPlayfield, getCatchPlayerRange, getPlayfield } =
+    await import("../layout.ts");
 
 test("catch playfield matches the 4:3 storyboard area", () => {
     assert.deepEqual(getCatchPlayfield(), {
@@ -14,6 +15,8 @@ test("catch playfield matches the 4:3 storyboard area", () => {
         right: 1120,
         center: 640,
     });
+    // The plate may overhang by half its width so its centre reaches x=0/512.
+    assert.deepEqual(getCatchPlayerRange(100), { minX: 110, maxX: 1070 });
     // Mania keeps its dedicated 512-wide lane field.
     assert.deepEqual(getPlayfield(), {
         left: 384,
