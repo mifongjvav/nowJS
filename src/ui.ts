@@ -3,7 +3,11 @@ import { injectBaseStyles } from "./styles.ts";
 import { initSettingsMenu } from "./settingsMenu.ts";
 import { readStorage } from "./storage.ts";
 import { RESOLUTIONS, showResolutionSelector } from "./resolution.ts";
-import { getCatchPlayfield, getPlayfield } from "./layout.ts";
+import {
+    showGameplayHud,
+    hideGameplayHud,
+    updateGameplayHud,
+} from "./gameplayHud.ts";
 import {
     applyI18n,
     format,
@@ -404,29 +408,6 @@ root.innerHTML = `
         <p id="now-loading-text">${i18n.loading.default}</p>
     </div>
 
-    <div class="now-hud now-hidden" id="now-hud">
-        <mdui-linear-progress
-            class="now-hud-progress"
-            id="now-hud-progress"
-            max="1"
-            value="0"
-            role="progressbar"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow="0"
-            aria-label="${i18n.hud.progress}"
-            data-i18n-aria-label="hud.progress"
-        ></mdui-linear-progress>
-        <div class="now-hud-auto now-hidden" id="now-hud-auto">
-            <mdui-icon-smart-toy aria-hidden="true"></mdui-icon-smart-toy>
-            <span data-i18n="autoplay.badge">${i18n.autoplay.badge}</span>
-        </div>
-        <div class="now-hud-song" id="now-hud-song"></div>
-        <div class="now-hud-accuracy" id="now-hud-accuracy">
-            <span data-i18n="hud.accuracy">${i18n.hud.accuracy}</span>
-            <strong id="now-hud-accuracy-value">100.00%</strong>
-        </div>
-    </div>
 
     <input
         type="file"
@@ -476,18 +457,10 @@ const resumeBtn = root.querySelector("#now-resume-btn");
 const retryBtn = root.querySelector("#now-retry-btn");
 const loadingScreen = root.querySelector("#now-loading");
 const loadingText = root.querySelector("#now-loading-text");
-const hud = root.querySelector("#now-hud");
-const hudSong = root.querySelector("#now-hud-song");
-const hudAccuracyValue = root.querySelector("#now-hud-accuracy-value");
-const hudProgress = root.querySelector("#now-hud-progress");
 const autoplayBtn = root.querySelector("#now-autoplay-btn");
-const hudAuto = root.querySelector("#now-hud-auto");
 
 let currentSong = null;
 let difficultyResolver = null;
-let hudScrubbing = false;
-let scrubbingPointerId = null;
-let scrubbingProgress = 0;
 
 const compactActions = window.matchMedia("(max-width: 600px)");
 
@@ -502,7 +475,6 @@ syncDialogActions();
 holdTailSwitch.checked = isHoldTailJudgementEnabled();
 
 autoplayBtn.selected = isAutoPlayEnabled();
-hudAuto.classList.toggle("now-hidden", !isAutoPlayEnabled());
 
 const UI_SOUND_SELECTOR = [
     "mdui-button",
@@ -766,146 +738,17 @@ export function showToast(message, type = "error") {
     toast.dataset.type = type;
 }
 
-function updateHudAccuracy() {
-    const total = window.hitCount + window.missCount;
-    const accuracy = total > 0 ? window.hitCount / total : 1;
-    hudAccuracyValue.textContent = `${(accuracy * 100).toFixed(2)}%`;
-}
-
-function updateHudAccuracyPosition() {
-    const canvas = window.app?.canvas;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const field = window.currentChart?.mania
-        ? getPlayfield()
-        : getCatchPlayfield();
-    const fieldRight =
-        rect.left + (field.right / window.gameWidth) * rect.width;
-    const accuracy = hudAccuracyValue.closest(".now-hud-accuracy");
-    if (!accuracy) return;
-    accuracy.style.right = `${Math.max(16, window.innerWidth - fieldRight + 16)}px`;
-    accuracy.style.top = `${Math.max(16, rect.top + 54)}px`;
-}
-
-window.addEventListener("resize", updateHudAccuracyPosition);
-
-export function showHud(chart) {
-    const metadata = (chart && chart.metadata) || {};
-    hudSong.textContent = metadata.titleUnicode || metadata.title || "";
-    hudProgress.value = 0;
-    hudProgress.setAttribute("aria-valuenow", "0");
-    hudAuto.classList.toggle("now-hidden", !isAutoPlayEnabled());
-    updateHudAccuracy();
-    updateHudAccuracyPosition();
-    updateHudScrubbable();
-    showElement(hud);
+export function showHud(chart: GameChart) {
+    showGameplayHud(chart, callbacks);
 }
 
 export function hideHud() {
-    hudScrubbing = false;
-    scrubbingPointerId = null;
-    hud.classList.remove("now-hud-seeking");
-    hideElement(hud);
+    hideGameplayHud();
 }
 
-export function updateHudProgress(progress) {
-    updateHudAccuracy();
-    if (hudScrubbing) return;
-
-    const value = Math.min(1, Math.max(0, progress));
-    hudProgress.value = value;
-    hudProgress.setAttribute("aria-valuenow", String(Math.round(value * 100)));
+export function updateHudProgress(progress: number) {
+    updateGameplayHud(progress);
 }
-
-function updateHudScrubbable() {
-    const enabled = isAutoPlayEnabled();
-    hud.classList.toggle("now-hud-scrubbable", enabled);
-    hudProgress.setAttribute("role", enabled ? "slider" : "progressbar");
-    hudProgress.tabIndex = enabled ? 0 : -1;
-    hudProgress.setAttribute("aria-valuemin", "0");
-    hudProgress.setAttribute("aria-valuemax", "100");
-}
-
-function progressAtPointer(event) {
-    const rect = hudProgress.getBoundingClientRect();
-    if (!rect.width) return scrubbingProgress;
-    return Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-}
-
-function updateScrubbingProgress(event) {
-    scrubbingProgress = progressAtPointer(event);
-    hudProgress.value = scrubbingProgress;
-    hudProgress.setAttribute(
-        "aria-valuenow",
-        String(Math.round(scrubbingProgress * 100)),
-    );
-}
-
-function finishHudScrubbing(event, commit) {
-    if (!hudScrubbing) return;
-
-    if (event && commit) updateScrubbingProgress(event);
-    const progress = scrubbingProgress;
-    hudScrubbing = false;
-    scrubbingPointerId = null;
-    hud.classList.remove("now-hud-seeking");
-
-    if (event?.currentTarget?.hasPointerCapture?.(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    if (commit) callbacks.seekEnd(progress);
-}
-
-hudProgress.addEventListener("pointerdown", (event) => {
-    if (!isAutoPlayEnabled() || window.gameState !== "playing") return;
-    if (window.isPaused || hudScrubbing) return;
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    if (!callbacks.seekStart()) return;
-
-    event.preventDefault();
-    hudScrubbing = true;
-    scrubbingPointerId = event.pointerId;
-    hud.classList.add("now-hud-seeking");
-    updateScrubbingProgress(event);
-    hudProgress.setPointerCapture?.(event.pointerId);
-});
-
-hudProgress.addEventListener("pointermove", (event) => {
-    if (!hudScrubbing || event.pointerId !== scrubbingPointerId) return;
-    event.preventDefault();
-    updateScrubbingProgress(event);
-});
-
-hudProgress.addEventListener("pointerup", (event) => {
-    if (event.pointerId !== scrubbingPointerId) return;
-    event.preventDefault();
-    finishHudScrubbing(event, true);
-});
-
-hudProgress.addEventListener("pointercancel", (event) => {
-    if (event.pointerId !== scrubbingPointerId) return;
-    finishHudScrubbing(event, true);
-});
-
-hudProgress.addEventListener("keydown", (event) => {
-    if (!isAutoPlayEnabled() || window.gameState !== "playing") return;
-    let next = Number(hudProgress.value);
-    if (event.key === "ArrowLeft") next -= 0.01;
-    else if (event.key === "ArrowRight") next += 0.01;
-    else return;
-
-    event.preventDefault();
-    if (!callbacks.seekStart()) return;
-    scrubbingProgress = Math.max(0, Math.min(1, next));
-    hudProgress.value = scrubbingProgress;
-    hudProgress.setAttribute(
-        "aria-valuenow",
-        String(Math.round(scrubbingProgress * 100)),
-    );
-    callbacks.seekEnd(scrubbingProgress);
-});
 
 export function pickDifficulty(
     list: DifficultySummary[],
@@ -1098,8 +941,6 @@ modePicker.addEventListener("change", () => {
 window.addEventListener("nowjs-autoplay-change", (event) => {
     const enabled = Boolean(event.detail && event.detail.enabled);
     autoplayBtn.selected = enabled;
-    hudAuto.classList.toggle("now-hidden", !enabled);
-    updateHudScrubbable();
     showToast(enabled ? i18n.autoplay.enabled : i18n.autoplay.disabled, "info");
 });
 
