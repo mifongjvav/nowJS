@@ -4,6 +4,15 @@ import { format, i18n } from "./i18n/index.ts";
 import { onLanguageChange } from "./i18n/index.ts";
 import { getThreadStatuses, onThreadStatus } from "./threads/status.ts";
 import { getActiveRendererLabel } from "./rendererSelection.ts";
+import {
+    getCatchControls,
+    setCatchControlMode,
+    setCatchBinding,
+    resetCatchControls,
+    onCatchControlsChange,
+    catchKeyLabel,
+} from "./catchControls.ts";
+import type { CatchAction } from "./catchMovement.ts";
 
 type SwitchKey =
     | "storyboard"
@@ -25,7 +34,11 @@ function switchRow(key: SwitchKey): string {
 
 function settingsGroup(
     name: string,
-    titleKey: "groupDisplay" | "groupAccessibility" | "groupExperimental",
+    titleKey:
+        | "groupDisplay"
+        | "groupAccessibility"
+        | "groupExperimental"
+        | "groupControls",
     body: string,
 ): string {
     return `
@@ -88,16 +101,109 @@ export function initSettingsMenu(root: HTMLElement): void {
         <p class="now-setting-hint" data-i18n="settings.experimentalHint">${i18n.settings.experimentalHint}</p>
         <p class="now-setting-hint" data-i18n="settings.threadHint">${i18n.settings.threadHint}</p>
         <div id="now-thread-status" class="now-thread-status" aria-live="polite"></div>`;
+    const controlsBody = `
+        <label class="now-setting-select-row">
+            <span data-i18n="settings.catchMode">${i18n.settings.catchMode}</span>
+            <select id="now-catch-input-mode" aria-label="${i18n.settings.catchMode}" data-i18n-aria-label="settings.catchMode">
+                <option value="keyboard" data-i18n="settings.catchKeyboard">${i18n.settings.catchKeyboard}</option>
+                <option value="pointer" data-i18n="settings.catchPointer">${i18n.settings.catchPointer}</option>
+            </select>
+        </label>
+        ${(["left", "right", "dash"] as const)
+            .map((action) => {
+                const key = (
+                    {
+                        left: "catchLeft",
+                        right: "catchRight",
+                        dash: "catchDash",
+                    } as const
+                )[action];
+                return `<div class="now-setting-row">
+                <span id="now-catch-${action}-label" data-i18n="settings.${key}">${i18n.settings[key]}</span>
+                <mdui-button variant="outlined" data-catch-binding="${action}" aria-labelledby="now-catch-${action}-label"></mdui-button>
+            </div>`;
+            })
+            .join("")}
+        <p class="now-setting-hint" data-i18n="settings.catchHint">${i18n.settings.catchHint}</p>
+        <p id="now-catch-binding-status" class="now-setting-hint" aria-live="polite"></p>
+        <mdui-button variant="text" id="now-catch-reset" data-i18n="settings.catchReset">${i18n.settings.catchReset}</mdui-button>`;
     dialog.innerHTML = `
         <span slot="headline" id="now-settings-title" data-i18n="settings.title">${i18n.settings.title}</span>
         <div class="now-settings-content">
             ${settingsGroup("display", "groupDisplay", displayBody)}
+            ${settingsGroup("controls", "groupControls", controlsBody)}
             ${settingsGroup("accessibility", "groupAccessibility", accessibilityBody)}
             ${settingsGroup("experimental", "groupExperimental", experimentalBody)}
         </div>
         <mdui-button slot="action" variant="text" id="now-settings-close" data-i18n="settings.close">${i18n.settings.close}</mdui-button>
     `;
     root.appendChild(dialog);
+    let captureAction: CatchAction | null = null;
+    const modePicker = dialog.querySelector<HTMLSelectElement>(
+        "#now-catch-input-mode",
+    );
+    const bindingStatus = dialog.querySelector("#now-catch-binding-status");
+    const bindingButtons = dialog.querySelectorAll<
+        HTMLElement & { disabled: boolean }
+    >("[data-catch-binding]");
+    const syncCatchControls = () => {
+        const controls = getCatchControls();
+        modePicker.value = controls.mode;
+        for (const button of bindingButtons) {
+            const action = button.dataset.catchBinding as CatchAction;
+            button.textContent =
+                captureAction === action
+                    ? i18n.settings.catchBindPrompt
+                    : catchKeyLabel(controls[action]);
+            button.disabled = controls.mode !== "keyboard";
+        }
+    };
+    for (const button of bindingButtons)
+        button.addEventListener("click", () => {
+            captureAction = button.dataset.catchBinding as CatchAction;
+            bindingStatus.textContent = i18n.settings.catchBindPrompt;
+            syncCatchControls();
+        });
+    dialog.addEventListener(
+        "keydown",
+        (event: KeyboardEvent) => {
+            if (!captureAction) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (event.repeat) return;
+            if (event.code === "Escape") captureAction = null;
+            else {
+                if (!setCatchBinding(captureAction, event.code)) {
+                    bindingStatus.textContent = i18n.settings.catchBindInvalid;
+                    return;
+                }
+                captureAction = null;
+            }
+            bindingStatus.textContent = "";
+            syncCatchControls();
+        },
+        true,
+    );
+    modePicker.addEventListener("change", () => {
+        captureAction = null;
+        bindingStatus.textContent = "";
+        setCatchControlMode(
+            modePicker.value === "pointer" ? "pointer" : "keyboard",
+        );
+    });
+    dialog.querySelector("#now-catch-reset").addEventListener("click", () => {
+        captureAction = null;
+        bindingStatus.textContent = "";
+        resetCatchControls();
+    });
+    dialog.addEventListener("closed", () => {
+        captureAction = null;
+        bindingStatus.textContent = "";
+        syncCatchControls();
+    });
+    onCatchControlsChange(syncCatchControls);
+    onLanguageChange(syncCatchControls);
+    syncCatchControls();
 
     type SettingControl = Element & {
         checked?: boolean;

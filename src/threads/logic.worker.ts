@@ -29,6 +29,7 @@ function publish(force = false) {
         next: simulation.next,
         playerX: simulation.playerX,
         velocity: simulation.velocity,
+        catchState: simulation.catchMovement.snapshot(),
         events: simulation.events.splice(0),
         wall: lastSent,
     });
@@ -71,8 +72,12 @@ const handleMessage = ({ data }: MessageEvent) => {
             if (
                 data.config.auto !== undefined &&
                 data.config.auto !== simulation.config.auto
-            )
+            ) {
                 simulation.velocity = 0;
+                simulation.catchMovement.reset();
+            }
+            if (data.config.catchState)
+                simulation.catchMovement.restore(data.config.catchState);
             Object.assign(simulation.config, data.config);
         }
         if (data.type === "input" && simulation && running && !awaitingAudio) {

@@ -116,6 +116,8 @@ export interface CatchNote {
     holdEndTime?: number;
     /** Beatmap-defined combo/lane colour as 0xRRGGBB. */
     color?: number;
+    /** Automatically generated hyperfruit destination, in osu! coordinates. */
+    hyperDashTarget?: { x: number; time: number };
 }
 
 export interface ManiaChartInfo {

@@ -21,7 +21,7 @@ export default {
         enUS: "English",
     },
     autoplay: {
-        aria: "Toggle auto play (A)",
+        aria: "Toggle auto play (Enter)",
         enabled: "Auto play enabled",
         disabled: "Auto play disabled",
         badge: "AUTO",
@@ -52,6 +52,19 @@ export default {
         groupDisplay: "Display",
         groupAccessibility: "Accessibility",
         groupExperimental: "Experimental",
+        groupControls: "Catch controls",
+        catchMode: "Input method",
+        catchKeyboard: "Keyboard (recommended)",
+        catchPointer: "Mouse / touch",
+        catchLeft: "Move left",
+        catchRight: "Move right",
+        catchDash: "Dash",
+        catchBindPrompt: "Press a key… (Esc cancels)",
+        catchBindInvalid:
+            "Choose another key (Enter is reserved for auto play)",
+        catchReset: "Reset to A / S / D",
+        catchHint:
+            "Defaults: A left, S right, D dash. Click a binding to change it. Dash is twice walking speed; red-ringed fruit grants a hyperdash to the next object. Mouse / touch mode retains direct following.",
         renderer: "Renderer",
         rendererAuto: "Automatic (recommended)",
         rendererWebgpu: "WebGPU (experimental)",
@@ -90,7 +103,7 @@ export default {
         dropHint:
             "Drag and drop .osz / .osu here (.osu can include audio and a background image)",
         playHint:
-            "Catch: move the mouse to catch fruit · Mania 4K: press D F J K · Esc to pause · A for auto play",
+            "Catch: movement / dash keys (rebind or select mouse in Settings) · Mania 4K: D F J K · Esc to pause · Enter for auto play",
         importedBadge: "Imported",
         multipleFiles: "{{name}} (+{{count}} files)",
         chartReady: "Beatmap ready",

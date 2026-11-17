@@ -5,7 +5,8 @@ import { triggerStoryboardHit } from "./background.ts";
 import { getCatchPlayfield, getPlayfield } from "./layout.ts";
 import { MD3_COLORS } from "./theme.ts";
 import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
-import { setCatcherColor } from "./player.ts";
+import { setCatcherColor, judgeCatchNote } from "./player.ts";
+import { CATCH_HYPER_COLOR } from "./catchMovement.ts";
 import { CATCH_WINDOW_MS } from "./judgement.ts";
 
 const SCALE = window.gameScale;
@@ -85,6 +86,13 @@ function drawNoteGraphics(circle, holdHeight, color) {
             .fill({ color, alpha: layer.alpha });
     }
 
+    if (circle.note?.hyperDashTarget) {
+        circle.circle(0, 0, RADIUS * 1.35).stroke({
+            width: 3 * SCALE,
+            color: CATCH_HYPER_COLOR,
+            alpha: 0.95,
+        });
+    }
     circle.circle(0, 0, RADIUS).fill(color).stroke({
         width: outlineWidth,
         color: outline,
@@ -287,7 +295,7 @@ class CirclePool {
 
             if (
                 !circle.hasJudged &&
-                delta >= -CATCH_WINDOW_MS &&
+                delta >= (window.autoPlay ? -CATCH_WINDOW_MS : 0) &&
                 delta <= CATCH_WINDOW_MS
             ) {
                 if (this.overlaps(circle, player)) {
@@ -307,6 +315,7 @@ class CirclePool {
     }
 
     registerMiss(circle) {
+        judgeCatchNote(circle.note, false);
         if (window.currentChart && !window.currentChart.mania) {
             setCatcherColor(
                 typeof circle.note.color === "number"
@@ -433,6 +442,7 @@ class CirclePool {
     }
 
     performHit(circle) {
+        judgeCatchNote(circle.note, true);
         this.playHitEffects(circle);
 
         if (circle.note.type === "banana") {

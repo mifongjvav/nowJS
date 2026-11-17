@@ -48,7 +48,16 @@ import {
     resetBreakOverlay,
     updateBreakOverlay,
 } from "./breakOverlay.ts";
-import { resetCatcherColor } from "./player.ts";
+import {
+    resetCatcherColor,
+    resetCatchMovement,
+    releaseCatchKeys,
+    updateCatchMovement,
+    updateCatchEffects,
+    getCatchMovementState,
+    syncCatchMovementState,
+} from "./player.ts";
+import { getCatchControls } from "./catchControls.ts";
 import { FixedStepClock } from "./fixedStepClock.ts";
 import { getSettings, onSettingsChange } from "./settings.ts";
 import { logicThread } from "./threads/logicClient.ts";
@@ -93,6 +102,7 @@ logicThread.listen(
         nextNoteIndex = snapshot.next;
         lastFrameTime = snapshot.wall - performance.timeOrigin;
         if (window.player) window.player.x = snapshot.playerX;
+        if (snapshot.catchState) syncCatchMovementState(snapshot.catchState);
         const visual = window.playerVisual;
         if (visual && window.autoPlay && !window.currentChart?.mania) {
             const speed = Math.max(
@@ -153,6 +163,7 @@ ui.setUICallbacks({
 });
 
 function startGame() {
+    resetCatchMovement();
     const chart = getCurrentChart();
     if (!chart) {
         ui.showToast(i18n.toast.noChart);
@@ -209,6 +220,7 @@ function startGame() {
 }
 
 function beginGame(chart: GameChart): void {
+    resetCatchMovement();
     logicThread.stop();
     workerCircles.clear();
     isSeeking = false;
@@ -315,6 +327,7 @@ function pauseGame(silent = false) {
         return;
     }
 
+    releaseCatchKeys();
     window.isPaused = true;
     syncLogicScheduler();
     pauseMusic();
@@ -357,6 +370,7 @@ function beginGameSeek() {
     }
 
     isSeeking = true;
+    resetCatchMovement();
     syncLogicScheduler();
     seekHasAudio = Boolean(window.currentChart?.audioUrl);
     pauseMusic();
@@ -437,6 +451,7 @@ function restartGame() {
 function endGame() {
     if (endHandled) return;
     endHandled = true;
+    resetCatchMovement();
 
     window.gameState = "ended";
     syncLogicScheduler();
@@ -470,6 +485,7 @@ function endGame() {
 }
 
 function exitToMenu() {
+    resetCatchMovement();
     startupGeneration++;
     cancelEpilepsyWarning();
     isSeeking = false;
@@ -514,16 +530,33 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
-    if (event.key.toLowerCase() !== "a" || event.repeat) return;
+    if (event.key !== "Enter" || event.repeat || event.defaultPrevented) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
 
     const tagName = document.activeElement
         ? document.activeElement.tagName
         : "";
-    if (["INPUT", "TEXTAREA", "SELECT"].includes(tagName)) return;
+    if (
+        [
+            "INPUT",
+            "TEXTAREA",
+            "SELECT",
+            "BUTTON",
+            "MDUI-BUTTON",
+            "MDUI-BUTTON-ICON",
+            "MDUI-SELECT",
+        ].includes(tagName)
+    )
+        return;
     if (document.querySelector("mdui-dialog[open]")) return;
+    if (
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.isContentEditable
+    )
+        return;
     if (window.gameState !== "playing" && window.gameState !== "menu") return;
 
+    event.preventDefault();
     toggleAutoPlay();
 });
 
@@ -568,10 +601,22 @@ function updateLogic(elapsedMs: number): boolean | void {
     }
 
     if (!chart.mania) {
-        updateAutoPlay(chartTime, elapsedMs);
+        if (window.autoPlay) updateAutoPlay(chartTime, elapsedMs);
+        else {
+            // Catcher movement and judgement share the worker's 240 Hz
+            // ordering, so low render rates do not skip red-fruit jumps.
+            const duration = Math.min(elapsedMs, 250);
+            const steps = Math.max(1, Math.ceil(duration / (1000 / 240)));
+            const stepMs = duration / steps;
+            for (let step = 1; step <= steps; step++) {
+                const time = chartTime - duration + step * stepMs;
+                updateCatchMovement(stepMs, time);
+                circlePool.update(time);
+            }
+        }
     }
     updateManiaLogic(chartTime);
-    circlePool.update(chartTime);
+    if (chart.mania || window.autoPlay) circlePool.update(chartTime);
 
     updateSpinnerState();
 
@@ -623,12 +668,20 @@ function syncLogicScheduler(): void {
             logicThread.start(
                 {
                     notes: chart.notes.map(
-                        ({ time, x, type, lane, holdEndTime }) => ({
+                        ({
                             time,
                             x,
                             type,
                             lane,
                             holdEndTime,
+                            hyperDashTarget,
+                        }) => ({
+                            time,
+                            x,
+                            type,
+                            lane,
+                            holdEndTime,
+                            hyperDashTarget,
                         }),
                     ),
                     mania: Boolean(chart.mania),
@@ -640,6 +693,8 @@ function syncLogicScheduler(): void {
                     fieldLeft: field.left,
                     fieldWidth: field.width,
                     scale: window.gameScale,
+                    catchKeyboard: getCatchControls().mode === "keyboard",
+                    catchState: getCatchMovementState(),
                 },
                 chartTime,
                 nextNoteIndex,
@@ -697,6 +752,7 @@ window.addEventListener("nowjs-autoplay-change", () =>
 
 app.ticker.add((ticker) => {
     syncLogicScheduler();
+    updateCatchEffects(ticker.deltaMS);
     updateComboPosition();
     animateComboScale();
     if (window.gameState !== "playing" || window.isPaused || isSeeking) return;

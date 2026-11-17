@@ -1,6 +1,7 @@
 import { getSettings, onSettingsChange } from "../settings.ts";
 import { openWorker, setThreadStatus } from "./status.ts";
 import type { SimConfig, SimEvent, NormalInput } from "./simulation.ts";
+import type { CatchMovementState } from "../catchMovement.ts";
 export interface LogicSnapshot {
     type: "snapshot";
     session: number;
@@ -10,6 +11,7 @@ export interface LogicSnapshot {
     velocity: number;
     wall: number;
     events: SimEvent[];
+    catchState?: CatchMovementState;
 }
 let connection: ReturnType<typeof openWorker> | null = null;
 let generation = 0,
