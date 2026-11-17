@@ -7,6 +7,7 @@ import { MD3_COLORS } from "./theme.ts";
 import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
 import { setCatcherColor, judgeCatchNote } from "./player.ts";
 import { CATCH_HYPER_COLOR } from "./catchMovement.ts";
+import { getCatchSizeScale } from "./catchDifficulty.ts";
 import { CATCH_WINDOW_MS } from "./judgement.ts";
 
 const SCALE = window.gameScale;
@@ -145,7 +146,13 @@ class CirclePool {
             ? getPlayfield()
             : getCatchPlayfield();
         const x = Math.max(0, Math.min(512, note.x));
-        const scale = note.scale || 1;
+        const scale =
+            (note.scale || 1) *
+            (window.currentChart?.mania
+                ? 1
+                : getCatchSizeScale(
+                      window.currentChart?.difficulty?.circleSize,
+                  ));
 
         circle.active = true;
         circle.visible = true;
@@ -480,5 +487,17 @@ class CirclePool {
 }
 
 export const circlePool = new CirclePool(90);
+window.addEventListener("nowjs-catch-difficulty-change", () => {
+    if (window.currentChart?.mania) return;
+    const factor = getCatchSizeScale(
+        window.currentChart?.difficulty?.circleSize,
+    );
+    for (const circle of circlePool.activeCircles) {
+        const scale = (circle.note.scale || 1) * factor;
+        circle.scale.set(scale);
+        circle.displayRadius = RADIUS * scale;
+        drawNoteGraphics(circle, 0, getNoteColor(circle.note));
+    }
+});
 export { CATCH_WINDOW_MS };
 window.circlePool = circlePool;

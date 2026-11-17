@@ -5,7 +5,16 @@ import { getSettings, onSettingsChange } from "./settings.ts";
 import { routeInput } from "./threads/inputClient.ts";
 import { logicThread, sendLogicInput } from "./threads/logicClient.ts";
 import { getCatchPlayerRange, getCatchPlayfield } from "./layout.ts";
-import { CatchMovement, CATCH_HYPER_COLOR } from "./catchMovement.ts";
+import {
+    CatchMovement,
+    CATCH_HYPER_COLOR,
+    assignHyperDashTargets,
+} from "./catchMovement.ts";
+import {
+    getCatchSizeScale,
+    getCatchPlayerWidthOsu,
+} from "./catchDifficulty.ts";
+import type { GameChart } from "./domain.ts";
 import type {
     CatchAction,
     CatchMovementNote,
@@ -18,7 +27,7 @@ const WIDTH = window.gameWidth;
 const HEIGHT = window.gameHeight;
 const SCALE = window.gameScale;
 
-const playerW = 100 * SCALE;
+let playerW = 100 * SCALE;
 const playerH = 20 * SCALE;
 const catchMovement = new CatchMovement();
 const heldActions = new Set<CatchAction>();
@@ -129,6 +138,35 @@ window.player = player;
 window.playerVisual = visual;
 window.playerWidth = playerW;
 
+export function configureCatchChart(chart: GameChart) {
+    const factor = chart.mania
+        ? 1
+        : getCatchSizeScale(chart.difficulty?.circleSize);
+    const center = player.x + playerW / 2;
+    playerW = 100 * SCALE * factor;
+    window.playerWidth = playerW;
+    visual.pivot.set(playerW / 2, playerH / 2);
+    visual.position.set(playerW / 2, playerH / 2);
+    const range = getCatchPlayerRange(playerW);
+    player.x = Math.max(range.minX, Math.min(range.maxX, center - playerW / 2));
+    for (const ghost of dashGhosts) {
+        ghost.graphic
+            .clear()
+            .roundRect(0, 0, playerW, playerH, 5 * SCALE)
+            .fill(0xffffff);
+        ghost.graphic.visible = false;
+        ghost.age = 200;
+    }
+    drawPlayer();
+    if (!chart.mania) {
+        assignHyperDashTargets(
+            chart.notes,
+            getCatchPlayerWidthOsu(chart.difficulty?.circleSize),
+            getCatchControls().speed,
+        );
+    }
+}
+
 function movePlayer(clientX) {
     if (window.gameState !== "playing" || window.isPaused) return;
     if (window.autoPlay) return;
@@ -222,7 +260,7 @@ export function judgeCatchNote(note: CatchMovementNote, hit: boolean) {
         return;
     const field = getCatchPlayfield();
     const center = ((player.x + playerW / 2 - field.left) / field.width) * 512;
-    catchMovement.judge(note, hit, center);
+    catchMovement.judge(note, hit, center, getCatchControls().speed);
 }
 
 export function updateCatchMovement(deltaMs: number, time: number) {
@@ -235,6 +273,7 @@ export function updateCatchMovement(deltaMs: number, time: number) {
         field.width,
         playerW,
         getCatchControls().mode === "keyboard",
+        getCatchControls().speed,
     );
 }
 
@@ -327,8 +366,34 @@ window.addEventListener("visibilitychange", () => {
 window.addEventListener("nowjs-autoplay-change", resetCatchMovement);
 onCatchControlsChange(() => {
     resetCatchMovement();
+    const chart = window.currentChart;
+    if (chart) configureCatchChart(chart);
     logicThread.configure({
         catchKeyboard: getCatchControls().mode === "keyboard",
         catchState: getCatchMovementState(),
+        catchSpeed: getCatchControls().speed,
+        playerWidth: playerW,
+        ...(chart
+            ? {
+                  notes: chart.notes.map(
+                      ({
+                          time,
+                          x,
+                          type,
+                          lane,
+                          holdEndTime,
+                          hyperDashTarget,
+                      }) => ({
+                          time,
+                          x,
+                          type,
+                          lane,
+                          holdEndTime,
+                          hyperDashTarget,
+                      }),
+                  ),
+              }
+            : {}),
     });
+    window.dispatchEvent(new Event("nowjs-catch-difficulty-change"));
 });

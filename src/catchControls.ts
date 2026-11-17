@@ -6,6 +6,7 @@ export interface CatchControls {
     left: string;
     right: string;
     dash: string;
+    speed: number;
 }
 const STORAGE_KEY = "nowjs-catch-controls";
 const defaults: CatchControls = {
@@ -13,6 +14,8 @@ const defaults: CatchControls = {
     left: "KeyA",
     right: "KeyS",
     dash: "KeyD",
+    // Comfort default, not an osu! CS formula. 100% restores the base speed.
+    speed: 0.65,
 };
 let controls = { ...defaults };
 const listeners = new Set<() => void>();
@@ -37,6 +40,11 @@ try {
                 left: stored.left,
                 right: stored.right,
                 dash: stored.dash,
+                speed:
+                    typeof stored.speed === "number" &&
+                    Number.isFinite(stored.speed)
+                        ? Math.max(0.25, Math.min(1, stored.speed))
+                        : defaults.speed,
             };
     }
 } catch {
@@ -48,6 +56,11 @@ export function getCatchControls(): Readonly<CatchControls> {
 export function setCatchControlMode(mode: CatchControls["mode"]) {
     if (mode !== "keyboard" && mode !== "pointer") return;
     controls = { ...controls, mode };
+    save();
+}
+export function setCatchSpeed(speed: number) {
+    if (!Number.isFinite(speed)) return;
+    controls = { ...controls, speed: Math.max(0.25, Math.min(1, speed)) };
     save();
 }
 export function setCatchBinding(action: CatchAction, code: string) {

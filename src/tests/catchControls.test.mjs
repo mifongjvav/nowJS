@@ -17,6 +17,7 @@ test("Catch defaults to keyboard A/S/D and Enter is reserved for autoplay", () =
         left: "KeyA",
         right: "KeyS",
         dash: "KeyD",
+        speed: 0.65,
     });
     for (const code of ["Enter", "NumpadEnter", "Escape", "Tab", "bad-key"]) {
         assert.equal(controls.setCatchBinding("left", code), false);
@@ -56,5 +57,37 @@ test("stored controls reload and invalid conflicting controls fall back safely",
         left: "KeyA",
         right: "KeyS",
         dash: "KeyD",
+        speed: 0.65,
     });
+});
+
+test("movement speed persists, stays bounded and does not overwrite key bindings", () => {
+    controls.resetCatchControls();
+    controls.setCatchBinding("left", "ArrowLeft");
+    controls.setCatchSpeed(0.5);
+    assert.equal(controls.getCatchControls().speed, 0.5);
+    assert.equal(controls.getCatchControls().left, "ArrowLeft");
+    assert.equal(JSON.parse(values.get("nowjs-catch-controls")).speed, 0.5);
+    controls.setCatchSpeed(Infinity);
+    assert.equal(controls.getCatchControls().speed, 0.5);
+    controls.setCatchSpeed(2);
+    assert.equal(controls.getCatchControls().speed, 1);
+    controls.setCatchSpeed(0.01);
+    assert.equal(controls.getCatchControls().speed, 0.25);
+});
+
+test("legacy saved key bindings receive the slower default without losing custom keys", async () => {
+    values.set(
+        "nowjs-catch-controls",
+        JSON.stringify({
+            mode: "keyboard",
+            left: "KeyZ",
+            right: "KeyX",
+            dash: "ShiftLeft",
+        }),
+    );
+    const loaded = await import("../catchControls.ts?reload=legacy");
+    assert.equal(loaded.getCatchControls().left, "KeyZ");
+    assert.equal(loaded.getCatchControls().dash, "ShiftLeft");
+    assert.equal(loaded.getCatchControls().speed, 0.65);
 });

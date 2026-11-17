@@ -8,6 +8,7 @@ import {
     getCatchControls,
     setCatchControlMode,
     setCatchBinding,
+    setCatchSpeed,
     resetCatchControls,
     onCatchControlsChange,
     catchKeyLabel,
@@ -109,6 +110,11 @@ export function initSettingsMenu(root: HTMLElement): void {
                 <option value="pointer" data-i18n="settings.catchPointer">${i18n.settings.catchPointer}</option>
             </select>
         </label>
+        <label class="now-setting-slider">
+            <span><span id="now-catch-speed-label" data-i18n="settings.catchSpeed">${i18n.settings.catchSpeed}</span><output id="now-catch-speed-value"></output></span>
+            <input id="now-catch-speed" type="range" min="25" max="100" step="5" aria-labelledby="now-catch-speed-label" />
+            <span class="now-setting-hint" data-i18n="settings.catchSpeedHint">${i18n.settings.catchSpeedHint}</span>
+        </label>
         ${(["left", "right", "dash"] as const)
             .map((action) => {
                 const key = (
@@ -143,12 +149,18 @@ export function initSettingsMenu(root: HTMLElement): void {
         "#now-catch-input-mode",
     );
     const bindingStatus = dialog.querySelector("#now-catch-binding-status");
+    const speedControl =
+        dialog.querySelector<HTMLInputElement>("#now-catch-speed");
+    const speedValue = dialog.querySelector("#now-catch-speed-value");
     const bindingButtons = dialog.querySelectorAll<
         HTMLElement & { disabled: boolean }
     >("[data-catch-binding]");
     const syncCatchControls = () => {
         const controls = getCatchControls();
         modePicker.value = controls.mode;
+        speedControl.value = String(Math.round(controls.speed * 100));
+        speedControl.disabled = controls.mode !== "keyboard";
+        speedValue.textContent = `${Math.round(controls.speed * 100)}%`;
         for (const button of bindingButtons) {
             const action = button.dataset.catchBinding as CatchAction;
             button.textContent =
@@ -158,6 +170,12 @@ export function initSettingsMenu(root: HTMLElement): void {
             button.disabled = controls.mode !== "keyboard";
         }
     };
+    speedControl.addEventListener("input", () => {
+        speedValue.textContent = `${speedControl.value}%`;
+    });
+    speedControl.addEventListener("change", () => {
+        setCatchSpeed(Number(speedControl.value) / 100);
+    });
     for (const button of bindingButtons)
         button.addEventListener("click", () => {
             captureAction = button.dataset.catchBinding as CatchAction;

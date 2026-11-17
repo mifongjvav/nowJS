@@ -32,6 +32,7 @@ export interface SimConfig {
     scale: number;
     catchKeyboard?: boolean;
     catchState?: CatchMovementState;
+    catchSpeed?: number;
 }
 export type SimEvent = {
     kind: "spawn" | "hit" | "miss" | "tail" | "release";
@@ -94,6 +95,7 @@ export class Simulation {
                     this.config.fieldLeft) /
                     this.config.fieldWidth) *
                     512,
+                this.config.catchSpeed ?? 1,
             );
         }
         this.event("hit", id);
@@ -280,6 +282,7 @@ export class Simulation {
                 c.fieldWidth,
                 c.playerWidth,
                 Boolean(c.catchKeyboard),
+                c.catchSpeed ?? 1,
             );
         }
         for (const [id, holding] of this.active) {

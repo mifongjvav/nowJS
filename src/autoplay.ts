@@ -64,7 +64,20 @@ function resetMotion() {
 }
 
 function ensureTrail() {
-    if (trail || !window.gameplayLayer) return;
+    if (trail) {
+        if (trailWidth !== window.playerWidth) {
+            trailWidth = window.playerWidth;
+            for (const ghost of trailGhosts) {
+                ghost
+                    .clear()
+                    .roundRect(0, 0, trailWidth, trailHeight, trailRadius)
+                    .fill({ color: MD3_COLORS.primary, alpha: 0.55 });
+                ghost.pivot.set(trailWidth / 2, trailHeight / 2);
+            }
+        }
+        return;
+    }
+    if (!window.gameplayLayer) return;
 
     const playerWidth = window.playerWidth;
     const scale = window.gameScale || 1;

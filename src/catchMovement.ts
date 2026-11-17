@@ -31,6 +31,7 @@ export interface CatchMovementState {
 export function assignHyperDashTargets<T extends CatchMovementNote>(
     notes: T[],
     catcherWidth = CATCH_PLAYER_OSU_WIDTH,
+    speedMultiplier = 1,
 ) {
     const palpable = notes.filter((note) => note.type !== "banana");
     let lastDirection = 0;
@@ -46,7 +47,7 @@ export function assignHyperDashTargets<T extends CatchMovementNote>(
         const distance =
             Math.abs(next.x - current.x) -
             (lastDirection === direction ? lastExcess : halfWidth);
-        const excess = time * CATCH_DASH_SPEED - distance;
+        const excess = time * CATCH_DASH_SPEED * speedMultiplier - distance;
         if (excess < 0) {
             current.hyperDashTarget = { x: next.x, time: next.time };
             lastExcess = halfWidth;
@@ -88,7 +89,12 @@ export class CatchMovement {
             };
     }
 
-    judge(note: CatchMovementNote, hit: boolean, playerOsuX: number) {
+    judge(
+        note: CatchMovementNote,
+        hit: boolean,
+        playerOsuX: number,
+        speedMultiplier = 1,
+    ) {
         if (note.type === "banana") return;
         // A late miss from an older object (or a simultaneous stacked object)
         // must not cancel the boost belonging to the upcoming target.
@@ -99,7 +105,7 @@ export class CatchMovement {
         const multiplier =
             Math.abs(target.x - playerOsuX) /
             Math.max(1, target.time - note.time - 1000 / 60) /
-            CATCH_DASH_SPEED;
+            (CATCH_DASH_SPEED * speedMultiplier);
         if (multiplier > 1) this.state.hyper = { ...target, multiplier };
     }
 
@@ -111,6 +117,7 @@ export class CatchMovement {
         fieldWidth: number,
         playerWidth: number,
         keyboard = true,
+        speedMultiplier = 1,
     ) {
         const state = this.state;
         if (state.hyper && time > state.hyper.time + CATCH_WINDOW_MS)
@@ -122,6 +129,7 @@ export class CatchMovement {
             playerX +
             direction *
                 speed *
+                speedMultiplier *
                 (state.hyper?.multiplier ?? 1) *
                 deltaMs *
                 (fieldWidth / 512);

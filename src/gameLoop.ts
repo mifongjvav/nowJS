@@ -56,6 +56,7 @@ import {
     updateCatchEffects,
     getCatchMovementState,
     syncCatchMovementState,
+    configureCatchChart,
 } from "./player.ts";
 import { getCatchControls } from "./catchControls.ts";
 import { FixedStepClock } from "./fixedStepClock.ts";
@@ -169,6 +170,7 @@ function startGame() {
         ui.showToast(i18n.toast.noChart);
         return;
     }
+    configureCatchChart(chart);
     const generation = ++startupGeneration;
     cancelEpilepsyWarning();
     if (!shouldShowEpilepsyWarning(chart, getSettings())) {
@@ -695,6 +697,7 @@ function syncLogicScheduler(): void {
                     scale: window.gameScale,
                     catchKeyboard: getCatchControls().mode === "keyboard",
                     catchState: getCatchMovementState(),
+                    catchSpeed: getCatchControls().speed,
                 },
                 chartTime,
                 nextNoteIndex,

@@ -61,7 +61,10 @@ export default {
         catchDash: "Dash 加速",
         catchBindPrompt: "请按键…（Esc 取消）",
         catchBindInvalid: "此键不可绑定，请换一个键（Enter 为自动游玩）",
-        catchReset: "恢复 A / S / D",
+        catchReset: "恢复默认操作",
+        catchSpeed: "键盘移动速度",
+        catchSpeedHint:
+            "默认 65%，100% 为基础速度，Dash 始终为走速的 2 倍。CS 影响盘子和果子的尺寸，而不直接改变基础走速；红果会按所选速度重新计算。",
         catchHint:
             "默认 A 向左、S 向右、D 加速；点击按键可改键。普通 Dash 为走速的 2 倍；接到红圈水果后会获得到下一物件的 Hyperdash。鼠标 / 触屏模式保留直接跟随。",
         renderer: "渲染器",

@@ -62,7 +62,10 @@ export default {
         catchBindPrompt: "Press a key… (Esc cancels)",
         catchBindInvalid:
             "Choose another key (Enter is reserved for auto play)",
-        catchReset: "Reset to A / S / D",
+        catchReset: "Reset controls",
+        catchSpeed: "Keyboard movement speed",
+        catchSpeedHint:
+            "Default: 65%. 100% uses the base speed; dash is always twice walking speed. CS affects catcher and fruit size, not base walking speed. Hyperfruits are recalculated for the selected speed.",
         catchHint:
             "Defaults: A left, S right, D dash. Click a binding to change it. Dash is twice walking speed; red-ringed fruit grants a hyperdash to the next object. Mouse / touch mode retains direct following.",
         renderer: "Renderer",

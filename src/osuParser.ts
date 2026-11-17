@@ -1,5 +1,6 @@
 import { strFromU8, unzipSync } from "./vendor/fflate.js";
 import { assignHyperDashTargets } from "./catchMovement.ts";
+import { getCatchPlayerWidthOsu } from "./catchDifficulty.ts";
 import type {
     ArchiveFile,
     ArchivedBeatmap,
@@ -1078,7 +1079,10 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
         });
     }
 
-    assignHyperDashTargets(unique);
+    assignHyperDashTargets(
+        unique,
+        getCatchPlayerWidthOsu(beatmap.difficulty.circleSize),
+    );
     const firstNoteTime = unique.length ? unique[0].time : 0;
     const lastNoteTime = unique.length ? unique[unique.length - 1].time : 0;
     const approachRate = beatmap.difficulty.approachRate;

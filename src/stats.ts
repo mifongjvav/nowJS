@@ -119,7 +119,9 @@ export function updateComboPosition() {
         const mania =
             window.gameState === "playing" &&
             Boolean(window.currentChart && window.currentChart.mania);
-        const centerX = mania ? window.gameWidth / 2 : player.x + 50 * SCALE;
+        const centerX = mania
+            ? window.gameWidth / 2
+            : player.x + window.playerWidth / 2;
         const topY = mania
             ? (window.judgeLine ? window.judgeLine.y : player.y) - 150 * SCALE
             : player.y - 150 * SCALE;

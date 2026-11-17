@@ -543,6 +543,7 @@ export function setPlayMode(mode: PlayMode): void {
     chart.lengthMs = variant.lengthMs;
     chart.preemptMs = variant.preemptMs;
     chart.bpm = variant.bpm;
+    chart.difficulty = variant.difficulty;
     refreshChartTiming(chart);
 
     window.currentChart = chart;
@@ -933,6 +934,7 @@ async function buildImportedChart(
                     : file.name,
             metadata,
             bpm: compiled.bpm,
+            difficulty: compiled.difficulty,
             notes: compiled.notes,
             objectCount: compiled.objectCount,
             firstNoteTime: compiled.firstNoteTime,
