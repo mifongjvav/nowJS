@@ -10,6 +10,7 @@ test("HUD anchors use the full canvas, not the Catch 4:3 playfield", () => {
     assert.equal(layout.right, 1264);
     assert.equal(layout.bottom, 704);
     assert.equal(layout.inset, 16);
+    assert.equal(layout.metadataWidth, 440);
     assert.deepEqual(layout.progress, {
         x: 16,
         y: 6,
@@ -24,6 +25,7 @@ test("HUD scales at 1080p and keeps metadata inside a 4:3 canvas", () => {
     assert.equal(fullHd.scale, 1.5);
     assert.equal(fullHd.right, 1896);
     assert.equal(fullHd.bottom, 1056);
+    assert.equal(fullHd.metadataWidth, 660);
     const narrow = getGameplayHudLayout(1024, 768);
     assert.ok(narrow.inset + narrow.metadataWidth < narrow.right);
 });

@@ -21,11 +21,12 @@ class GameplayHud {
     private panels = new Graphics();
     private track = new Graphics();
     private fill = new Graphics();
-    private accuracy = this.text(24, "700");
+    private accuracy = this.text(28, "700");
+    private accuracyLabel = this.text(12, "700");
     private auto = this.text(14, "700");
-    private title = this.text(20, "700");
-    private artist = this.text(16);
-    private details = this.text(14);
+    private title = this.text(14, "700");
+    private artist = this.text(12);
+    private details = this.text(11);
     private chart: GameChart | null = null;
     private progress = 0;
     private pointer: number | null = null;
@@ -47,9 +48,13 @@ class GameplayHud {
             this.title,
             this.artist,
             this.details,
+            this.accuracyLabel,
         );
         window.statsLayer.addChild(this.root);
         this.accuracy.anchor.set(1, 0);
+        this.accuracy.alpha = 0.88;
+        this.accuracy.style.letterSpacing = window.gameScale;
+        this.accuracyLabel.anchor.set(1, 0);
         this.auto.anchor.set(0.5, 0);
         window.addEventListener("pointerdown", this.pointerDown, true);
         window.addEventListener("pointermove", this.pointerMove, true);
@@ -112,7 +117,7 @@ class GameplayHud {
         }
         const total = window.hitCount + window.missCount;
         const accuracy = total > 0 ? window.hitCount / total : 1;
-        this.accuracy.text = `${i18n.hud.accuracy}  ${(accuracy * 100).toFixed(2)}%`;
+        this.accuracy.text = `${(accuracy * 100).toFixed(2)}%`;
         this.syncAccessibility();
     }
 
@@ -135,14 +140,19 @@ class GameplayHud {
         ]
             .filter(Boolean)
             .join("  ·  ");
-        this.title.position.set(inset + 10 * scale, bottom - 72 * scale);
-        this.artist.position.set(inset + 10 * scale, bottom - 44 * scale);
-        this.details.position.set(inset + 10 * scale, bottom - 22 * scale);
+        this.title.position.set(inset + 8 * scale, bottom - 50 * scale);
+        this.artist.position.set(inset + 8 * scale, bottom - 31 * scale);
+        this.details.position.set(inset + 8 * scale, bottom - 15 * scale);
         for (const text of [this.title, this.artist, this.details]) {
             text.style.fill = MD3_COLORS.onSurface;
-            this.fit(text, metadataWidth - 20 * scale);
+            this.fit(text, metadataWidth - 16 * scale);
         }
-        this.accuracy.position.set(right - 10 * scale, 24 * scale);
+        this.artist.alpha = 0.8;
+        this.details.alpha = 0.65;
+        this.accuracyLabel.text = i18n.hud.accuracy;
+        this.accuracyLabel.position.set(right - 10 * scale, 20 * scale);
+        this.accuracyLabel.style.fill = MD3_COLORS.primary;
+        this.accuracy.position.set(right - 10 * scale, 37 * scale);
         this.accuracy.style.fill = MD3_COLORS.onSurface;
         this.auto.text =
             i18n.autoplay.badge === "AUTO"
@@ -156,20 +166,25 @@ class GameplayHud {
             .clear()
             .roundRect(
                 inset,
-                bottom - 82 * scale,
-                metadataWidth,
-                82 * scale,
-                8 * scale,
+                bottom - 58 * scale,
+                Math.max(
+                    this.title.width,
+                    this.artist.width,
+                    this.details.width,
+                ) +
+                    16 * scale,
+                58 * scale,
+                6 * scale,
             )
-            .fill({ color: MD3_COLORS.surface, alpha: 0.72 })
+            .fill({ color: MD3_COLORS.surface, alpha: 0.55 })
             .roundRect(
-                right - 240 * scale,
-                20 * scale,
-                240 * scale,
-                40 * scale,
-                8 * scale,
+                right - scale,
+                22 * scale,
+                3 * scale,
+                52 * scale,
+                2 * scale,
             )
-            .fill({ color: MD3_COLORS.surface, alpha: 0.72 });
+            .fill({ color: MD3_COLORS.primary, alpha: 0.8 });
         this.drawProgress();
     }
 
