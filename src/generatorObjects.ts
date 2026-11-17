@@ -6,6 +6,7 @@ import type {
 import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
 import type { GeneratorNote } from "./generatorPatterns.ts";
 import { createGeneratorCatchPath } from "./generatorCatchPath.ts";
+import { getGeneratorComboStarts } from "./generatorCombos.ts";
 
 type BaseObject = GeneratorNote;
 export type GeneratedObject =
@@ -263,16 +264,19 @@ export function createGeneratorObjects(
     objects.sort((a, b) => a.time - b.time);
     if (options.mode === "catch") {
         const path = createGeneratorCatchPath(analysis, options);
+        const comboStarts = getGeneratorComboStarts(objects, analysis);
         let returnToCenter = false;
-        for (const object of objects) {
+        for (const [index, object] of objects.entries()) {
             if (object.kind === "bananaShower") {
                 path.afterShower(object.endTime);
                 returnToCenter = true;
                 continue;
             }
-            object.x = returnToCenter ? 256 : path.place(object.time);
             if (returnToCenter) path.afterShower(object.time);
             returnToCenter = false;
+            if (comboStarts[index] && "beginCombo" in path)
+                path.beginCombo(object.time);
+            object.x = path.place(object.time);
             if (object.kind === "slider")
                 object.endX = path.extend(object.length, object.endTime);
         }
@@ -297,20 +301,12 @@ export function serializeGeneratorObjects(
     objects: readonly GeneratedObject[],
     analysis: GeneratorAnalysis,
 ): string[] {
-    const barLength = (60000 / analysis.bpm) * 4;
-    let previousBar: number | null = null,
-        afterSpinner = false;
-    return objects.map((object) => {
+    const comboStarts = getGeneratorComboStarts(objects, analysis);
+    return objects.map((object, index) => {
         if (object.kind === "bananaShower") {
-            afterSpinner = true;
             return `256,192,${object.time},8,0,${object.endTime},0:0:0:0:`;
         }
-        const bar = Math.floor(
-            (object.time - analysis.offsetMs + 0.5) / barLength,
-        );
-        const combo = previousBar !== bar || afterSpinner ? 4 : 0;
-        previousBar = bar;
-        afterSpinner = false;
+        const combo = comboStarts[index] ? 4 : 0;
         const prefix = `${object.x},192,${object.time}`;
         if (object.kind === "hold")
             return `${prefix},${128 | combo},0,${object.endTime}:0:0:0:0:`;

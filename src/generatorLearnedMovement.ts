@@ -56,9 +56,23 @@ export function createLearnedCatchPath(
         time = NaN,
         onsetIndex = 0;
     const history: MovementHistory[] = [];
+    // Combo-level composition is an explicit layout constraint, not knowledge
+    // learned by the MLP. Keep its local sampling, but give each colour a home.
+    const regionRadius = Math.min(90, 40 + Math.log2(profile.level) * 10);
+    let regionCenter: number | null = null,
+        pendingCenter: number | null = null;
+    let comboSum = 0,
+        comboCount = 0;
+    const record = () => {
+        comboSum += x;
+        comboCount++;
+    };
     const place = (at: number, length = Infinity) => {
         if (!Number.isFinite(time)) {
             time = at;
+            regionCenter = pendingCenter === null ? null : x;
+            pendingCenter = null;
+            record();
             return x;
         }
         if (at <= time) return x;
@@ -84,6 +98,16 @@ export function createLearnedCatchPath(
         const candidates = probabilities.map((mass, i) => {
             const dx = Math.round(x + model.bins[i] * 256) - x;
             if (Math.abs(dx) > reach || x + dx < 32 || x + dx > 480) return 0;
+            if (pendingCenter !== null) {
+                const sigma = Math.max(18, Math.abs(pendingCenter - x) * 0.3);
+                mass *= Math.exp(
+                    -0.5 * ((x + dx - pendingCenter) / sigma) ** 2,
+                );
+            } else if (
+                regionCenter !== null &&
+                Math.abs(x + dx - regionCenter) > regionRadius
+            )
+                return 0;
             // Engine-specific recovery safeguard, not a learned quality score.
             if (
                 previous &&
@@ -113,15 +137,51 @@ export function createLearnedCatchPath(
         history.push({ dx: x - before, beats: elapsed / beat });
         if (history.length > 4) history.shift();
         time = at;
+        if (pendingCenter !== null) {
+            regionCenter = x;
+            pendingCenter = null;
+        }
+        record();
         return x;
     };
     return {
         place,
+        beginCombo(at: number) {
+            if (!Number.isFinite(time)) {
+                pendingCenter = x;
+            } else if (at <= time) {
+                regionCenter = x;
+                pendingCenter = null;
+            } else {
+                const mean = comboCount ? comboSum / comboCount : x;
+                const heading = Math.sign(history.at(-1)?.dx ?? 0) || 1;
+                let direction =
+                    Math.abs(x - mean) > 8 ? Math.sign(x - mean) : heading;
+                const separation = Math.min(
+                    170,
+                    70 + Math.log2(profile.level) * 30,
+                    Math.max(0, at - time) * profile.spacing * 0.9,
+                );
+                const margin = 32 + regionRadius * 0.35;
+                const left = margin,
+                    right = 512 - margin;
+                const room = direction > 0 ? right - x : x - left;
+                if (room < separation * 0.6) direction *= -1;
+                pendingCenter = Math.max(
+                    left,
+                    Math.min(right, x + direction * separation),
+                );
+            }
+            comboSum = 0;
+            comboCount = 0;
+        },
         extend: (length: number, endTime: number) => place(endTime, length),
         afterShower(endTime: number) {
             x = 256;
             time = endTime;
             history.length = 0;
+            regionCenter = pendingCenter = null;
+            comboSum = comboCount = 0;
         },
     };
 }
