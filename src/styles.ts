@@ -38,6 +38,10 @@ const BASE_CSS = `
     #now-generator-status[data-error=true] { color: rgb(var(--mdui-color-error)); }
     #now-generator-result { border-top: 1px solid rgb(var(--mdui-color-outline-variant)); padding-top: 12px; }
     #now-generator-summary { margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    #now-generator-objects { margin: 0 0 10px; font-size: 12px; opacity: .8; }
+    .now-generator-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; }
+    #now-generator-palette { display: flex; gap: 6px; }
+    #now-generator-palette span { display: inline-block; width: 24px; height: 24px; border-radius: 6px; border: 1px solid rgb(var(--mdui-color-outline-variant)); }
     .now-generator-result-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
     #now-generator-download { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; background: rgb(var(--mdui-color-primary)); color: rgb(var(--mdui-color-on-primary)); text-decoration: none; font-size: 14px; }
     @media (max-width: 500px) { .now-generator-grid { grid-template-columns: 1fr; } }

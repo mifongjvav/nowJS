@@ -1,5 +1,9 @@
 import { analyzeGeneratorAudio } from "./beatmapAnalysis.ts";
 import {
+    GENERATOR_DEFAULT_COLORS,
+    extractGeneratorComboColors,
+} from "./generatorColors.ts";
+import {
     buildGeneratedBeatmap,
     GENERATOR_BLACK_PNG,
 } from "./beatmapGenerator.ts";
@@ -51,7 +55,11 @@ async function makeGeneratorBackground(
     file: File | null,
     signal?: AbortSignal,
 ) {
-    if (!file) return GENERATOR_BLACK_PNG;
+    if (!file)
+        return {
+            bytes: GENERATOR_BLACK_PNG,
+            colors: [...GENERATOR_DEFAULT_COLORS],
+        };
     const url = URL.createObjectURL(file);
     try {
         const image = new Image();
@@ -106,7 +114,15 @@ async function makeGeneratorBackground(
         );
         if (!blob) throw new GeneratorError("image");
         checkGeneratorAbort(signal);
-        return new Uint8Array(await blob.arrayBuffer());
+        const thumbnail = document.createElement("canvas");
+        thumbnail.width = thumbnail.height = 64;
+        const thumbnailContext = thumbnail.getContext("2d");
+        if (!thumbnailContext) throw new GeneratorError("image");
+        thumbnailContext.drawImage(canvas, 0, 0, 64, 64);
+        const colors = extractGeneratorComboColors(
+            thumbnailContext.getImageData(0, 0, 64, 64).data,
+        );
+        return { bytes: new Uint8Array(await blob.arrayBuffer()), colors };
     } finally {
         URL.revokeObjectURL(url);
     }
@@ -159,7 +175,8 @@ export async function generateBeatmapPack(
         analysis,
         options,
         { extension, bytes },
-        picture,
+        picture.bytes,
+        picture.colors,
     );
     checkGeneratorAbort(signal);
     progress?.({ stage: "pack", value: 1 });

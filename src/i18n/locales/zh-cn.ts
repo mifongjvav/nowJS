@@ -122,7 +122,7 @@ export default {
     generator: {
         title: "谱面生成器",
         description:
-            "使用 Meyda 在本地分析响度与频谱变化，生成 Catch 或 4K 谱面。文件不会上传到服务器。",
+            "使用 Meyda 在本地分析重音与持续声段，生成 Catch 或 4K 谱面，并从背景提取 Combo 配色。文件不会上传到服务器。",
         audio: "音频（必选：MP3 / OGG / WAV）",
         background: "背景（可选：PNG / JPEG / WebP）",
         black: "移除背景，使用纯黑",
@@ -143,11 +143,14 @@ export default {
         pack: "正在写谱并打包",
         cancelled: "已取消生成。",
         done: "生成完成，可下载或直接导入试玩。",
-        summary: "{{count}} 个音符 · {{bpm}} BPM（{{source}}）· {{seconds}} 秒",
+        summary: "{{count}} 个物件 · {{bpm}} BPM（{{source}}）· {{seconds}} 秒",
+        objects:
+            "{{circles}} 短音符 · {{sliders}} 滑条 · {{holds}} 长条 · {{bananas}} 段香蕉雨",
+        colors: "背景 Combo 配色",
         estimated: "估算",
         manual: "手动",
         lowConfidence: "节奏不明显，当前 BPM 为低置信度猜测，请校对。",
-        review: "这是固定 BPM、4/4 拍的自动草稿。自动估速可能出现半速或倍速，自由节奏、变速音乐及音符位置仍需人工校对。",
+        review: "这是固定 BPM、4/4 拍的自动草稿。滑条、长条和香蕉雨仅在合适的持续声段生成，短促鼓点仍以短音符为主。自动估速可能出现半速或倍速，仍需人工校对。",
         download: "下载 .osz",
         import: "导入并试玩",
         errors: {

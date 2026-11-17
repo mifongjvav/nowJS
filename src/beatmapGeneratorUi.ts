@@ -59,6 +59,11 @@ export function initBeatmapGenerator(
             <p id="now-generator-status" role="status" aria-live="polite"></p>
             <section id="now-generator-result" class="now-hidden">
                 <p id="now-generator-summary"></p>
+                <p id="now-generator-objects"></p>
+                <div class="now-generator-colors">
+                    <span data-i18n="generator.colors">${i18n.generator.colors}</span>
+                    <div id="now-generator-palette"></div>
+                </div>
                 <p class="now-generator-hint" data-i18n="generator.review">${i18n.generator.review}</p>
                 <div class="now-generator-result-actions">
                     <a id="now-generator-download" data-i18n="generator.download">${i18n.generator.download}</a>
@@ -102,6 +107,8 @@ export function initBeatmapGenerator(
     const status = dialog.querySelector<HTMLElement>("#now-generator-status")!;
     const resultSection = dialog.querySelector("#now-generator-result")!;
     const summary = dialog.querySelector("#now-generator-summary")!;
+    const objectSummary = dialog.querySelector("#now-generator-objects")!;
+    const palette = dialog.querySelector("#now-generator-palette")!;
     const download = dialog.querySelector<HTMLAnchorElement>(
         "#now-generator-download",
     )!;
@@ -153,12 +160,30 @@ export function initBeatmapGenerator(
                 result.analysis.confidence < 0.35
             )
                 summary.textContent += ` ${i18n.generator.lowConfidence}`;
+            objectSummary.textContent = format(i18n.generator.objects, {
+                circles: result.objectCounts.circles,
+                sliders: result.objectCounts.sliders,
+                holds: result.objectCounts.holds,
+                bananas: result.objectCounts.bananaShowers,
+            });
+            palette.replaceChildren(
+                ...result.comboColors.map((color, index) => {
+                    const swatch = document.createElement("span");
+                    const hex = `#${color.toString(16).padStart(6, "0")}`;
+                    swatch.style.backgroundColor = hex;
+                    swatch.title = `Combo ${index + 1}: ${hex}`;
+                    swatch.setAttribute("role", "img");
+                    swatch.setAttribute("aria-label", swatch.title);
+                    return swatch;
+                }),
+            );
         }
     };
     const clearResult = () => {
         if (url) URL.revokeObjectURL(url);
         url = "";
         result = null;
+        palette.replaceChildren();
         download.removeAttribute("href");
         resultSection.classList.add("now-hidden");
     };

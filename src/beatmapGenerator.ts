@@ -1,5 +1,15 @@
 import { zipSync, strToU8 } from "./vendor/fflate.js";
 import { GeneratorError } from "./generatorTypes.ts";
+import {
+    GENERATOR_DEFAULT_COLORS,
+    normalizeGeneratorComboColors,
+} from "./generatorColors.ts";
+import {
+    createGeneratorObjects,
+    countGeneratorObjects,
+    serializeGeneratorObjects,
+    getGeneratorSliderLength,
+} from "./generatorObjects.ts";
 import type {
     AudioOnset,
     GeneratorAnalysis,
@@ -146,12 +156,16 @@ export function buildGeneratedBeatmap(
     options: GeneratorOptions,
     audio: { extension: string; bytes: Uint8Array },
     background = GENERATOR_BLACK_PNG,
+    colors: readonly number[] = GENERATOR_DEFAULT_COLORS,
 ): GeneratedBeatmapPack {
     if (!["mp3", "ogg", "wav"].includes(audio.extension))
         throw new GeneratorError("audio");
     const title = cleanGeneratorText(options.title, "Generated track");
     const artist = cleanGeneratorText(options.artist, "Unknown Artist");
     const notes = createGeneratorNotes(analysis, options);
+    const objects = createGeneratorObjects(analysis, options, notes);
+    const objectCounts = countGeneratorObjects(objects);
+    const comboColors = normalizeGeneratorComboColors(colors);
     const beat = 60000 / analysis.bpm;
     const version = `Generated ${options.density}`;
     const osu = [
@@ -188,9 +202,20 @@ export function buildGeneratedBeatmap(
         "",
         "[TimingPoints]",
         `${analysis.offsetMs},${beat.toFixed(8)},4,1,0,80,1,0`,
+        ...(objectCounts.sliders
+            ? [
+                  `${analysis.offsetMs},${(-14000 / getGeneratorSliderLength(analysis.bpm)).toFixed(8)},4,1,0,80,0,0`,
+              ]
+            : []),
+        "",
+        "[Colours]",
+        ...comboColors.map(
+            (c, i) =>
+                `Combo${i + 1} : ${(c >> 16) & 255},${(c >> 8) & 255},${c & 255}`,
+        ),
         "",
         "[HitObjects]",
-        ...notes.map((note) => `${note.x},192,${note.time},1,0,0:0:0:0:`),
+        ...serializeGeneratorObjects(objects, analysis),
         "",
     ].join("\r\n");
     const bytes = zipSync(
@@ -209,7 +234,9 @@ export function buildGeneratedBeatmap(
     return {
         bytes,
         osu,
-        noteCount: notes.length,
+        noteCount: objects.length,
+        objectCounts,
+        comboColors,
         fileName: `${safeName} (nowJS).osz`,
         analysis: {
             bpm: analysis.bpm,

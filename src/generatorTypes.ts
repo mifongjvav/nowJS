@@ -56,10 +56,18 @@ export interface GeneratedBeatmapPack {
     fileName: string;
     osu: string;
     noteCount: number;
+    comboColors: number[];
+    objectCounts: GeneratorObjectCounts;
     analysis: Pick<
         GeneratorAnalysis,
         "bpm" | "estimatedBpm" | "confidence" | "durationMs"
     >;
+}
+export interface GeneratorObjectCounts {
+    circles: number;
+    sliders: number;
+    holds: number;
+    bananaShowers: number;
 }
 export interface GeneratorProgress {
     stage: "decode" | "analyze" | "pack";

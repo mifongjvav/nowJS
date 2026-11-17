@@ -124,7 +124,7 @@ export default {
     generator: {
         title: "Beatmap generator",
         description:
-            "Meyda analyzes loudness and spectral changes locally to create Catch or 4K maps. Your files are not uploaded.",
+            "Meyda analyzes transients and sustained audio locally to create Catch or 4K maps, with combo colors taken from the background. Your files are not uploaded.",
         audio: "Audio (required: MP3 / OGG / WAV)",
         background: "Background (optional: PNG / JPEG / WebP)",
         black: "Remove image / use black",
@@ -146,12 +146,15 @@ export default {
         cancelled: "Generation cancelled.",
         done: "Ready to download or import.",
         summary:
-            "{{count}} notes · {{bpm}} BPM ({{source}}) · {{seconds}} seconds",
+            "{{count}} objects · {{bpm}} BPM ({{source}}) · {{seconds}} seconds",
+        objects:
+            "{{circles}} taps · {{sliders}} sliders · {{holds}} holds · {{bananas}} banana showers",
+        colors: "Background combo colors",
         estimated: "estimated",
         manual: "manual",
         lowConfidence:
             "Rhythm is unclear: this is a low-confidence BPM guess. Please verify it.",
-        review: "This is a fixed-tempo, 4/4 draft. Tempo estimates may be half or double the intended BPM. Free-tempo music, tempo changes and note placement need manual review.",
+        review: "This is a fixed-tempo, 4/4 draft. Sliders, holds and banana showers require suitable sustained audio; short drum hits remain taps. Tempo estimates may be half or double the intended BPM. Manual review is still needed.",
         download: "Download .osz",
         import: "Import and play",
         errors: {
