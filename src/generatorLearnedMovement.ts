@@ -63,6 +63,7 @@ export function createLearnedCatchPath(
         pendingCenter: number | null = null;
     let comboSum = 0,
         comboCount = 0;
+    let localVelocity = 0;
     const record = () => {
         comboSum += x;
         comboCount++;
@@ -95,17 +96,37 @@ export function createLearnedCatchPath(
         const probabilities = movementProbabilities(features);
         const previous = history.at(-1);
         const reach = Math.min(length, elapsed * profile.spacing);
+        // Ease local gestures, not the larger colour-change entrance. Keep
+        // audible accents crisp instead of applying inertia indiscriminately.
+        const onset = analysis.onsets[Math.max(0, onsetIndex - 1)];
+        const accent =
+            onset &&
+            onset.strength >= 0.65 &&
+            Math.abs(onset.timeMs - at) < beat * 0.18;
+        const roundGesture =
+            regionCenter !== null && pendingCenter === null && !accent;
+        const displacements = model.bins.map((bin) =>
+            bin === 0
+                ? 0
+                : Math.round(
+                      bin * 256 * (roundGesture ? 0.65 : 1) +
+                          (roundGesture
+                              ? localVelocity * Math.min(elapsed, beat) * 0.35
+                              : 0),
+                  ),
+        );
         const candidates = probabilities.map((mass, i) => {
-            const dx = Math.round(x + model.bins[i] * 256) - x;
-            if (Math.abs(dx) > reach || x + dx < 32 || x + dx > 480) return 0;
+            const step = displacements[i];
+            if (Math.abs(step) > reach || x + step < 32 || x + step > 480)
+                return 0;
             if (pendingCenter !== null) {
                 const sigma = Math.max(18, Math.abs(pendingCenter - x) * 0.3);
                 mass *= Math.exp(
-                    -0.5 * ((x + dx - pendingCenter) / sigma) ** 2,
+                    -0.5 * ((x + step - pendingCenter) / sigma) ** 2,
                 );
             } else if (
                 regionCenter !== null &&
-                Math.abs(x + dx - regionCenter) > regionRadius
+                Math.abs(x + step - regionCenter) > regionRadius
             )
                 return 0;
             // Engine-specific recovery safeguard, not a learned quality score.
@@ -113,7 +134,7 @@ export function createLearnedCatchPath(
                 previous &&
                 Math.abs(previous.dx) / Math.max(1, previous.beats * beat) >
                     0.65 &&
-                dx * previous.dx < 0
+                step * previous.dx < 0
             )
                 return mass * 0.25;
             return mass;
@@ -130,16 +151,16 @@ export function createLearnedCatchPath(
                 }
             }
         const before = x;
-        x = Math.max(
-            32,
-            Math.min(480, Math.round(x + model.bins[chosen] * 256)),
-        );
+        x = Math.max(32, Math.min(480, x + displacements[chosen]));
         history.push({ dx: x - before, beats: elapsed / beat });
         if (history.length > 4) history.shift();
         time = at;
         if (pendingCenter !== null) {
             regionCenter = x;
             pendingCenter = null;
+            localVelocity = 0;
+        } else {
+            localVelocity = (x - before) / elapsed;
         }
         record();
         return x;
@@ -147,6 +168,7 @@ export function createLearnedCatchPath(
     return {
         place,
         beginCombo(at: number) {
+            localVelocity = 0;
             if (!Number.isFinite(time)) {
                 pendingCenter = x;
             } else if (at <= time) {
@@ -182,6 +204,7 @@ export function createLearnedCatchPath(
             history.length = 0;
             regionCenter = pendingCenter = null;
             comboSum = comboCount = 0;
+            localVelocity = 0;
         },
     };
 }

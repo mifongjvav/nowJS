@@ -7,6 +7,7 @@ import {
 } from "../beatmapGenerator.ts";
 import { createGeneratorObjects } from "../generatorObjects.ts";
 import { parseOsu, compileChart } from "../osuParser.ts";
+import { sampleBezierSlider } from "./generatorCurveHelpers.mjs";
 
 const analysis = {
     bpm: 120,
@@ -241,7 +242,8 @@ test("slider tails follow phrase gestures while path length independently preser
     assert.equal(raw.length, sliders.length);
     for (let i = 0; i < raw.length; i++) {
         assert.equal(raw[i].curvePoints.at(-1).x, sliders[i].endX);
-        const points = [{ x: sliders[i].x, y: 192 }, ...raw[i].curvePoints];
+        assert.equal(raw[i].curveType, "B");
+        const points = sampleBezierSlider(raw[i]);
         const distance = points
             .slice(1)
             .reduce(

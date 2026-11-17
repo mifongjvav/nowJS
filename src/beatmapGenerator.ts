@@ -57,7 +57,7 @@ export function buildGeneratedBeatmap(
     const difficulty = getGeneratorDifficulty(options);
     const version = `${difficulty.name} Lv.${difficulty.level} - ${
         options.mode === "catch" && options.movementModel === "learned"
-            ? `Neural v2 seed ${options.modelSeed ?? 1}`
+            ? `Neural v3 seed ${options.modelSeed ?? 1}`
             : "Review v4"
     }`;
     const osu = [

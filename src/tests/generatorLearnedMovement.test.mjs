@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFile } from "node:fs/promises";
 import { movementFeatures } from "../generatorLearnedFeatures.ts";
+import { MOVEMENT_BINS } from "../generatorLearnedFeatures.ts";
 import {
     movementProbabilities,
     createLearnedCatchPath,
@@ -94,6 +95,30 @@ test("learned slider tails never exceed the actual path length, and showers rese
     path.afterShower(10000);
     assert.equal(path.place(10000), 256);
     assert.equal(path.place(9900), 256);
+});
+
+test("local non-accent gestures ease between sampled bins while accents retain crisp attacks", () => {
+    const steps = (strength) => {
+        const input = {
+            ...analysis,
+            onsets: analysis.onsets.map((o) => ({ ...o, strength })),
+        };
+        const path = createLearnedCatchPath(input, options);
+        path.beginCombo(600);
+        let x = path.place(600);
+        return input.onsets.slice(1, 30).map((o) => {
+            const next = path.place(o.timeMs),
+                dx = next - x;
+            x = next;
+            return dx;
+        });
+    };
+    const discrete = new Set(MOVEMENT_BINS.map((v) => Math.round(v * 256)));
+    const eased = steps(0.3),
+        accented = steps(0.9);
+    assert.ok(eased.some((dx) => !discrete.has(dx)));
+    assert.ok(accented.every((dx) => discrete.has(dx)));
+    assert.notDeepEqual(eased, accented);
 });
 
 test("the experiment changes layout, not selected rhythms or 4K, and preserves the rule-based fallback", () => {

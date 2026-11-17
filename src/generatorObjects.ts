@@ -7,6 +7,7 @@ import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
 import type { GeneratorNote } from "./generatorPatterns.ts";
 import { createGeneratorCatchPath } from "./generatorCatchPath.ts";
 import { getGeneratorComboStarts } from "./generatorCombos.ts";
+import { createGeneratorSliderCurve } from "./generatorSliderCurve.ts";
 
 type BaseObject = GeneratorNote;
 export type GeneratedObject =
@@ -321,11 +322,12 @@ export function serializeGeneratorObjects(
             const sets = Array(object.slides + 1)
                 .fill("0:0")
                 .join("|");
-            const dx = endX - object.x;
-            const height =
-                Math.sqrt(Math.max(0, object.length ** 2 - dx ** 2)) / 2;
-            const middle = `${((object.x + endX) / 2).toFixed(3)}:${(192 + height).toFixed(3)}`;
-            return `${prefix},${2 | combo},0,L|${middle}|${endX}:192,${object.slides},${object.length},${sounds},${sets},0:0:0:0:`;
+            const curve = createGeneratorSliderCurve(
+                object.x,
+                endX,
+                object.length,
+            );
+            return `${prefix},${2 | combo},0,${curve},${object.slides},${object.length},${sounds},${sets},0:0:0:0:`;
         }
         return `${prefix},${1 | combo},0,0:0:0:0:`;
     });
