@@ -2,6 +2,7 @@ import * as PIXI from "./vendor/pixi.js";
 import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import { i18n, onLanguageChange } from "./i18n/index.ts";
 import { ComboReaction } from "./comboReaction.ts";
+import type { HorizontalMotion } from "./catchPresentation.ts";
 
 const layer = window.statsLayer || window.gameplayLayer || window.app.stage;
 const SCALE = window.gameScale;
@@ -62,7 +63,7 @@ layer.addChild(missCountText);
 const comboText = new PIXI.Text({
     text: "0x",
     style: { fontSize: 48 * SCALE, fill: 0xffffff, fontWeight: "bold" },
-});
+}) as PIXI.Text & { catchMotion?: HorizontalMotion };
 comboText.anchor.set(0.5);
 comboText.label = "combo-indicator";
 comboText.visible = false;
@@ -121,7 +122,7 @@ export function updateComboPosition() {
             Boolean(window.currentChart && window.currentChart.mania);
         const centerX = mania
             ? window.gameWidth / 2
-            : player.x + window.playerWidth / 2;
+            : player.x + (window.playerVisual?.x ?? window.playerWidth / 2);
         const topY = mania
             ? (window.judgeLine ? window.judgeLine.y : player.y) - 150 * SCALE
             : player.y - 150 * SCALE;
@@ -140,6 +141,17 @@ export function updateComboPosition() {
                   Math.min(0.28, (centerX - position.x) / (200 * SCALE)),
               )
             : 0;
+        const motion = window.playerVisual?.catchMotion;
+        if (motion && !position.frozen && !mania && window.combo > 0) {
+            comboText.catchMotion = {
+                ...motion,
+                minX: motion.minX + player.x,
+                maxX: motion.maxX + player.x,
+                ...(motion.stopX !== undefined
+                    ? { stopX: motion.stopX + player.x }
+                    : {}),
+            };
+        } else delete comboText.catchMotion;
         missPopup.x = centerX;
         missPopup.y = topY;
     }
@@ -148,6 +160,7 @@ export function updateComboPosition() {
 export function resetStats() {
     comboReaction.reset();
     comboText.rotation = 0;
+    delete comboText.catchMotion;
     window.combo = 0;
     window.maxCombo = 0;
     window.hitCount = 0;

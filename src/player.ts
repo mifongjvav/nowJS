@@ -9,6 +9,8 @@ import {
     CatchMovement,
     CATCH_HYPER_COLOR,
     assignHyperDashTargets,
+    CATCH_WALK_SPEED,
+    CATCH_DASH_SPEED,
 } from "./catchMovement.ts";
 import {
     getCatchSizeScale,
@@ -21,6 +23,11 @@ import type {
     CatchMovementState,
 } from "./catchMovement.ts";
 import { getCatchControls, onCatchControlsChange } from "./catchControls.ts";
+import { CatchPresentation } from "./catchPresentation.ts";
+import type {
+    HorizontalMotion,
+    HorizontalMotionBounds,
+} from "./catchPresentation.ts";
 
 const app = window.app;
 const WIDTH = window.gameWidth;
@@ -30,6 +37,7 @@ const SCALE = window.gameScale;
 let playerW = 100 * SCALE;
 const playerH = 20 * SCALE;
 const catchMovement = new CatchMovement();
+const catchPresentation = new CatchPresentation();
 const heldActions = new Set<CatchAction>();
 let lastEffect = "";
 
@@ -111,7 +119,9 @@ export function resetCatcherColor(): void {
 drawPlayer();
 window.addEventListener(THEME_CHANGE_EVENT, drawPlayer);
 
-const visual = new PIXI.Container();
+const visual = new PIXI.Container() as PIXI.Container & {
+    catchMotion?: HorizontalMotion;
+};
 visual.pivot.set(playerW / 2, playerH / 2);
 visual.position.set(playerW / 2, playerH / 2);
 visual.addChild(glow, body, accent, centerMark);
@@ -137,6 +147,7 @@ layer.addChild(player);
 window.player = player;
 window.playerVisual = visual;
 window.playerWidth = playerW;
+catchPresentation.reset(player.x, performance.timeOrigin + performance.now());
 
 export function configureCatchChart(chart: GameChart) {
     const factor = chart.mania
@@ -147,8 +158,13 @@ export function configureCatchChart(chart: GameChart) {
     window.playerWidth = playerW;
     visual.pivot.set(playerW / 2, playerH / 2);
     visual.position.set(playerW / 2, playerH / 2);
+    delete visual.catchMotion;
     const range = getCatchPlayerRange(playerW);
     player.x = Math.max(range.minX, Math.min(range.maxX, center - playerW / 2));
+    catchPresentation.reset(
+        player.x,
+        performance.timeOrigin + performance.now(),
+    );
     for (const ghost of dashGhosts) {
         ghost.graphic
             .clear()
@@ -218,6 +234,10 @@ window.addEventListener(
 );
 
 function applyHeldKeys() {
+    catchPresentation.input(
+        getCatchMotion(),
+        performance.timeOrigin + performance.now(),
+    );
     for (const action of ["left", "right", "dash"] as const) {
         catchMovement.state[action] = heldActions.has(action);
     }
@@ -238,6 +258,12 @@ export function releaseCatchKeys() {
 export function resetCatchMovement() {
     releaseCatchKeys();
     catchMovement.reset();
+    catchPresentation.reset(
+        player.x,
+        performance.timeOrigin + performance.now(),
+    );
+    visual.x = playerW / 2;
+    delete visual.catchMotion;
     for (const ghost of dashGhosts) {
         ghost.age = 200;
         ghost.graphic.visible = false;
@@ -253,6 +279,66 @@ export function syncCatchMovementState(state: CatchMovementState) {
     // Worker snapshots may predate a key press. Only accept its authoritative
     // hyperdash state; the main thread still owns the physically held keys.
     catchMovement.state.hyper = state.hyper ? { ...state.hyper } : null;
+}
+
+export function recordCatchPosition(wall: number) {
+    catchPresentation.sample(player.x, wall);
+}
+
+function getCatchMotion(): HorizontalMotionBounds {
+    const field = getCatchPlayfield();
+    const state = catchMovement.state;
+    const direction = Number(state.right) - Number(state.left);
+    const velocity =
+        (direction *
+            (state.dash ? CATCH_DASH_SPEED : CATCH_WALK_SPEED) *
+            getCatchControls().speed *
+            (state.hyper?.multiplier ?? 1) *
+            field.width) /
+        512;
+    const range = getCatchPlayerRange(playerW);
+    return {
+        velocity,
+        minX: range.minX,
+        maxX: range.maxX,
+        ...(state.hyper
+            ? {
+                  stopX:
+                      field.left +
+                      (state.hyper.x / 512) * field.width -
+                      playerW / 2,
+              }
+            : {}),
+    };
+}
+
+export function renderCatchPlayer(playing: boolean) {
+    const wall = performance.timeOrigin + performance.now();
+    if (
+        !playing ||
+        window.autoPlay ||
+        window.currentChart?.mania ||
+        getCatchControls().mode !== "keyboard"
+    ) {
+        visual.x = playerW / 2;
+        delete visual.catchMotion;
+        catchPresentation.reset(player.x, wall);
+        return;
+    }
+    const motion = getCatchMotion();
+    const frame = catchPresentation.frame(motion, wall);
+    const offset = playerW / 2 - player.x;
+    visual.x = frame.x + offset;
+    // Animate the visual child only: the parent remains the authoritative
+    // position used for collisions, even when the worker renders extra frames.
+    visual.catchMotion = {
+        ...motion,
+        wall,
+        maxMs: frame.remainingMs,
+        minX: motion.minX + offset,
+        maxX: motion.maxX + offset,
+        ...(motion.stopX !== undefined ? { stopX: motion.stopX + offset } : {}),
+    };
 }
 
 export function judgeCatchNote(note: CatchMovementNote, hit: boolean) {
@@ -281,6 +367,7 @@ let lastTrailX = player.x;
 let trailElapsed = 0;
 let nextGhost = 0;
 export function updateCatchEffects(deltaMs: number) {
+    const displayX = player.x + visual.x - playerW / 2;
     const active =
         window.gameState === "playing" &&
         !window.autoPlay &&
@@ -304,7 +391,7 @@ export function updateCatchEffects(deltaMs: number) {
         active &&
         !window.isPaused &&
         (dash || hyper) &&
-        Math.abs(player.x - lastTrailX) > SCALE &&
+        Math.abs(displayX - lastTrailX) > SCALE &&
         trailElapsed >= 16
     ) {
         const ghost = dashGhosts[nextGhost++ % dashGhosts.length];
@@ -317,7 +404,7 @@ export function updateCatchEffects(deltaMs: number) {
         ghost.graphic.visible = true;
         trailElapsed = 0;
     }
-    lastTrailX = player.x;
+    lastTrailX = displayX;
 }
 
 window.addEventListener("keydown", (event) => {

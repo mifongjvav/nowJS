@@ -10,6 +10,7 @@ let session = 0,
     lastSent = 0;
 const now = () => performance.timeOrigin + performance.now();
 let inputPort: MessagePort | null = null;
+let positionWall = now();
 let timer: ReturnType<typeof setInterval> | null = null;
 function startTimer() {
     if (timer === null) timer = setInterval(tick, clock.stepMs);
@@ -32,6 +33,7 @@ function publish(force = false) {
         catchState: simulation.catchMovement.snapshot(),
         events: simulation.events.splice(0),
         wall: lastSent,
+        positionWall,
     });
 }
 const handleMessage = ({ data }: MessageEvent) => {
@@ -46,6 +48,7 @@ const handleMessage = ({ data }: MessageEvent) => {
         simulation = new Simulation(data.config);
         simulation.reset(data.time, data.next, data.playerX, data.active);
         clock.reset(data.wall);
+        positionWall = data.wall;
         running = true;
         awaitingAudio = false;
         awaitingAck = false;
@@ -108,6 +111,7 @@ function tick() {
         }
         simulation.step(delta);
     });
+    positionWall = wall - clock.remainder;
     if (wall - lastSent >= 1000 / 120) publish();
 }
 postMessage({ type: "ready" });

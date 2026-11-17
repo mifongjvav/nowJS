@@ -57,6 +57,8 @@ import {
     getCatchMovementState,
     syncCatchMovementState,
     configureCatchChart,
+    recordCatchPosition,
+    renderCatchPlayer,
 } from "./player.ts";
 import { getCatchControls } from "./catchControls.ts";
 import { FixedStepClock } from "./fixedStepClock.ts";
@@ -104,6 +106,7 @@ logicThread.listen(
         lastFrameTime = snapshot.wall - performance.timeOrigin;
         if (window.player) window.player.x = snapshot.playerX;
         if (snapshot.catchState) syncCatchMovementState(snapshot.catchState);
+        recordCatchPosition(snapshot.positionWall ?? snapshot.wall);
         const visual = window.playerVisual;
         if (visual && window.autoPlay && !window.currentChart?.mania) {
             const speed = Math.max(
@@ -725,6 +728,9 @@ function syncLogicScheduler(): void {
             }
             const now = performance.now();
             logicClock.advance(now, updateLogic);
+            recordCatchPosition(
+                performance.timeOrigin + now - logicClock.remainder,
+            );
             lastFrameTime = now;
         }, logicClock.stepMs);
     } else if (!enabled && logicTimer !== null) {
@@ -755,17 +761,25 @@ window.addEventListener("nowjs-autoplay-change", () =>
 
 app.ticker.add((ticker) => {
     syncLogicScheduler();
+    const now = performance.now();
+    if (
+        window.gameState === "playing" &&
+        !window.isPaused &&
+        !isSeeking &&
+        !getSettings().decoupledRendering &&
+        !logicThread.running
+    ) {
+        updateLogic(Math.max(0, now - lastFrameTime));
+        recordCatchPosition(performance.timeOrigin + now);
+        lastFrameTime = now;
+    }
+    const playing =
+        window.gameState === "playing" && !window.isPaused && !isSeeking;
+    renderCatchPlayer(playing);
     updateCatchEffects(ticker.deltaMS);
     updateComboPosition();
     animateComboScale();
-    if (window.gameState !== "playing" || window.isPaused || isSeeking) return;
-
-    const now = performance.now();
-    if (!getSettings().decoupledRendering && !logicThread.running) {
-        updateLogic(Math.max(0, now - lastFrameTime));
-        lastFrameTime = now;
-    }
-    if (window.gameState !== "playing") return;
+    if (!playing) return;
 
     // Extrapolate only the note display between fixed ticks. Judgement and
     // window.chartTime always use the simulated time, never this render time.

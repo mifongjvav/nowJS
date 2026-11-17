@@ -10,6 +10,7 @@ export interface LogicSnapshot {
     playerX: number;
     velocity: number;
     wall: number;
+    positionWall?: number;
     events: SimEvent[];
     catchState?: CatchMovementState;
 }

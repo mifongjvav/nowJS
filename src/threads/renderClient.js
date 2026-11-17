@@ -210,6 +210,7 @@ async function snapshot(node) {
             .map((f) => f.strength),
         children: [],
     };
+    if (node.catchMotion) data.motionX = node.catchMotion;
     if (node.context?.instructions) {
         data.kind = "graphics";
         data.motionY =

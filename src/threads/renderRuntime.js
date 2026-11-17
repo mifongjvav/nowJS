@@ -11,6 +11,7 @@ import {
     WebGLRenderer,
 } from "../vendor/pixi-worker.js";
 import { createWorkerFrameScheduler } from "./workerRuntime.js";
+import { projectHorizontalMotion } from "../catchPresentation.ts";
 export function installRenderWorker(reportFailure) {
     DOMAdapter.set(WebWorkerAdapter);
     const scheduleFrame = createWorkerFrameScheduler(self);
@@ -58,7 +59,9 @@ export function installRenderWorker(reportFailure) {
         node.pivot.set(t[5], t[6]);
         node.skew.set(t[7], t[8]);
         record.y = t[1];
+        record.x = t[0];
         record.motionY = data.motionY;
+        record.motionX = data.motionX;
         node.alpha = data.alpha;
         node.tint = data.tint;
         node.blendMode = data.blendMode;
@@ -126,20 +129,22 @@ export function installRenderWorker(reportFailure) {
     function render() {
         if (!renderer) return;
         try {
+            const wall = performance.timeOrigin + performance.now();
             const elapsed = playing
-                ? Math.max(
-                      0,
-                      Math.min(
-                          100,
-                          performance.timeOrigin +
-                              performance.now() -
-                              frameWall,
-                      ),
-                  ) / 1000
+                ? Math.max(0, Math.min(100, wall - frameWall)) / 1000
                 : 0;
-            for (const record of nodes.values())
+            for (const record of nodes.values()) {
                 if (record.motionY)
                     record.node.y = record.y + record.motionY * elapsed;
+                if (record.motionX)
+                    record.node.x = playing
+                        ? projectHorizontalMotion(
+                              record.x,
+                              record.motionX,
+                              wall,
+                          )
+                        : record.x;
+            }
             renderer.render({ container: stage });
             if (framePending) {
                 framePending = false;

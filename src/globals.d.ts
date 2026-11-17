@@ -9,6 +9,7 @@ import type {
     WebGPURenderer,
 } from "pixi.js";
 import type { CatchNote, GameChart, GameState } from "./domain.ts";
+import type { HorizontalMotion } from "./catchPresentation.ts";
 
 interface NowApplication {
     stage: Container;
@@ -44,7 +45,7 @@ declare global {
         storyboardLayer: Container;
         statsLayer: Container;
         player: Container;
-        playerVisual: Graphics;
+        playerVisual: Container & { catchMotion?: HorizontalMotion };
         judgeLine: Graphics;
         circlePool: CirclePoolController;
         currentChart: GameChart | null;
