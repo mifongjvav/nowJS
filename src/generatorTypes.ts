@@ -15,6 +15,8 @@ export type GeneratorErrorCode =
     | "bpm"
     | "silent"
     | "noNotes"
+    | "config"
+    | "configSize"
     | "failed";
 export class GeneratorError extends Error {
     code: GeneratorErrorCode;
@@ -70,7 +72,12 @@ export interface GeneratorObjectCounts {
     bananaShowers: number;
 }
 export interface GeneratorProgress {
-    stage: "decode" | "analyze" | "pack";
+    stage:
+        | "decode"
+        | "analyze"
+        | "pack"
+        | "configExportProgress"
+        | "configImportProgress";
     value: number;
 }
 export function checkGeneratorAbort(signal?: AbortSignal) {

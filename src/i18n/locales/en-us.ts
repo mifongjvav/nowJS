@@ -123,6 +123,17 @@ export default {
     },
     generator: {
         title: "Beatmap generator",
+        configExport: "Export configuration JSON",
+        configImport: "Import configuration JSON",
+        configDownload: "Download configuration JSON",
+        configHint:
+            "Save all current inputs and the original audio/image as Base64. Import to restore and retest. Blank BPM still means estimation; no image still means black. JSON is roughly one third larger and contains the full media: share carefully.",
+        configExportProgress: "Encoding configuration JSON",
+        configImportProgress: "Validating and restoring configuration JSON",
+        configExported: "Configuration JSON is ready to download and reuse.",
+        configImported:
+            "Original media and inputs restored. Generate again to retest.",
+        configFileLoaded: "From configuration: {{name}}",
         description:
             "Meyda analyzes transients and sustained audio locally to create Catch or 4K maps, with combo colors taken from the background. Your files are not uploaded.",
         audio: "Audio (required: MP3 / OGG / WAV)",
@@ -169,6 +180,9 @@ export default {
             silent: "This audio appears to be silent; no beatmap can be generated.",
             noNotes:
                 "No usable rhythm found. Adjust BPM or try another audio file.",
+            config: "Invalid configuration JSON, damaged media or unsupported version. Current inputs were not changed.",
+            configSize:
+                "Invalid configuration/media size: audio up to 50 MB, image up to 10 MB, JSON roughly 80 MB.",
             failed: "Generation failed. Try shorter audio or a different file.",
         },
     },

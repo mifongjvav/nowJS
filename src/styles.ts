@@ -33,6 +33,8 @@ const BASE_CSS = `
     .now-generator-form input, .now-generator-form select { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; color: rgb(var(--mdui-color-on-surface)); }
     .now-generator-form input:not([type=file]), .now-generator-form select { min-height: 40px; padding: 8px 10px; border: 1px solid rgb(var(--mdui-color-outline)); border-radius: 8px; background: rgb(var(--mdui-color-surface-container-high)); }
     .now-generator-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .now-generator-config-actions { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0; background: rgb(var(--mdui-color-surface-container-high)); border-bottom: 1px solid rgb(var(--mdui-color-outline-variant)); }
+    #now-generator-config-download { color: rgb(var(--mdui-color-primary)); font-size: 13px; }
     .now-generator-hint { margin: 0; font-size: 12px; line-height: 1.6; opacity: .75; }
     #now-generator-status { margin: 0; font-size: 13px; line-height: 1.6; }
     #now-generator-status[data-error=true] { color: rgb(var(--mdui-color-error)); }

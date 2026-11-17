@@ -1,6 +1,12 @@
 import { applyI18n, format, i18n, onLanguageChange } from "./i18n/index.ts";
 import { generateBeatmapPack } from "./beatmapGeneratorClient.ts";
 import { GeneratorError } from "./generatorTypes.ts";
+import {
+    serializeGeneratorConfig,
+    readGeneratorConfigFile,
+    generatorConfigFileName,
+} from "./generatorConfig.ts";
+import type { GeneratorConfigInputs } from "./generatorConfig.ts";
 import type {
     GeneratedBeatmapPack,
     GeneratorDensity,
@@ -8,6 +14,19 @@ import type {
     GeneratorProgress,
 } from "./generatorTypes.ts";
 import type { PlayMode } from "./domain.ts";
+
+function restoreGeneratorFileInput(input: HTMLInputElement, file: File | null) {
+    input.value = "";
+    if (!file) return;
+    try {
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+    } catch {
+        // Restricted hosts may not expose a writable FileList. The controller
+        // keeps the restored File in memory and shows its name separately.
+    }
+}
 
 export function initBeatmapGenerator(
     root: HTMLElement,
@@ -23,11 +42,19 @@ export function initBeatmapGenerator(
         <span slot="headline" id="now-generator-title" data-i18n="generator.title">${i18n.generator.title}</span>
         <form id="now-generator-form" class="now-generator-form">
             <p class="now-generator-hint" data-i18n="generator.description">${i18n.generator.description}</p>
+            <div class="now-generator-config-actions">
+                <mdui-button id="now-generator-config-export" variant="outlined" data-i18n="generator.configExport">${i18n.generator.configExport}</mdui-button>
+                <mdui-button id="now-generator-config-import" variant="text" data-i18n="generator.configImport">${i18n.generator.configImport}</mdui-button>
+                <a id="now-generator-config-download" class="now-hidden" data-i18n="generator.configDownload">${i18n.generator.configDownload}</a>
+            </div>
+            <p class="now-generator-hint" data-i18n="generator.configHint">${i18n.generator.configHint}</p>
             <label><span data-i18n="generator.audio">${i18n.generator.audio}</span>
                 <input id="now-generator-audio" type="file" accept=".mp3,.ogg,.wav" required />
+                <span class="now-generator-hint now-hidden" id="now-generator-restored-audio"></span>
             </label>
             <label><span data-i18n="generator.background">${i18n.generator.background}</span>
                 <input id="now-generator-background" type="file" accept=".png,.jpg,.jpeg,.webp" />
+                <span class="now-generator-hint now-hidden" id="now-generator-restored-background"></span>
             </label>
             <mdui-button id="now-generator-black" variant="text" data-i18n="generator.black">${i18n.generator.black}</mdui-button>
             <div class="now-generator-grid">
@@ -71,10 +98,29 @@ export function initBeatmapGenerator(
                 </div>
             </section>
         </form>
+        <input type="file" id="now-generator-config-file" accept=".json,application/json" hidden />
         <mdui-button slot="action" variant="text" id="now-generator-close" data-i18n="generator.close">${i18n.generator.close}</mdui-button>
         <mdui-button slot="action" variant="filled" id="now-generator-run" data-i18n="generator.generate">${i18n.generator.generate}</mdui-button>`;
     root.appendChild(dialog);
     const form = dialog.querySelector<HTMLFormElement>("#now-generator-form")!;
+    const configExport = dialog.querySelector<
+        HTMLElement & { disabled: boolean }
+    >("#now-generator-config-export")!;
+    const configImport = dialog.querySelector<
+        HTMLElement & { disabled: boolean }
+    >("#now-generator-config-import")!;
+    const configInput = dialog.querySelector<HTMLInputElement>(
+        "#now-generator-config-file",
+    )!;
+    const configDownload = dialog.querySelector<HTMLAnchorElement>(
+        "#now-generator-config-download",
+    )!;
+    const restoredAudioName = dialog.querySelector<HTMLElement>(
+        "#now-generator-restored-audio",
+    )!;
+    const restoredBackgroundName = dialog.querySelector<HTMLElement>(
+        "#now-generator-restored-background",
+    )!;
     const audio = dialog.querySelector<HTMLInputElement>(
         "#now-generator-audio",
     )!;
@@ -123,10 +169,29 @@ export function initBeatmapGenerator(
     let phase: GeneratorProgress | null = null;
     let error: GeneratorErrorCode | null = null;
     let cancelled = false;
+    let restoredAudio: File | null = null;
+    let restoredBackground: File | null = null;
+    let configUrl = "";
+    let notice: "configExported" | "configImported" | null = null;
+    const selectedAudio = () => restoredAudio ?? audio.files?.[0] ?? null;
+    const selectedBackground = () =>
+        restoredBackground ?? background.files?.[0] ?? null;
+    const snapshotInputs = (): GeneratorConfigInputs => ({
+        title: title.value,
+        artist: artist.value,
+        bpm: bpm.value,
+        mode: mode.value as PlayMode,
+        density: density.value as GeneratorDensity,
+    });
 
     const render = () => {
         run.disabled = busy;
+        configExport.disabled =
+            configImport.disabled =
+            configInput.disabled =
+                busy;
         black.disabled = busy;
+        audio.required = !restoredAudio;
         importButton.disabled = busy || !result;
         for (const input of [
             audio,
@@ -140,12 +205,28 @@ export function initBeatmapGenerator(
             input.disabled = busy;
         form.setAttribute("aria-busy", String(busy));
         progress.classList.toggle("now-hidden", !busy);
+        if (phase) progress.value = phase.value;
+        for (const [label, input, file] of [
+            [restoredAudioName, audio, restoredAudio],
+            [restoredBackgroundName, background, restoredBackground],
+        ] as const) {
+            const fallback = file && !input.files?.length;
+            label.classList.toggle("now-hidden", !fallback);
+            label.textContent = fallback
+                ? format(i18n.generator.configFileLoaded, { name: file.name })
+                : "";
+        }
         status.dataset.error = String(Boolean(error));
         if (error) status.textContent = i18n.generator.errors[error];
         else if (cancelled) status.textContent = i18n.generator.cancelled;
         else if (busy && phase)
             status.textContent = `${i18n.generator[phase.stage]} ${Math.round(phase.value * 100)}%`;
-        else status.textContent = result ? i18n.generator.done : "";
+        else
+            status.textContent = notice
+                ? i18n.generator[notice]
+                : result
+                  ? i18n.generator.done
+                  : "";
         if (result) {
             summary.textContent = format(i18n.generator.summary, {
                 count: result.noteCount,
@@ -187,42 +268,146 @@ export function initBeatmapGenerator(
         download.removeAttribute("href");
         resultSection.classList.add("now-hidden");
     };
+    const clearConfigDownload = () => {
+        if (configUrl) URL.revokeObjectURL(configUrl);
+        configUrl = "";
+        configDownload.removeAttribute("href");
+        configDownload.classList.add("now-hidden");
+    };
+    const startTask = (stage: GeneratorProgress["stage"]) => {
+        busy = true;
+        error = null;
+        cancelled = false;
+        notice = null;
+        phase = { stage, value: 0 };
+        controller = new AbortController();
+        render();
+        return controller.signal;
+    };
+    const finishTask = () => {
+        busy = false;
+        controller = null;
+        render();
+    };
+    const taskError = (cause: unknown, signal: AbortSignal) => {
+        if (signal.aborted) cancelled = true;
+        else error = cause instanceof GeneratorError ? cause.code : "failed";
+    };
     form.addEventListener("submit", (event) => event.preventDefault());
     form.addEventListener("change", () => {
         if (!busy) {
             clearResult();
+            clearConfigDownload();
+            notice = null;
             error = null;
             cancelled = false;
             render();
         }
     });
     audio.addEventListener("change", () => {
+        restoredAudio = null;
         if (!title.value || title.value === autoTitle) {
             autoTitle = audio.files?.[0]?.name.replace(/\.[^.]+$/, "") || "";
             title.value = autoTitle;
         }
     });
+    background.addEventListener("change", () => {
+        restoredBackground = null;
+    });
     black.addEventListener("click", () => {
+        restoredBackground = null;
         background.value = "";
         clearResult();
+        clearConfigDownload();
+        notice = null;
         error = null;
         cancelled = false;
         render();
     });
+    configExport.addEventListener("click", async () => {
+        if (busy || !form.reportValidity()) return;
+        clearConfigDownload();
+        const inputs = snapshotInputs(),
+            sourceAudio = selectedAudio(),
+            sourceBackground = selectedBackground();
+        const signal = startTask("configExportProgress");
+        try {
+            const json = await serializeGeneratorConfig(
+                inputs,
+                sourceAudio,
+                sourceBackground,
+                {
+                    signal,
+                    progress: (value) => {
+                        phase = { stage: "configExportProgress", value };
+                        render();
+                    },
+                },
+            );
+            await new Promise<void>((resolve) => setTimeout(resolve, 0));
+            if (signal.aborted || !dialog.open) return;
+            configUrl = URL.createObjectURL(
+                new Blob([json], { type: "application/json;charset=utf-8" }),
+            );
+            configDownload.href = configUrl;
+            configDownload.download = generatorConfigFileName(
+                inputs.title,
+                sourceAudio!.name,
+            );
+            configDownload.classList.remove("now-hidden");
+            notice = "configExported";
+            configDownload.click();
+        } catch (cause) {
+            taskError(cause, signal);
+        } finally {
+            finishTask();
+        }
+    });
+    configImport.addEventListener("click", () => {
+        if (!busy) configInput.click();
+    });
+    configInput.addEventListener("change", async () => {
+        const file = configInput.files?.[0];
+        if (!file || busy) return;
+        const signal = startTask("configImportProgress");
+        try {
+            const loaded = await readGeneratorConfigFile(file, {
+                signal,
+                progress: (value) => {
+                    phase = { stage: "configImportProgress", value };
+                    render();
+                },
+            });
+            if (signal.aborted || !dialog.open) return;
+            clearResult();
+            clearConfigDownload();
+            restoredAudio = loaded.audio;
+            restoredBackground = loaded.background;
+            restoreGeneratorFileInput(audio, loaded.audio);
+            restoreGeneratorFileInput(background, loaded.background);
+            title.value = loaded.inputs.title;
+            artist.value = loaded.inputs.artist;
+            bpm.value = loaded.inputs.bpm;
+            mode.value = loaded.inputs.mode;
+            density.value = loaded.inputs.density;
+            const base = loaded.audio.name.replace(/\.[^.]+$/, "");
+            autoTitle = title.value === base ? base : "";
+            notice = "configImported";
+        } catch (cause) {
+            taskError(cause, signal);
+        } finally {
+            configInput.value = "";
+            finishTask();
+        }
+    });
     run.addEventListener("click", async () => {
         if (busy || !form.reportValidity()) return;
         clearResult();
-        busy = true;
-        error = null;
-        cancelled = false;
-        phase = { stage: "decode", value: 0 };
-        controller = new AbortController();
-        const signal = controller.signal;
-        render();
+        const signal = startTask("decode");
         try {
             const pack = await generateBeatmapPack(
-                audio.files?.[0] ?? null,
-                background.files?.[0] ?? null,
+                selectedAudio(),
+                selectedBackground(),
                 {
                     mode: mode.value as PlayMode,
                     density: density.value as GeneratorDensity,
@@ -250,13 +435,9 @@ export function initBeatmapGenerator(
                     resultSection.scrollIntoView({ block: "nearest" });
             });
         } catch (cause) {
-            if (signal.aborted) cancelled = true;
-            else
-                error = cause instanceof GeneratorError ? cause.code : "failed";
+            taskError(cause, signal);
         } finally {
-            busy = false;
-            controller = null;
-            render();
+            finishTask();
         }
     });
     close.addEventListener("click", () => {
@@ -289,6 +470,7 @@ export function initBeatmapGenerator(
     window.addEventListener("beforeunload", () => {
         controller?.abort();
         if (url) URL.revokeObjectURL(url);
+        if (configUrl) URL.revokeObjectURL(configUrl);
     });
     render();
 }

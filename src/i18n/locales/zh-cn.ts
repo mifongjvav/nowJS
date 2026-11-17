@@ -121,6 +121,17 @@ export default {
     },
     generator: {
         title: "谱面生成器",
+        configExport: "生成配置 JSON",
+        configImport: "导入配置 JSON",
+        configDownload: "下载配置 JSON",
+        configHint:
+            "保存当前全部输入及原始音频、背景的 Base64。导入后可恢复表单并重复测试；BPM 留空仍自动估算，未选背景仍使用纯黑。JSON 体积约增加三分之一，包含完整媒体，请谨慎分享。",
+        configExportProgress: "正在编码配置 JSON",
+        configImportProgress: "正在校验并恢复配置 JSON",
+        configExported: "配置 JSON 已生成，可下载并在之后导入复用。",
+        configImported:
+            "配置已导入，原始媒体和参数已恢复；点击生成即可重新测试。",
+        configFileLoaded: "来自配置：{{name}}",
         description:
             "使用 Meyda 在本地分析重音与持续声段，生成 Catch 或 4K 谱面，并从背景提取 Combo 配色。文件不会上传到服务器。",
         audio: "音频（必选：MP3 / OGG / WAV）",
@@ -164,6 +175,9 @@ export default {
             bpm: "BPM 需为 30～300 之间的数字，或留空自动估算。",
             silent: "音频似乎完全静音，无法生成谱面。",
             noNotes: "没有找到可用节奏，请调整 BPM 或换一段音频。",
+            config: "配置 JSON 无效、媒体数据损坏或版本不受支持；当前输入未修改。",
+            configSize:
+                "配置或媒体大小无效：音频最大 50 MB、背景最大 10 MB，JSON 最大约 80 MB。",
             failed: "生成失败，请缩短音频或换用其他文件后重试。",
         },
     },
