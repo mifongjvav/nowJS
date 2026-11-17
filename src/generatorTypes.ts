@@ -13,6 +13,7 @@ export type GeneratorErrorCode =
     | "decode"
     | "duration"
     | "bpm"
+    | "difficulty"
     | "silent"
     | "noNotes"
     | "config"
@@ -48,7 +49,8 @@ export interface GeneratorAnalysis {
 }
 export interface GeneratorOptions {
     mode: PlayMode;
-    density: GeneratorDensity;
+    density?: GeneratorDensity;
+    difficulty?: number;
     title: string;
     artist: string;
     bpm?: number;

@@ -11,11 +11,13 @@ import {
     getGeneratorSliderLength,
 } from "./generatorObjects.ts";
 import type {
-    AudioOnset,
     GeneratorAnalysis,
     GeneratorOptions,
     GeneratedBeatmapPack,
 } from "./generatorTypes.ts";
+import { createGeneratorNotes } from "./generatorPatterns.ts";
+import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
+export { createGeneratorNotes } from "./generatorPatterns.ts";
 
 // Opaque 1x1 RGB PNG, not a transparent placeholder.
 export const GENERATOR_BLACK_PNG = new Uint8Array([
@@ -34,123 +36,6 @@ export function cleanGeneratorText(text: string, fallback: string) {
     );
 }
 
-export function createGeneratorNotes(
-    analysis: GeneratorAnalysis,
-    options: GeneratorOptions,
-) {
-    if (
-        !["catch", "mania"].includes(options.mode) ||
-        !["easy", "normal", "hard"].includes(options.density)
-    )
-        throw new GeneratorError("failed");
-    if (
-        !Number.isFinite(analysis.bpm) ||
-        analysis.bpm < 30 ||
-        analysis.bpm > 300
-    )
-        throw new GeneratorError("bpm");
-    if (!analysis.frames.length) throw new GeneratorError("noNotes");
-    const divisions = { easy: 1, normal: 2, hard: 4 }[options.density];
-    const beat = 60000 / analysis.bpm,
-        step = beat / divisions;
-    const grid = new Map<number, AudioOnset>();
-    const put = (onset: AudioOnset) => {
-        const index = Math.round((onset.timeMs - analysis.offsetMs) / step);
-        const timeMs = analysis.offsetMs + index * step;
-        if (
-            timeMs < 250 ||
-            timeMs > analysis.durationMs - 100 ||
-            Math.abs(timeMs - onset.timeMs) > Math.min(75, step * 0.4)
-        )
-            return;
-        if (!grid.has(index) || grid.get(index)!.strength < onset.strength)
-            grid.set(index, { ...onset, timeMs });
-    };
-    for (const onset of analysis.onsets) put(onset);
-    // Sustained/tonal tracks may have few transients: use their audible beats,
-    // never silence, as an explicit low-confidence rhythm draft.
-    if (grid.size < 4) {
-        const spacing =
-            analysis.frames.length > 1
-                ? analysis.frames[1].timeMs - analysis.frames[0].timeMs
-                : 1;
-        const start = Math.ceil((250 - analysis.offsetMs) / beat);
-        for (
-            let i = start;
-            analysis.offsetMs + i * beat < analysis.durationMs - 100;
-            i++
-        ) {
-            const timeMs = analysis.offsetMs + i * beat;
-            const frame =
-                analysis.frames[
-                    Math.max(
-                        0,
-                        Math.min(
-                            analysis.frames.length - 1,
-                            Math.round(
-                                (timeMs - analysis.frames[0].timeMs) / spacing,
-                            ),
-                        ),
-                    )
-                ];
-            if (frame?.rms > 0.015)
-                put({ timeMs, strength: 0.3, brightness: frame.brightness });
-        }
-    }
-    const candidates = [...grid.values()].sort((a, b) => a.timeMs - b.timeMs);
-    if (!candidates.length) throw new GeneratorError("noNotes");
-    let seed = Math.round(analysis.durationMs) ^ Math.round(analysis.bpm * 100);
-    const random = () =>
-        (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
-    let x = 256,
-        previousTime = -Infinity,
-        previousLane = -1;
-    const minGap =
-        options.density === "easy"
-            ? Math.max(120, beat * 0.8)
-            : options.density === "normal"
-              ? 110
-              : 80;
-    const notes: { x: number; time: number }[] = [];
-    for (const candidate of candidates) {
-        const time = Math.round(candidate.timeMs);
-        if (time - previousTime < minGap) continue;
-        if (options.mode === "mania") {
-            let lane = Math.min(
-                3,
-                Math.floor(
-                    (random() * 0.7 +
-                        Math.min(1, candidate.brightness * 4) * 0.3) *
-                        4,
-                ),
-            );
-            if (lane === previousLane && time - previousTime < beat * 1.5)
-                lane = (lane + 1 + Math.floor(random() * 3)) % 4;
-            previousLane = lane;
-            x = 64 + lane * 128;
-        } else {
-            const target =
-                48 +
-                (random() * 0.65 +
-                    Math.min(1, candidate.brightness * 4) * 0.35) *
-                    416;
-            // Conservative jumps remain playable at the default comfort speed.
-            const reach = Math.min(170, (time - previousTime) * 0.3);
-            x = Math.max(
-                32,
-                Math.min(
-                    480,
-                    x + Math.max(-reach, Math.min(reach, target - x)),
-                ),
-            );
-        }
-        notes.push({ x: Math.round(x), time });
-        previousTime = time;
-    }
-    if (!notes.length) throw new GeneratorError("noNotes");
-    return notes;
-}
-
 export function buildGeneratedBeatmap(
     analysis: GeneratorAnalysis,
     options: GeneratorOptions,
@@ -167,7 +52,8 @@ export function buildGeneratedBeatmap(
     const objectCounts = countGeneratorObjects(objects);
     const comboColors = normalizeGeneratorComboColors(colors);
     const beat = 60000 / analysis.bpm;
-    const version = `Generated ${options.density}`;
+    const difficulty = getGeneratorDifficulty(options);
+    const version = `${difficulty.name} Lv.${difficulty.level} - Review`;
     const osu = [
         "osu file format v14",
         "",
@@ -190,10 +76,10 @@ export function buildGeneratedBeatmap(
         "Tags:nowjs generated meyda",
         "",
         "[Difficulty]",
-        "HPDrainRate:5",
-        "CircleSize:4",
-        "OverallDifficulty:5",
-        "ApproachRate:5",
+        `HPDrainRate:${difficulty.hp.toFixed(2)}`,
+        `CircleSize:${options.mode === "mania" ? 4 : difficulty.circleSize.toFixed(2)}`,
+        `OverallDifficulty:${difficulty.approachRate.toFixed(2)}`,
+        `ApproachRate:${difficulty.approachRate.toFixed(2)}`,
         "SliderMultiplier:1.4",
         "SliderTickRate:1",
         "",
@@ -204,7 +90,7 @@ export function buildGeneratedBeatmap(
         `${analysis.offsetMs},${beat.toFixed(8)},4,1,0,80,1,0`,
         ...(objectCounts.sliders
             ? [
-                  `${analysis.offsetMs},${(-14000 / getGeneratorSliderLength(analysis.bpm)).toFixed(8)},4,1,0,80,0,0`,
+                  `${analysis.offsetMs},${(-14000 / getGeneratorSliderLength(analysis.bpm, options)).toFixed(8)},4,1,0,80,0,0`,
               ]
             : []),
         "",
@@ -237,7 +123,7 @@ export function buildGeneratedBeatmap(
         noteCount: objects.length,
         objectCounts,
         comboColors,
-        fileName: `${safeName} (nowJS).osz`,
+        fileName: `${safeName} (nowJS Lv.${difficulty.level}).osz`,
         analysis: {
             bpm: analysis.bpm,
             estimatedBpm: analysis.estimatedBpm,

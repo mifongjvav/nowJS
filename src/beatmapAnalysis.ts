@@ -173,7 +173,7 @@ export async function analyzeGeneratorAudio(
         const left = Math.max(0, i - 8),
             right = Math.min(frames.length - 1, i + 8);
         for (let j = left; j <= right; j++) mean += frames[j].novelty;
-        if (current.novelty < (mean / (right - left + 1)) * 1.6) continue;
+        if (current.novelty < (mean / (right - left + 1)) * 1.35) continue;
         // Refine an FFT-frame peak to its first substantial waveform sample,
         // avoiding the half-window latency in the exported TimingPoint.
         const start = i * hop,
@@ -190,7 +190,7 @@ export async function analyzeGeneratorAudio(
             brightness: current.brightness,
         };
         const last = onsets.at(-1);
-        if (last && onset.timeMs - last.timeMs < 90) {
+        if (last && onset.timeMs - last.timeMs < 45) {
             if (onset.strength > last.strength)
                 onsets[onsets.length - 1] = onset;
         } else onsets.push(onset);

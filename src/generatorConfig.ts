@@ -8,7 +8,7 @@ import type { PlayMode } from "./domain.ts";
 import type { GeneratorDensity } from "./generatorTypes.ts";
 
 const FORMAT = "nowjs-beatmap-generator";
-const VERSION = 1;
+const VERSION = 2;
 const encodedLength = (bytes: number) => Math.ceil(bytes / 3) * 4;
 export const GENERATOR_MAX_CONFIG_BYTES =
     encodedLength(GENERATOR_MAX_AUDIO_BYTES) +
@@ -22,6 +22,7 @@ export interface GeneratorConfigInputs {
     bpm: string;
     mode: PlayMode;
     density: GeneratorDensity;
+    difficulty: number;
 }
 interface ConfigMedia {
     name: string;
@@ -53,7 +54,7 @@ function record(value: unknown): Record<string, unknown> {
         throw new GeneratorError("config");
     return value as Record<string, unknown>;
 }
-function validateInputs(value: unknown): GeneratorConfigInputs {
+function validateInputs(value: unknown, legacy = false): GeneratorConfigInputs {
     const input = record(value);
     for (const key of ["title", "artist"] as const) {
         if (
@@ -81,12 +82,23 @@ function validateInputs(value: unknown): GeneratorConfigInputs {
         input.density !== "hard"
     )
         throw new GeneratorError("config");
+    const difficulty =
+        legacy && input.difficulty === undefined
+            ? { easy: 1, normal: 2, hard: 4 }[input.density]
+            : input.difficulty;
+    if (
+        typeof difficulty !== "number" ||
+        !Number.isFinite(difficulty) ||
+        difficulty < 1
+    )
+        throw new GeneratorError("config");
     return {
         title: input.title as string,
         artist: input.artist as string,
         bpm: input.bpm,
         mode: input.mode,
         density: input.density,
+        difficulty,
     };
 }
 
@@ -271,13 +283,13 @@ export async function parseGeneratorConfig(
     }
     if (
         parsed.format !== FORMAT ||
-        parsed.version !== VERSION ||
+        (parsed.version !== VERSION && parsed.version !== 1) ||
         typeof parsed.createdAt !== "string" ||
         parsed.createdAt.length > 64 ||
         !Number.isFinite(Date.parse(parsed.createdAt))
     )
         throw new GeneratorError("config");
-    const inputs = validateInputs(parsed.inputs);
+    const inputs = validateInputs(parsed.inputs, parsed.version === 1);
     const audio = validateMedia(parsed.audio, false);
     const background =
         parsed.background === null

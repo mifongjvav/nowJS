@@ -3,6 +3,8 @@ import type {
     GeneratorOptions,
     GeneratorObjectCounts,
 } from "./generatorTypes.ts";
+import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
+import type { GeneratorNote } from "./generatorPatterns.ts";
 
 type BaseObject = { x: number; time: number };
 export type GeneratedObject =
@@ -16,8 +18,22 @@ export type GeneratedObject =
       })
     | (BaseObject & { kind: "bananaShower"; endTime: number });
 
-export const getGeneratorSliderLength = (bpm: number) =>
-    Math.round(Math.min(140, (60000 / bpm) * 0.25) * 1000) / 1000;
+export const getGeneratorSliderLength = (
+    bpm: number,
+    options?: Partial<GeneratorOptions>,
+) =>
+    Math.round(
+        Math.min(
+            140,
+            (60000 / bpm) *
+                (options
+                    ? Math.min(
+                          0.25,
+                          getGeneratorDifficulty(options).spacing * 0.8,
+                      )
+                    : 0.25),
+        ) * 1000,
+    ) / 1000;
 
 function lowerBound(values: readonly number[], time: number) {
     let low = 0,
@@ -77,10 +93,12 @@ function spanReader(analysis: GeneratorAnalysis) {
 export function createGeneratorObjects(
     analysis: GeneratorAnalysis,
     options: GeneratorOptions,
-    notes: readonly BaseObject[],
+    notes: readonly GeneratorNote[],
 ): GeneratedObject[] {
     const beat = 60000 / analysis.bpm,
         read = spanReader(analysis);
+    const profile = getGeneratorDifficulty(options);
+    const sliderBeatLength = getGeneratorSliderLength(analysis.bpm, options);
     const showers: Extract<GeneratedObject, { kind: "bananaShower" }>[] = [];
     const showerBeats = Math.max(4, Math.ceil(1200 / beat));
     const showerDuration = showerBeats * beat;
@@ -94,26 +112,22 @@ export function createGeneratorObjects(
             barBeat += 4
         ) {
             const time = Math.round(analysis.offsetMs + barBeat * beat);
-            if (time < previousEnd + showerDuration * 3) continue;
+            if (time < previousEnd + Math.max(beat * 32, showerDuration * 3))
+                continue;
             const endTime = Math.round(time + showerDuration);
             const span = read(time, endTime);
             if (
                 span.audible >= 0.9 &&
-                span.variation <= 0.55 &&
-                span.novelty <= 0.1 &&
-                span.accents <= Math.ceil(showerBeats * 1.25)
+                span.variation <= 0.35 &&
+                span.novelty <= 0.07 &&
+                span.accents <= Math.floor(showerBeats * 0.6)
             ) {
                 showers.push({ kind: "bananaShower", x: 256, time, endTime });
                 previousEnd = endTime;
             }
         }
     }
-    const minimumBeats = Math.max(1, Math.ceil(600 / beat));
-    const longBeats = Math.min(
-        Math.max(minimumBeats, 2),
-        Math.max(minimumBeats, Math.min(4, Math.floor(2400 / beat))),
-    );
-    const longDuration = longBeats * beat;
+    const longDuration = 2 * beat;
     const rainCoverage = showers.reduce(
         (sum, s) => sum + s.endTime - s.time,
         0,
@@ -126,15 +140,20 @@ export function createGeneratorObjects(
         ),
     );
     let covered = 0,
-        blockedUntil = -Infinity,
         lastLongEnd = -Infinity;
+    let blockedUntil = -Infinity;
+    const laneEnds = [0, 0, 0, 0];
     const objects: GeneratedObject[] = [];
     // Leave time to return to center, and let the final bonus bananas finish
     // before the next compulsory fruit/stream begins.
     const postShowerGap = Math.max(beat, 500);
-    for (const note of notes) {
+    for (let noteIndex = 0; noteIndex < notes.length; noteIndex++) {
+        const note = notes[noteIndex];
+        const lane = Math.max(0, Math.min(3, Math.floor(note.x / 128)));
         if (
-            note.time <= blockedUntil ||
+            (options.mode === "catch"
+                ? note.time <= blockedUntil
+                : note.time <= laneEnds[lane] + 50) ||
             showers.some(
                 (s) =>
                     note.time >= s.time &&
@@ -142,12 +161,55 @@ export function createGeneratorObjects(
             )
         )
             continue;
-        const endTime = Math.round(note.time + longDuration);
+        // Fit the sound's endpoint to half/whole beats, the next accent, and
+        // the next compulsory object. No fixed two-beat blanket over music.
+        const next = notes[noteIndex + 1];
+        const gap = next ? next.time - note.time : 2 * beat;
+        const maximum =
+            options.mode === "catch"
+                ? Math.min(2, Math.floor((216 / sliderBeatLength) * 2) / 2)
+                : 4;
+        let lengthBeats = Math.min(
+            maximum,
+            Math.max(0.5, Math.floor((gap / beat) * 2) / 2),
+        );
+        // A weak next transient inside a stable sustain may become a slider
+        // tick instead; strong accents remain independently playable.
+        if (next && (next.strength ?? 1) < 0.3)
+            lengthBeats = Math.min(maximum, 2);
+        for (let j = noteIndex + 1; j < notes.length; j++) {
+            const accent = notes[j];
+            if (accent.time >= note.time + lengthBeats * beat - 1) break;
+            if (
+                (accent.strength ?? 1) >=
+                Math.max(0.3, (note.strength ?? 1) * 0.75)
+            ) {
+                lengthBeats =
+                    Math.floor(((accent.time - note.time) / beat + 0.002) * 2) /
+                    2;
+                break;
+            }
+        }
+        let endTime = Math.round(note.time + lengthBeats * beat);
+        // End at the first silence or strong spectral change, on a valid snap.
+        while (lengthBeats >= 0.5) {
+            const section = read(note.time, endTime);
+            if (
+                section.audible >= 0.85 &&
+                section.variation <= 0.85 &&
+                section.novelty <= 0.16
+            )
+                break;
+            lengthBeats -= 0.5;
+            endTime = Math.round(note.time + lengthBeats * beat);
+        }
         const nextShower = showers.find((s) => s.time > note.time);
         const span = read(note.time, endTime);
         if (
-            note.time >= lastLongEnd + 4 * beat &&
-            covered + longDuration <= budget &&
+            lengthBeats >= 0.5 &&
+            endTime - note.time >= 180 &&
+            note.time >= lastLongEnd + beat * (profile.level < 2 ? 0.5 : 1) &&
+            covered + endTime - note.time <= budget &&
             endTime <= analysis.durationMs - 100 &&
             (!nextShower || endTime <= nextShower.time - 100) &&
             span.audible >= 0.85 &&
@@ -161,14 +223,39 @@ export function createGeneratorObjects(
                           ...note,
                           kind: "slider",
                           endTime,
-                          slides: longBeats,
-                          length: getGeneratorSliderLength(analysis.bpm),
+                          slides: 1,
+                          length:
+                              Math.round(
+                                  sliderBeatLength * lengthBeats * 1000,
+                              ) / 1000,
                       },
             );
-            covered += longDuration;
-            blockedUntil = endTime + 50;
+            covered += endTime - note.time;
+            if (options.mode === "catch") blockedUntil = endTime + 50;
+            else laneEnds[lane] = endTime;
             lastLongEnd = endTime;
         } else objects.push({ ...note, kind: "circle" });
+        // Chords mark strong musical accents rather than every n-th note.
+        if (
+            options.mode === "mania" &&
+            profile.level >= 3 &&
+            (note.strength ?? 0) >= 0.65 &&
+            Math.abs(
+                (note.time - analysis.offsetMs) / beat -
+                    Math.round((note.time - analysis.offsetMs) / beat),
+            ) < 0.02
+        ) {
+            const other = (lane + 2) % 4;
+            if (note.time > laneEnds[other] + Math.max(80, beat / 2)) {
+                objects.push({
+                    kind: "circle",
+                    x: 64 + other * 128,
+                    time: note.time,
+                });
+                laneEnds[other] = note.time;
+            }
+        }
+        laneEnds[lane] = Math.max(laneEnds[lane], note.time);
     }
     objects.push(...showers);
     objects.sort((a, b) => a.time - b.time);
@@ -185,7 +272,8 @@ export function createGeneratorObjects(
             }
             const reach = Math.min(
                 170,
-                Math.max(0, object.time - lastEnd) * 0.3,
+                Math.max(0, object.time - lastEnd) *
+                    Math.min(0.3, profile.spacing),
             );
             object.x = returnToCenter
                 ? 256

@@ -16,6 +16,7 @@ const inputs = {
     bpm: "120.00",
     mode: "mania",
     density: "hard",
+    difficulty: 4.25,
 };
 const source = new Uint8Array(260003);
 for (let i = 0; i < source.length; i++) source[i] = (i * 37) % 256;
@@ -31,11 +32,48 @@ const background = new File([pictureBytes], "原始背景.webp", {
 const sample = async () =>
     JSON.parse(await serializeGeneratorConfig(inputs, audio, background));
 
+test("version 1 media configs migrate density to a numeric level; version 2 preserves arbitrary levels", async () => {
+    for (const [density, difficulty] of [
+        ["easy", 1],
+        ["normal", 2],
+        ["hard", 4],
+    ]) {
+        const config = await sample();
+        config.version = 1;
+        config.inputs.density = density;
+        delete config.inputs.difficulty;
+        const loaded = await parseGeneratorConfig(JSON.stringify(config));
+        assert.equal(loaded.inputs.difficulty, difficulty);
+        assert.deepEqual(
+            new Uint8Array(await loaded.audio.arrayBuffer()),
+            source,
+        );
+    }
+    for (const difficulty of [1, 2.75, 1000000, 1e100]) {
+        const loaded = await parseGeneratorConfig(
+            await serializeGeneratorConfig(
+                { ...inputs, difficulty },
+                audio,
+                null,
+            ),
+        );
+        assert.equal(loaded.inputs.difficulty, difficulty);
+    }
+    for (const difficulty of [0, -1, null, "4"]) {
+        const config = await sample();
+        config.inputs.difficulty = difficulty;
+        await assert.rejects(
+            parseGeneratorConfig(JSON.stringify(config)),
+            (e) => e.code === "config",
+        );
+    }
+});
+
 test("versioned JSON preserves every form value and the exact original Base64 media", async () => {
     const json = await serializeGeneratorConfig(inputs, audio, background);
     const config = JSON.parse(json);
     assert.equal(config.format, "nowjs-beatmap-generator");
-    assert.equal(config.version, 1);
+    assert.equal(config.version, 2);
     assert.ok(Number.isFinite(Date.parse(config.createdAt)));
     assert.deepEqual(config.inputs, inputs);
     assert.equal(config.audio.encoding, "base64");
@@ -66,6 +104,7 @@ test("blank BPM, empty metadata and no background remain explicit rather than be
         bpm: "",
         mode: "catch",
         density: "easy",
+        difficulty: 1,
     };
     const json = await serializeGeneratorConfig(fields, audio, null);
     assert.equal(JSON.parse(json).background, null);

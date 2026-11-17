@@ -123,6 +123,9 @@ export default {
     },
     generator: {
         title: "Beatmap generator",
+        difficulty: "Difficulty level (1 = Easy)",
+        difficultyHint:
+            "Defaults to 1; decimals and higher values have no fixed ceiling. Controls rhythm, patterns, spacing and AR / CS, not osu! stars. Audio evidence and output safety still apply. Legacy sparse / normal / dense settings migrate to levels 1 / 2 / 4.",
         configExport: "Export configuration JSON",
         configImport: "Import configuration JSON",
         configDownload: "Download configuration JSON",
@@ -165,10 +168,12 @@ export default {
         manual: "manual",
         lowConfidence:
             "Rhythm is unclear: this is a low-confidence BPM guess. Please verify it.",
-        review: "This is a fixed-tempo, 4/4 draft. Sliders, holds and banana showers require suitable sustained audio; short drum hits remain taps. Tempo estimates may be half or double the intended BPM. Manual review is still needed.",
+        review: "A fixed-BPM, 4/4 review draft, not guaranteed Ranked quality. After playing, report timing, missed musical accents, movement flow, slider endings, and specific timestamps. Tempo estimates may be half/double time.",
         download: "Download .osz",
         import: "Import and play",
         errors: {
+            difficulty:
+                "Difficulty must be a finite number greater than or equal to 1.",
             audio: "Choose an MP3, OGG or WAV audio file.",
             audioSize: "Audio must be nonempty and at most 50 MB.",
             image: "Cannot read the background. Choose a valid PNG, JPEG or WebP.",

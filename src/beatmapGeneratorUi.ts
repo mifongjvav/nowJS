@@ -80,7 +80,11 @@ export function initBeatmapGenerator(
                         <option value="hard" data-i18n="generator.hard">${i18n.generator.hard}</option>
                     </select>
                 </label>
+                <label><span data-i18n="generator.difficulty">${i18n.generator.difficulty}</span>
+                    <input id="now-generator-difficulty" type="number" min="1" step="any" value="1" required />
+                </label>
             </div>
+            <p class="now-generator-hint" data-i18n="generator.difficultyHint">${i18n.generator.difficultyHint}</p>
             <p class="now-generator-hint" data-i18n="generator.limits">${i18n.generator.limits}</p>
             <mdui-linear-progress id="now-generator-progress" class="now-hidden" max="1" value="0"></mdui-linear-progress>
             <p id="now-generator-status" role="status" aria-live="polite"></p>
@@ -140,6 +144,9 @@ export function initBeatmapGenerator(
     const density = dialog.querySelector<HTMLSelectElement>(
         "#now-generator-density",
     )!;
+    const difficulty = dialog.querySelector<HTMLInputElement>(
+        "#now-generator-difficulty",
+    )!;
     const run = dialog.querySelector<HTMLElement & { disabled: boolean }>(
         "#now-generator-run",
     )!;
@@ -182,6 +189,7 @@ export function initBeatmapGenerator(
         bpm: bpm.value,
         mode: mode.value as PlayMode,
         density: density.value as GeneratorDensity,
+        difficulty: Number(difficulty.value),
     });
 
     const render = () => {
@@ -201,6 +209,7 @@ export function initBeatmapGenerator(
             bpm,
             mode,
             density,
+            difficulty,
         ])
             input.disabled = busy;
         form.setAttribute("aria-busy", String(busy));
@@ -390,6 +399,7 @@ export function initBeatmapGenerator(
             bpm.value = loaded.inputs.bpm;
             mode.value = loaded.inputs.mode;
             density.value = loaded.inputs.density;
+            difficulty.value = String(loaded.inputs.difficulty);
             const base = loaded.audio.name.replace(/\.[^.]+$/, "");
             autoTitle = title.value === base ? base : "";
             notice = "configImported";
@@ -411,6 +421,7 @@ export function initBeatmapGenerator(
                 {
                     mode: mode.value as PlayMode,
                     density: density.value as GeneratorDensity,
+                    difficulty: Number(difficulty.value),
                     title: title.value,
                     artist: artist.value,
                     ...(bpm.value.trim() ? { bpm: Number(bpm.value) } : {}),

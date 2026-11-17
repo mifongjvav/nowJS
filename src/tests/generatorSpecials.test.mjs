@@ -127,8 +127,8 @@ test("sustained Catch sections export real sliders and spinners that import as s
     for (const slider of sliders) {
         const duration =
             (slider.length / (140 * velocity)) * 500 * slider.slides;
-        assert.ok(Math.abs(duration - slider.slides * 500) < 1);
-        assert.ok(slider.length / 500 <= 0.3);
+        assert.ok(Math.abs(duration / 250 - Math.round(duration / 250)) < 0.01);
+        assert.ok(slider.length / duration <= 0.3);
         assert.ok(slider.time + duration <= analysis.durationMs - 99);
         assert.ok(
             showers.every(
@@ -162,7 +162,10 @@ test("native 4K sustained sections use endTime:hitSample holds, never Catch spin
         assert.ok(
             !raw.hitObjects.some(
                 (n) =>
-                    n !== hold && n.time > hold.time && n.time <= hold.endTime,
+                    n !== hold &&
+                    n.x === hold.x &&
+                    n.time > hold.time &&
+                    n.time <= hold.endTime,
             ),
         );
     }

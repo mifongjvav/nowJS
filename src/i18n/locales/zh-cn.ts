@@ -121,6 +121,9 @@ export default {
     },
     generator: {
         title: "谱面生成器",
+        difficulty: "难度等级（1 = Easy）",
+        difficultyHint:
+            "默认 1，可填小数，无固定上限。等级同时影响节奏细分、走向、间距及 AR / CS，不等于 osu! 星级；极高等级仍受音乐内容与输出安全限制。旧版配置会将稀疏 / 标准 / 密集迁移为等级 1 / 2 / 4。",
         configExport: "生成配置 JSON",
         configImport: "导入配置 JSON",
         configDownload: "下载配置 JSON",
@@ -161,10 +164,11 @@ export default {
         estimated: "估算",
         manual: "手动",
         lowConfidence: "节奏不明显，当前 BPM 为低置信度猜测，请校对。",
-        review: "这是固定 BPM、4/4 拍的自动草稿。滑条、长条和香蕉雨仅在合适的持续声段生成，短促鼓点仍以短音符为主。自动估速可能出现半速或倍速，仍需人工校对。",
+        review: "这是固定 BPM、4/4 拍的待评测谱面，不保证 Ranked 品质。请试玩后反馈：对拍、漏掉的音乐重音、走向是否顺手、滑条收尾是否自然，以及具体时间点。自动估速可能出现半速或倍速，仍需人工校对。",
         download: "下载 .osz",
         import: "导入并试玩",
         errors: {
+            difficulty: "难度等级必须是大于或等于 1 的有限数值。",
             audio: "请选择 MP3、OGG 或 WAV 音频文件。",
             audioSize: "音频不能为空，且不能超过 50 MB。",
             image: "背景无法读取，请选择有效的 PNG、JPEG 或 WebP。",
