@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
     getGameplayHudLayout,
+    getHudProgressFillWidth,
     hudProgressAtPoint,
 } from "../gameplayHudLayout.ts";
 
@@ -18,6 +19,14 @@ test("HUD anchors use the full canvas, not the Catch 4:3 playfield", () => {
         height: 6,
         hitHeight: 26,
     });
+});
+
+test("progress fill retains circular caps at low progress without scaling", () => {
+    assert.equal(getHudProgressFillWidth(0, 1248, 6), 0);
+    assert.equal(getHudProgressFillWidth(0.001, 1248, 6), 6);
+    assert.equal(getHudProgressFillWidth(0.25, 1248, 6), 312);
+    assert.equal(getHudProgressFillWidth(1, 1248, 6), 1248);
+    assert.equal(getHudProgressFillWidth(0.001, 1248, 12), 12);
 });
 
 test("HUD scales at 1080p and keeps metadata inside a 4:3 canvas", () => {

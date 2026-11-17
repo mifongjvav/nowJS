@@ -19,6 +19,17 @@ export function getGameplayHudLayout(width: number, height: number) {
     };
 }
 
+// Draw the actual filled width rather than scaling a full-width rounded path:
+// scaling would flatten the semicircular end caps at low progress.
+export function getHudProgressFillWidth(
+    progress: number,
+    width: number,
+    height: number,
+) {
+    if (progress <= 0) return 0;
+    return Math.min(width, Math.max(height, width * progress));
+}
+
 export function hudProgressAtPoint(
     clientX: number,
     clientY: number,

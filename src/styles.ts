@@ -1084,6 +1084,10 @@ const BASE_CSS = `
         line-height: var(--mdui-typescale-body-medium-line-height);
     }
 
+    canvas[data-nowjs-hud-pointer-focus]:focus {
+        outline: none;
+    }
+
     .now-break-overlay {
         position: fixed;
         inset: 0;

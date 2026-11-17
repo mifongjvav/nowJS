@@ -4,6 +4,7 @@ import { i18n, onLanguageChange } from "./i18n/index.ts";
 import { isAutoPlayEnabled } from "./autoplay.ts";
 import {
     getGameplayHudLayout,
+    getHudProgressFillWidth,
     hudProgressAtPoint,
 } from "./gameplayHudLayout.ts";
 import type { GameChart } from "./domain.ts";
@@ -112,7 +113,7 @@ class GameplayHud {
             const next = Math.max(0, Math.min(1, progress));
             if (next !== this.progress) {
                 this.progress = next;
-                this.fill.scale.x = next;
+                this.drawProgressFill();
             }
         }
         const total = window.hitCount + window.missCount;
@@ -198,12 +199,22 @@ class GameplayHud {
             .clear()
             .roundRect(bar.x, bar.y, bar.width, height, height / 2)
             .fill({ color: MD3_COLORS.onSurface, alpha: 0.24 });
+        this.drawProgressFill(height);
+    }
+
+    private drawProgressFill(
+        height = this.pointer !== null || (this.hover && isAutoPlayEnabled())
+            ? this.layout.progress.height * 2
+            : this.layout.progress.height,
+    ) {
+        const bar = this.layout.progress;
+        const width = getHudProgressFillWidth(this.progress, bar.width, height);
         this.fill.position.set(bar.x, bar.y);
+        this.fill.clear();
+        if (width === 0) return;
         this.fill
-            .clear()
-            .roundRect(0, 0, bar.width, height, height / 2)
+            .roundRect(0, 0, width, height, height / 2)
             .fill(MD3_COLORS.primary);
-        this.fill.scale.x = this.progress;
     }
 
     private isCanvas(target: EventTarget | null): target is HTMLCanvasElement {
@@ -247,7 +258,8 @@ class GameplayHud {
         event.stopImmediatePropagation();
         this.pointer = event.pointerId;
         this.capture = event.target;
-        this.capture.focus();
+        this.capture.dataset.nowjsHudPointerFocus = "true";
+        this.capture.focus({ preventScroll: true });
         this.capture.setPointerCapture(event.pointerId);
         this.progress = point.progress;
         this.drawProgress();
@@ -301,6 +313,13 @@ class GameplayHud {
     }
 
     private keyDown = (event: KeyboardEvent) => {
+        // A pointer-focused canvas should not have a browser outline. Restore
+        // the normal focus indication as soon as keyboard navigation resumes.
+        for (const canvas of document.querySelectorAll(
+            "canvas[data-nowjs-hud-pointer-focus]",
+        )) {
+            canvas.removeAttribute("data-nowjs-hud-pointer-focus");
+        }
         if (event.key === "Escape") {
             this.finishSeek();
             return;
@@ -343,6 +362,7 @@ class GameplayHud {
                     String(Math.round(this.progress * 100)),
                 );
             } else {
+                canvas.removeAttribute("data-nowjs-hud-pointer-focus");
                 for (const name of [
                     "role",
                     "aria-label",
