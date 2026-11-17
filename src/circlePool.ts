@@ -4,7 +4,12 @@ import { playCatchSound, playComboBreak } from "./audio.ts";
 import { triggerStoryboardHit } from "./background.ts";
 import { getCatchPlayfield, getPlayfield } from "./layout.ts";
 import { MD3_COLORS } from "./theme.ts";
-import { isHoldTailJudgementEnabled } from "./maniaSettings.ts";
+import {
+    isHoldTailJudgementEnabled,
+    isManiaRectangleEnabled,
+    onManiaRectangleChange,
+} from "./maniaSettings.ts";
+import { drawManiaRectangle } from "./maniaNoteGraphics.ts";
 import { setCatcherColor, judgeCatchNote } from "./player.ts";
 import { CATCH_HYPER_COLOR } from "./catchMovement.ts";
 import { getCatchSizeScale } from "./catchDifficulty.ts";
@@ -39,6 +44,19 @@ function drawNoteGraphics(circle, holdHeight, color) {
     circle.clear();
     const outline = getOutlineColor(color);
     const outlineWidth = 2.5 * SCALE;
+
+    if (window.currentChart?.mania && isManiaRectangleEnabled()) {
+        drawManiaRectangle(
+            circle,
+            holdHeight,
+            color,
+            outline,
+            getPlayfield().width,
+            window.currentChart.mania.laneCount,
+            SCALE,
+        );
+        return;
+    }
 
     if (holdHeight > 0.5) {
         // Holds match the note-head diameter and use a clean capsule with a
@@ -487,6 +505,24 @@ class CirclePool {
 }
 
 export const circlePool = new CirclePool(90);
+onManiaRectangleChange(() => {
+    if (!window.currentChart?.mania) return;
+    for (const circle of circlePool.activeCircles) {
+        if (circle.holdActive)
+            circlePool.refreshHoldVisual(circle, window.chartTime);
+        else {
+            const height =
+                (Math.max(
+                    0,
+                    (circle.note.holdEndTime ?? circle.note.time) -
+                        circle.note.time,
+                ) /
+                    1000) *
+                circle.fallSpeed;
+            drawNoteGraphics(circle, height, getNoteColor(circle.note));
+        }
+    }
+});
 window.addEventListener("nowjs-catch-difficulty-change", () => {
     if (window.currentChart?.mania) return;
     const factor = getCatchSizeScale(

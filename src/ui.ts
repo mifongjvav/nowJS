@@ -20,6 +20,9 @@ import { isAutoPlayEnabled, setAutoPlay } from "./autoplay.ts";
 import {
     isHoldTailJudgementEnabled,
     setHoldTailJudgementEnabled,
+    isManiaRectangleEnabled,
+    setManiaRectangleEnabled,
+    onManiaRectangleChange,
 } from "./maniaSettings.ts";
 import {
     playMenuPlaySelect,
@@ -229,6 +232,14 @@ root.innerHTML = `
                                 ></mdui-switch>
                                 <span data-i18n="menu.holdTail">${i18n.menu.holdTail}</span>
                             </div>
+                            <div class="now-hold-tail now-hidden" id="now-mania-rectangles">
+                                <mdui-switch
+                                    id="now-mania-rectangle-switch"
+                                    aria-label="${i18n.menu.rectangleAria}"
+                                    data-i18n-aria-label="menu.rectangleAria"
+                                ></mdui-switch>
+                                <span data-i18n="menu.rectangleMode">${i18n.menu.rectangleMode}</span>
+                            </div>
                         </div>
                         <div class="now-song-actions">
                             <mdui-button
@@ -430,6 +441,8 @@ const songMeta = root.querySelector("#now-song-meta");
 const modePicker = root.querySelector("#now-mode-picker");
 const holdTailRow = root.querySelector("#now-hold-tail");
 const holdTailSwitch = root.querySelector("#now-hold-tail-switch");
+const rectangleRow = root.querySelector("#now-mania-rectangles");
+const rectangleSwitch = root.querySelector("#now-mania-rectangle-switch");
 const startBtn = root.querySelector("#now-start-btn");
 const startLabel = root.querySelector("#now-start-label");
 const importBtn = root.querySelector("#now-import-btn");
@@ -473,6 +486,10 @@ compactActions.addEventListener("change", syncDialogActions);
 syncDialogActions();
 
 holdTailSwitch.checked = isHoldTailJudgementEnabled();
+rectangleSwitch.checked = isManiaRectangleEnabled();
+onManiaRectangleChange(() => {
+    rectangleSwitch.checked = isManiaRectangleEnabled();
+});
 
 autoplayBtn.selected = isAutoPlayEnabled();
 
@@ -597,6 +614,7 @@ function syncModePicker(chart: GameChart | null): void {
     }
     modePicker.disabled = !chart;
     holdTailRow.classList.toggle("now-hidden", !chart || mode !== "mania");
+    rectangleRow.classList.toggle("now-hidden", !chart || mode !== "mania");
 }
 
 export function setSong(chart: GameChart | null): void {
@@ -921,6 +939,14 @@ holdTailRow.addEventListener("click", (event) => {
     if (event.target.closest("mdui-switch")) return;
     holdTailSwitch.checked = !holdTailSwitch.checked;
     setHoldTailJudgementEnabled(holdTailSwitch.checked);
+});
+
+rectangleSwitch.addEventListener("change", () => {
+    setManiaRectangleEnabled(rectangleSwitch.checked);
+});
+rectangleRow.addEventListener("click", (event) => {
+    if (event.target.closest("mdui-switch")) return;
+    setManiaRectangleEnabled(!isManiaRectangleEnabled());
 });
 
 modePicker.addEventListener("change", () => {

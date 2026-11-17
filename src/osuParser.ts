@@ -459,12 +459,24 @@ function parseHitObjects(
         }
 
         const hitSound = parseNumber(parts[4], 0) | 0;
+        // Native mania holds use endTime:hitSample in one CSV field. Also
+        // accept the older comma-separated form used by existing imports.
+        const holdParams = type & 128 ? parts[5] || "" : "";
+        const holdSeparator = holdParams.indexOf(":");
+        const holdEnd =
+            holdSeparator < 0 ? holdParams : holdParams.slice(0, holdSeparator);
+        const holdSample =
+            holdSeparator < 0
+                ? parts[6] || ""
+                : holdParams.slice(holdSeparator + 1);
         const hitSampleValue =
             type & 2
                 ? parts[10] || ""
-                : type & 8 || type & 128
-                  ? parts[6] || ""
-                  : parts[5] || "";
+                : type & 128
+                  ? holdSample
+                  : type & 8
+                    ? parts[6] || ""
+                    : parts[5] || "";
         const hitSample = parseHitSample(hitSampleValue);
         const timingSample = getTimingSampleInfoFromIndex(
             timingIndex,
@@ -531,8 +543,8 @@ function parseHitObjects(
         } else if (type & 8) {
             object.endTime = Math.max(time, parseNumber(parts[5], time));
         } else if (type & 128) {
-            // osu!mania hold note: x,y,time,type,hitSound,endTime,hitSample
-            object.endTime = Math.max(time, parseNumber(parts[5], time));
+            // osu!mania hold note: x,y,time,type,hitSound,endTime:hitSample
+            object.endTime = Math.max(time, parseNumber(holdEnd, time));
         }
 
         hitObjects.push(object);

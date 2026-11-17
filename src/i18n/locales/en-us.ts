@@ -116,6 +116,8 @@ export default {
         modeAria: "Choose game mode",
         holdTail: "Hold tails",
         holdTailAria: "Toggle osu!mania hold-note tail judgement",
+        rectangleMode: "Rectangular notes",
+        rectangleAria: "Display 4K notes as rounded rectangles",
         resolutionAria: "Change render resolution",
         languageAria: "Change language",
     },

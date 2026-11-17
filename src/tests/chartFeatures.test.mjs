@@ -28,3 +28,26 @@ test("zero-length spinner stays a tap and catch banana showers are unchanged", (
     assert.ok(caught.notes.length > 1);
     assert.ok(caught.notes.every((note) => note.type === "banana"));
 });
+
+test("native mania hold endTime:hitSample syntax preserves tails and custom samples", () => {
+    for (const params of ["2500:2:3:4:75:hit.wav", "2500,2:3:4:75:hit.wav"]) {
+        const parsed = parseOsu(`osu file format v14
+[General]
+Mode:3
+[Difficulty]
+CircleSize:4
+[HitObjects]
+64,192,1000,128,0,${params}
+`);
+        const object = parsed.hitObjects[0];
+        assert.equal(object.endTime, 2500);
+        assert.equal(object.sampleSet, "soft");
+        assert.equal(object.additionSet, "drum");
+        assert.equal(object.sampleIndex, 4);
+        assert.equal(object.volume, 75);
+        assert.equal(object.sampleFilename, "hit.wav");
+        const chart = compileChart(parsed, "mania");
+        assert.equal(chart.notes[0].holdEndTime, 2500);
+        assert.equal(chart.lastNoteTime, 2500);
+    }
+});

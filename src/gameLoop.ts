@@ -42,7 +42,6 @@ import {
     setManiaMode,
     updateMania,
     updateManiaLogic,
-    renderManiaBarLines,
 } from "./mania.ts";
 import {
     beginBreakOverlay,
@@ -76,6 +75,7 @@ import {
 } from "./epilepsyWarning.ts";
 import type { GameChart } from "./domain.ts";
 import { shouldShowEpilepsyWarning } from "./warningPolicy.ts";
+import { setBarLineChart, renderBarLines } from "./barLines.ts";
 
 const app = window.app;
 
@@ -175,6 +175,7 @@ function startGame() {
         return;
     }
     configureCatchChart(chart);
+    setBarLineChart(chart);
     const generation = ++startupGeneration;
     cancelEpilepsyWarning();
     if (!shouldShowEpilepsyWarning(chart, getSettings())) {
@@ -492,6 +493,7 @@ function endGame() {
 }
 
 function exitToMenu() {
+    setBarLineChart(null);
     resetCatchMovement();
     startupGeneration++;
     cancelEpilepsyWarning();
@@ -782,7 +784,7 @@ app.ticker.add((ticker) => {
     updateComboPosition();
     animateComboScale();
     if (!playing) {
-        renderManiaBarLines(chartTime, false);
+        renderBarLines(chartTime, false);
         return;
     }
 
@@ -797,7 +799,7 @@ app.ticker.add((ticker) => {
               )
             : 0);
     circlePool.render(renderTime);
-    renderManiaBarLines(renderTime);
+    renderBarLines(renderTime);
     renderAutoPlay();
     updateMania(ticker.deltaMS);
     updateBreakOverlay(renderTime);

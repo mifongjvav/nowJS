@@ -5,7 +5,6 @@ import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import type { ManiaChartInfo } from "./domain.ts";
 import { routeInput, resetThreadInput } from "./threads/inputClient.ts";
 import { sendLogicInput } from "./threads/logicClient.ts";
-import { ManiaBarLineTimeline } from "./maniaTiming.ts";
 
 const SCALE = window.gameScale;
 const LANE_COUNT = 4;
@@ -45,71 +44,6 @@ function drawGuides(): void {
 }
 drawGuides();
 layer.addChild(guides);
-
-const barLineLayer = new PIXI.Container();
-barLineLayer.label = "mania-bar-lines";
-layer.addChild(barLineLayer);
-interface BarLineVisual {
-    graphic: PIXI.Graphics & { scrollSpeedY?: number; scrollMaxY?: number };
-    major: boolean;
-}
-const barLinePool: BarLineVisual[] = [];
-let barLineTimeline: ManiaBarLineTimeline | null = null;
-
-function drawBarLine(line: BarLineVisual): void {
-    const height = (line.major ? 1.7 : 1.2) * SCALE;
-    line.graphic
-        .clear()
-        .rect(field.left, -height / 2, field.width, height)
-        .fill({ color: MD3_COLORS.onSurface, alpha: line.major ? 0.32 : 0.18 });
-}
-
-function hideBarLines(): void {
-    for (const line of barLinePool) {
-        line.graphic.visible = false;
-        line.graphic.scrollSpeedY = 0;
-    }
-}
-
-export function renderManiaBarLines(time: number, moving = true): void {
-    const chart = window.currentChart;
-    if (
-        !maniaActive ||
-        !barLineTimeline ||
-        !chart ||
-        !Number.isFinite(time) ||
-        !(chart.fallSpeed > 0)
-    ) {
-        hideBarLines();
-        return;
-    }
-    const lines = barLineTimeline.between(
-        time,
-        time + (judgeY / chart.fallSpeed) * 1000,
-    );
-    for (let index = 0; index < lines.length; index++) {
-        const data = lines[index];
-        let line = barLinePool[index];
-        if (!line) {
-            line = { graphic: new PIXI.Graphics(), major: data.major };
-            line.graphic.label = "mania-bar-line";
-            barLinePool.push(line);
-            barLineLayer.addChild(line.graphic);
-            drawBarLine(line);
-        } else if (line.major !== data.major) {
-            line.major = data.major;
-            drawBarLine(line);
-        }
-        line.graphic.visible = true;
-        line.graphic.y = judgeY - ((data.time - time) / 1000) * chart.fallSpeed;
-        line.graphic.scrollSpeedY = moving ? chart.fallSpeed : 0;
-        line.graphic.scrollMaxY = judgeY;
-    }
-    for (let index = lines.length; index < barLinePool.length; index++) {
-        barLinePool[index].graphic.visible = false;
-        barLinePool[index].graphic.scrollSpeedY = 0;
-    }
-}
 
 interface LanePlate {
     lane: number;
@@ -242,7 +176,6 @@ function drawPlateBase(plate: LanePlate): void {
 
 function drawAllPlates(): void {
     drawGuides();
-    for (const line of barLinePool) drawBarLine(line);
     for (const plate of plates) {
         drawPlateBase(plate);
     }
@@ -289,16 +222,6 @@ function resetInput(): void {
 
 export function setManiaMode(info: ManiaChartInfo | null): void {
     maniaActive = Boolean(info);
-    const chart = window.currentChart;
-    barLineTimeline =
-        maniaActive && chart?.notes.length
-            ? new ManiaBarLineTimeline(
-                  chart.timingPoints ?? [],
-                  chart.firstNoteTime,
-                  chart.lastNoteTime,
-              )
-            : null;
-    hideBarLines();
     layer.visible = maniaActive;
     if (window.player) {
         window.player.visible = !maniaActive;

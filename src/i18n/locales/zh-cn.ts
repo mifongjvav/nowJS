@@ -114,6 +114,8 @@ export default {
         modeAria: "选择游戏模式",
         holdTail: "长条尾判",
         holdTailAria: "开关 osu!mania 长条尾判",
+        rectangleMode: "矩形模式",
+        rectangleAria: "将 4K 音符显示为圆角矩形",
         resolutionAria: "更改渲染分辨率",
         languageAria: "切换语言",
     },
