@@ -53,7 +53,7 @@ export function buildGeneratedBeatmap(
     const comboColors = normalizeGeneratorComboColors(colors);
     const beat = 60000 / analysis.bpm;
     const difficulty = getGeneratorDifficulty(options);
-    const version = `${difficulty.name} Lv.${difficulty.level} - Review`;
+    const version = `${difficulty.name} Lv.${difficulty.level} - Review v3`;
     const osu = [
         "osu file format v14",
         "",

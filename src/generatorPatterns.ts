@@ -1,5 +1,6 @@
 import { GeneratorError } from "./generatorTypes.ts";
 import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
+import { createGeneratorCatchPath } from "./generatorCatchPath.ts";
 import type {
     AudioOnset,
     GeneratorAnalysis,
@@ -13,13 +14,6 @@ export interface GeneratorNote {
     brightness?: number;
 }
 
-// Reusable contours, not an independent random position for every fruit.
-const contours = [
-    [0, 1, 2, 3, 2, 1, 0, -1],
-    [0, 1, 2, 1, 0, -1, -2, -1],
-    [0, 1, 0, -1, 0, 1, 2, 1],
-    [0, -1, -2, -1, 0, 1, 0, -1],
-];
 const lanePatterns = [
     [0, 2, 1, 3, 1, 2, 0, 3],
     [0, 1, 2, 3, 2, 1, 0, 2],
@@ -84,6 +78,33 @@ export function createGeneratorNotes(
             grid.set(index, { ...onset, timeMs });
     };
     for (const onset of analysis.onsets) put(onset);
+    // Higher settings can represent quieter real transients that the primary
+    // detector omitted. Never add a metronomic stream over sustained/silent
+    // audio just to make the level number appear more difficult.
+    if (profile.level >= 4) {
+        const frames = analysis.frames;
+        const ratio = Math.max(1.03, 1.4 - Math.log2(profile.level) * 0.06);
+        for (let i = 1; i < frames.length - 1; i++) {
+            const frame = frames[i];
+            if (
+                frame.rms < 0.03 ||
+                frame.novelty < 0.015 ||
+                frame.novelty < frames[i - 1].novelty ||
+                frame.novelty <= frames[i + 1].novelty
+            )
+                continue;
+            let mean = 0;
+            const left = Math.max(0, i - 8),
+                right = Math.min(frames.length - 1, i + 8);
+            for (let j = left; j <= right; j++) mean += frames[j].novelty;
+            if (frame.novelty < (mean / (right - left + 1)) * ratio) continue;
+            put({
+                timeMs: frame.timeMs,
+                strength: frame.novelty,
+                brightness: frame.brightness,
+            });
+        }
+    }
     // Tonal fallback remains restricted to audible material. It is not a
     // density filler: normal songs are never padded with invented transients.
     if (grid.size < 4) {
@@ -148,18 +169,19 @@ export function createGeneratorNotes(
         previousPhrase = -Infinity,
         pattern = 0;
     const notes: GeneratorNote[] = [];
+    const catchPath = createGeneratorCatchPath(analysis, options);
     for (const candidate of candidates) {
         const time = Math.round(candidate.timeMs);
         const beatIndex = (time - analysis.offsetMs) / beat;
         const phrase = Math.floor(beatIndex / 16);
         if (candidate.strength < (thresholds.get(phrase) ?? 0)) continue;
-        if (time - previousTime < Math.max(35, step * 0.85)) continue;
+        if (time - previousTime < Math.max(20, step * 0.85)) continue;
         if (phrase !== previousPhrase) {
             // Similar timbre/energy chooses the same vocabulary in a reprise.
             pattern = clamp(
                 Math.floor(candidate.brightness * 12 + candidate.strength * 2),
                 0,
-                contours.length - 1,
+                lanePatterns.length - 1,
             );
             indexInPhrase = 0;
             previousPhrase = phrase;
@@ -171,23 +193,7 @@ export function createGeneratorNotes(
             previousLane = lane;
             x = 64 + lane * 128;
         } else {
-            const contour = contours[pattern];
-            const i = indexInPhrase % contour.length;
-            const direction = phrase % 2 === 0 ? 1 : -1;
-            const delta = (contour[i] - contour[(i + 7) % 8]) * direction;
-            const emphasis = 0.8 + clamp(candidate.strength, 0, 1) * 0.4;
-            const reach = Math.min(
-                170 + profile.complexity * 100,
-                (time - previousTime) * profile.spacing,
-            );
-            const distance = Math.min(
-                reach,
-                (30 + profile.complexity * 100) * emphasis,
-            );
-            // Reflect at margins instead of accumulating fruit at x=32/480.
-            let target = x + delta * distance;
-            if (target < 40 || target > 472) target = x - delta * distance;
-            x = clamp(target, 40, 472);
+            x = catchPath.place(time, candidate.strength, candidate.brightness);
         }
         notes.push({
             x: Math.round(x),

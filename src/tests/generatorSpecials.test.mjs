@@ -224,7 +224,7 @@ test("Catch positioning remains reachable after slider tails and banana showers,
         assert.ok(object.x >= 32 && object.x <= 480);
         lastX =
             object.kind === "slider" && object.slides % 2
-                ? object.x + (object.x > 256 ? -1 : 1) * object.length
+                ? object.endX
                 : object.x;
         lastTime = object.kind === "circle" ? object.time : object.endTime;
     }

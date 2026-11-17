@@ -6,7 +6,7 @@ import {
     buildGeneratedBeatmap,
 } from "../beatmapGenerator.ts";
 import { createGeneratorObjects } from "../generatorObjects.ts";
-import { parseOsu } from "../osuParser.ts";
+import { parseOsu, compileChart } from "../osuParser.ts";
 
 const analysis = {
     bpm: 120,
@@ -157,5 +157,138 @@ test("a weak transient cannot let a slider swallow a later strong accent", () =>
         !objects.some(
             (n) => n.kind === "slider" && n.time < 1600 && n.endTime > 1600,
         ),
+    );
+});
+
+function buildFruits(difficulty, input = analysis) {
+    const pack = buildGeneratedBeatmap(
+        input,
+        { ...options, difficulty },
+        { extension: "wav", bytes: new Uint8Array([1]) },
+    );
+    return compileChart(parseOsu(pack.osu), "catch").notes.filter(
+        (n) => n.type === "fruit",
+    );
+}
+
+const percentile = (values, q) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.floor((sorted.length - 1) * q)] ?? 0;
+};
+const speeds = (notes) =>
+    notes
+        .slice(1)
+        .map(
+            (n, i) =>
+                Math.abs(n.x - notes[i].x) /
+                Math.max(1, n.time - notes[i].time),
+        );
+
+test("final exported Catch objects explore both sides instead of closing every phrase at center", () => {
+    const input = {
+        ...analysis,
+        frames: analysis.frames.map((f) => ({ ...f, novelty: 0.5 })),
+    };
+    for (const level of [1, 2, 4, 16, 100]) {
+        const notes = buildFruits(level, input);
+        const xs = notes.map((n) => n.x);
+        assert.ok(Math.min(...xs) < 100, `Lv${level}: left side not used`);
+        assert.ok(Math.max(...xs) > 400, `Lv${level}: right side not used`);
+        assert.ok(
+            xs.filter((x) => x >= 192 && x <= 320).length / xs.length < 0.5,
+            `Lv${level}: final layout is trapped at center`,
+        );
+        assert.ok(
+            xs.filter((x) => x < 128 || x > 384).length / xs.length > 0.2,
+        );
+    }
+});
+
+test("Lv16 and Lv100 retain increasing movement demand after final layout, not a hidden walk-only cap", () => {
+    const input = {
+        ...analysis,
+        frames: analysis.frames.map((f) => ({ ...f, novelty: 0.5 })),
+    };
+    const levels = [1, 4, 16, 100].map((level) => buildFruits(level, input));
+    const demands = levels.map((notes) => percentile(speeds(notes), 0.9));
+    assert.ok(demands[1] > demands[0] * 2);
+    assert.ok(demands[2] > demands[1] * 1.4);
+    assert.ok(demands[3] > demands[1] * 2);
+    assert.ok(levels[3].some((n) => n.hyperDashTarget));
+    assert.ok(!levels[0].some((n) => n.hyperDashTarget));
+});
+
+test("slider tails keep a chosen flow direction, including outward tails, and serialize it unchanged", () => {
+    const stable = {
+        ...analysis,
+        onsets: analysis.onsets.map((o) => ({ ...o, strength: 0.2 })),
+    };
+    const settings = { ...options, difficulty: 2 };
+    const objects = createGeneratorObjects(
+        stable,
+        settings,
+        createGeneratorNotes(stable, settings),
+    );
+    const sliders = objects.filter((n) => n.kind === "slider");
+    assert.ok(sliders.length > 0);
+    assert.ok(
+        sliders.some((n) => Math.abs(n.endX - 256) > Math.abs(n.x - 256) + 10),
+    );
+    assert.ok(sliders.every((n) => n.endX >= 32 && n.endX <= 480));
+    const pack = buildGeneratedBeatmap(stable, settings, {
+        extension: "wav",
+        bytes: new Uint8Array([1]),
+    });
+    const raw = parseOsu(pack.osu).hitObjects.filter((n) => n.type & 2);
+    assert.equal(raw.length, sliders.length);
+    for (let i = 0; i < raw.length; i++) {
+        assert.equal(raw[i].curvePoints.at(-1).x, sliders[i].endX);
+        assert.ok(
+            Math.abs(
+                Math.abs(sliders[i].endX - sliders[i].x) - sliders[i].length,
+            ) <= 1,
+        );
+    }
+});
+
+test("high levels can include weaker local transients, but never pad a silent or flat spectral passage", () => {
+    const input = {
+        ...analysis,
+        onsets: Array.from({ length: 38 }, (_, i) => ({
+            timeMs: 600 + i * 500,
+            strength: 0.8,
+            brightness: 0.1,
+        })),
+        frames: analysis.frames.map((f, i) => ({
+            ...f,
+            novelty: i % 20 === 5 ? 0.06 : 0.05,
+        })),
+    };
+    const count = (level) =>
+        createGeneratorNotes(input, { ...options, difficulty: level }).length;
+    assert.ok(count(100) > count(4));
+    const flat = {
+        ...input,
+        frames: input.frames.map((f) => ({ ...f, novelty: 0.05 })),
+    };
+    const silent = {
+        ...input,
+        frames: input.frames.map((f) => ({ ...f, rms: 0 })),
+    };
+    const mainOnly = {
+        ...input,
+        frames: input.frames.map((f) => ({ ...f, novelty: 0 })),
+    };
+    const baseline = createGeneratorNotes(mainOnly, {
+        ...options,
+        difficulty: 100,
+    });
+    assert.deepEqual(
+        createGeneratorNotes(flat, { ...options, difficulty: 100 }),
+        baseline,
+    );
+    assert.deepEqual(
+        createGeneratorNotes(silent, { ...options, difficulty: 100 }),
+        baseline,
     );
 });

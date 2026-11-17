@@ -5,8 +5,9 @@ import type {
 } from "./generatorTypes.ts";
 import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
 import type { GeneratorNote } from "./generatorPatterns.ts";
+import { createGeneratorCatchPath } from "./generatorCatchPath.ts";
 
-type BaseObject = { x: number; time: number };
+type BaseObject = GeneratorNote;
 export type GeneratedObject =
     | (BaseObject & { kind: "circle" })
     | (BaseObject & { kind: "hold"; endTime: number })
@@ -15,6 +16,7 @@ export type GeneratedObject =
           endTime: number;
           slides: number;
           length: number;
+          endX?: number;
       })
     | (BaseObject & { kind: "bananaShower"; endTime: number });
 
@@ -24,11 +26,11 @@ export const getGeneratorSliderLength = (
 ) =>
     Math.round(
         Math.min(
-            140,
+            432,
             (60000 / bpm) *
                 (options
                     ? Math.min(
-                          0.25,
+                          0.5,
                           getGeneratorDifficulty(options).spacing * 0.8,
                       )
                     : 0.25),
@@ -260,34 +262,21 @@ export function createGeneratorObjects(
     objects.push(...showers);
     objects.sort((a, b) => a.time - b.time);
     if (options.mode === "catch") {
-        let lastX = 256,
-            lastEnd = -Infinity,
-            returnToCenter = false;
+        const path = createGeneratorCatchPath(analysis, options);
+        let returnToCenter = false;
         for (const object of objects) {
             if (object.kind === "bananaShower") {
-                lastX = 256;
-                lastEnd = object.endTime;
+                path.afterShower(object.endTime);
                 returnToCenter = true;
                 continue;
             }
-            const reach = Math.min(
-                170,
-                Math.max(0, object.time - lastEnd) *
-                    Math.min(0.3, profile.spacing),
-            );
             object.x = returnToCenter
                 ? 256
-                : Math.round(
-                      lastX +
-                          Math.max(-reach, Math.min(reach, object.x - lastX)),
-                  );
-            object.x = Math.max(32, Math.min(480, object.x));
+                : path.place(object.time, object.strength, object.brightness);
+            if (returnToCenter) path.afterShower(object.time);
             returnToCenter = false;
-            lastX =
-                object.kind === "slider" && object.slides % 2
-                    ? object.x + (object.x > 256 ? -1 : 1) * object.length
-                    : object.x;
-            lastEnd = object.kind === "circle" ? object.time : object.endTime;
+            if (object.kind === "slider")
+                object.endX = path.extend(object.length, object.endTime);
         }
     }
     return objects;
@@ -329,7 +318,8 @@ export function serializeGeneratorObjects(
             return `${prefix},${128 | combo},0,${object.endTime}:0:0:0:0:`;
         if (object.kind === "slider") {
             const endX = Math.round(
-                object.x + (object.x > 256 ? -1 : 1) * object.length,
+                object.endX ??
+                    object.x + (object.x > 256 ? -1 : 1) * object.length,
             );
             const sounds = Array(object.slides + 1)
                 .fill("0")
