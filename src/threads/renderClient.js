@@ -214,7 +214,9 @@ async function snapshot(node) {
     if (node.context?.instructions) {
         data.kind = "graphics";
         data.motionY =
-            node.active && node.note && !node.holdActive ? node.fallSpeed : 0;
+            node.scrollSpeedY ??
+            (node.active && node.note && !node.holdActive ? node.fallSpeed : 0);
+        if (Number.isFinite(node.scrollMaxY)) data.motionMaxY = node.scrollMaxY;
         data.graphics = serializeGraphics(node.context);
     } else if (typeof node.text === "string" && node.style) {
         data.kind = "text";

@@ -12,6 +12,7 @@ export interface TimingPoint {
     sampleSet: number;
     sampleIndex: number;
     volume: number;
+    omitFirstBarLine?: boolean;
 }
 
 export interface CatchHitSample {
@@ -138,6 +139,7 @@ export interface CompiledCatchChart {
     lengthMs: number;
     metadata: OsuMetadata;
     difficulty: OsuDifficulty;
+    timingPoints: TimingPoint[];
     mode: number;
     playMode: PlayMode;
     mania: ManiaChartInfo | null;

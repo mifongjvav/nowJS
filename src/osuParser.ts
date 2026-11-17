@@ -227,6 +227,7 @@ function parseTimingPoints(lines: string[] = []): TimingPoint[] {
             sampleSet: parseNumber(parts[3], 0) | 0,
             sampleIndex: Math.max(0, parseNumber(parts[4], 0) | 0),
             volume: parseNumber(parts[5], 100),
+            omitFirstBarLine: (parseNumber(parts[7], 0) & 8) !== 0,
         });
     }
 
@@ -1098,6 +1099,7 @@ export function compileCatchChart(beatmap: ParsedBeatmap): CompiledCatchChart {
         lengthMs: Math.max(0, lastNoteTime - firstNoteTime),
         metadata: beatmap.metadata,
         difficulty: beatmap.difficulty,
+        timingPoints: beatmap.timingPoints,
         mode: beatmap.general.mode,
         playMode: "catch",
         mania: null,
@@ -1322,6 +1324,7 @@ function compileManiaChart(beatmap: ParsedBeatmap): CompiledCatchChart {
         lengthMs: Math.max(0, lastNoteTime - firstNoteTime),
         metadata: beatmap.metadata,
         difficulty: beatmap.difficulty,
+        timingPoints: beatmap.timingPoints,
         mode: beatmap.general.mode,
         playMode: "mania",
         mania: {

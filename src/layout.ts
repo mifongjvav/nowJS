@@ -35,6 +35,17 @@ export function getCatchPlayfield(): Playfield {
     };
 }
 
+export function getJudgeLineRange(mania: boolean): {
+    left: number;
+    width: number;
+} {
+    // Mania originally used a full-canvas judgement line. Catch alone is
+    // confined to its 4:3 area; the mania lane coordinates stay unchanged.
+    if (mania) return { left: 0, width: window.gameWidth || 1280 };
+    const field = getCatchPlayfield();
+    return { left: field.left, width: field.width };
+}
+
 // The catcher's centre must reach both field edges, so half of the plate is
 // allowed to overhang into the side margin. Keeping the whole plate inside
 // made notes at x=0/x=512 impossible to catch.

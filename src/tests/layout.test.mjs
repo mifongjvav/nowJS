@@ -5,8 +5,12 @@ Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: { gameWidth: 1280, gameHeight: 720, gameScale: 1 },
 });
-const { getCatchPlayfield, getCatchPlayerRange, getPlayfield } =
-    await import("../layout.ts");
+const {
+    getCatchPlayfield,
+    getCatchPlayerRange,
+    getPlayfield,
+    getJudgeLineRange,
+} = await import("../layout.ts");
 
 test("catch playfield matches the 4:3 storyboard area", () => {
     assert.deepEqual(getCatchPlayfield(), {
@@ -17,6 +21,8 @@ test("catch playfield matches the 4:3 storyboard area", () => {
     });
     // The plate may overhang by half its width so its centre reaches x=0/512.
     assert.deepEqual(getCatchPlayerRange(100), { minX: 110, maxX: 1070 });
+    assert.deepEqual(getJudgeLineRange(true), { left: 0, width: 1280 });
+    assert.deepEqual(getJudgeLineRange(false), { left: 160, width: 960 });
     // Mania keeps its dedicated 512-wide lane field.
     assert.deepEqual(getPlayfield(), {
         left: 384,
@@ -46,4 +52,6 @@ test("4:3 and 16:9 resolutions map catch coordinates consistently", () => {
         right: 1680,
         center: 960,
     });
+    assert.deepEqual(getJudgeLineRange(true), { left: 0, width: 1920 });
+    assert.deepEqual(getJudgeLineRange(false), { left: 240, width: 1440 });
 });

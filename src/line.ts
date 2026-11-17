@@ -2,7 +2,7 @@ import * as PIXI from "./vendor/pixi.js";
 import { BlurFilter } from "./vendor/pixi.js";
 import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import { getSettings, onSettingsChange } from "./settings.ts";
-import { getCatchPlayfield, getPlayfield } from "./layout.ts";
+import { getJudgeLineRange } from "./layout.ts";
 
 const app = window.app;
 const HEIGHT = window.gameHeight;
@@ -28,9 +28,7 @@ glow.x = 0;
 glow.y = line.y;
 
 export function refreshJudgeLine(): void {
-    const field = window.currentChart?.mania
-        ? getPlayfield()
-        : getCatchPlayfield();
+    const field = getJudgeLineRange(Boolean(window.currentChart?.mania));
     line.clear();
     line.roundRect(field.left, -SCALE, field.width, 2 * SCALE, 5 * SCALE).fill({
         color: MD3_COLORS.onSurface,

@@ -61,7 +61,9 @@ export function installRenderWorker(reportFailure) {
         record.y = t[1];
         record.x = t[0];
         record.motionY = data.motionY;
+        record.motionMaxY = data.motionMaxY;
         record.motionX = data.motionX;
+        node.visible = true;
         node.alpha = data.alpha;
         node.tint = data.tint;
         node.blendMode = data.blendMode;
@@ -134,8 +136,12 @@ export function installRenderWorker(reportFailure) {
                 ? Math.max(0, Math.min(100, wall - frameWall)) / 1000
                 : 0;
             for (const record of nodes.values()) {
-                if (record.motionY)
+                if (record.motionY) {
                     record.node.y = record.y + record.motionY * elapsed;
+                    record.node.visible =
+                        record.motionMaxY === undefined ||
+                        record.node.y <= record.motionMaxY;
+                }
                 if (record.motionX)
                     record.node.x = playing
                         ? projectHorizontalMotion(

@@ -42,6 +42,7 @@ import {
     setManiaMode,
     updateMania,
     updateManiaLogic,
+    renderManiaBarLines,
 } from "./mania.ts";
 import {
     beginBreakOverlay,
@@ -201,6 +202,7 @@ function startGame() {
     // menu. Media, song clock and judgement remain stopped until dismissal.
     resetStats();
     setManiaMode(chart.mania || null);
+    refreshJudgeLine();
     resetCatcherColor();
     if (window.player)
         window.player.x = (window.gameWidth - window.playerWidth) / 2;
@@ -779,7 +781,10 @@ app.ticker.add((ticker) => {
     updateCatchEffects(ticker.deltaMS);
     updateComboPosition();
     animateComboScale();
-    if (!playing) return;
+    if (!playing) {
+        renderManiaBarLines(chartTime, false);
+        return;
+    }
 
     // Extrapolate only the note display between fixed ticks. Judgement and
     // window.chartTime always use the simulated time, never this render time.
@@ -792,6 +797,7 @@ app.ticker.add((ticker) => {
               )
             : 0);
     circlePool.render(renderTime);
+    renderManiaBarLines(renderTime);
     renderAutoPlay();
     updateMania(ticker.deltaMS);
     updateBreakOverlay(renderTime);
