@@ -169,7 +169,10 @@ export function createGeneratorNotes(
         previousPhrase = -Infinity,
         pattern = 0;
     const notes: GeneratorNote[] = [];
-    const catchPath = createGeneratorCatchPath(analysis, options);
+    const catchPath =
+        options.mode === "catch"
+            ? createGeneratorCatchPath(analysis, options)
+            : null;
     for (const candidate of candidates) {
         const time = Math.round(candidate.timeMs);
         const beatIndex = (time - analysis.offsetMs) / beat;
@@ -193,7 +196,7 @@ export function createGeneratorNotes(
             previousLane = lane;
             x = 64 + lane * 128;
         } else {
-            x = catchPath.place(time, candidate.strength, candidate.brightness);
+            x = catchPath!.place(time);
         }
         notes.push({
             x: Math.round(x),

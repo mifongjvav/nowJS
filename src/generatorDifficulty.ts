@@ -18,7 +18,6 @@ export function getGeneratorDifficulty(options: Partial<GeneratorOptions>) {
         // Only rhythm resolution is bounded by the finite audio/timestamp grid.
         divisions: 2 ** Math.min(6, Math.floor(growth)),
         spacing: 0.12 + growth * 0.18,
-        travel: 42 + growth * 30,
         circleSize: 2.5 + complexity * 3.5,
         approachRate: Math.min(10, 4 + growth * 1.65),
         hp: Math.min(9, 2 + growth * 1.2),

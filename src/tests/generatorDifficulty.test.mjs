@@ -184,23 +184,21 @@ const speeds = (notes) =>
                 Math.max(1, n.time - notes[i].time),
         );
 
-test("final exported Catch objects explore both sides instead of closing every phrase at center", () => {
+test("steady musical material stays local rather than meeting a forced whole-field coverage quota", () => {
     const input = {
         ...analysis,
         frames: analysis.frames.map((f) => ({ ...f, novelty: 0.5 })),
     };
     for (const level of [1, 2, 4, 16, 100]) {
         const notes = buildFruits(level, input);
-        const xs = notes.map((n) => n.x);
-        assert.ok(Math.min(...xs) < 100, `Lv${level}: left side not used`);
-        assert.ok(Math.max(...xs) > 400, `Lv${level}: right side not used`);
-        assert.ok(
-            xs.filter((x) => x >= 192 && x <= 320).length / xs.length < 0.5,
-            `Lv${level}: final layout is trapped at center`,
-        );
-        assert.ok(
-            xs.filter((x) => x < 128 || x > 384).length / xs.length > 0.2,
-        );
+        assert.ok(notes.every((n) => n.x >= 32 && n.x <= 480));
+        if (level <= 4) {
+            const xs = notes.map((n) => n.x);
+            assert.ok(
+                Math.max(...xs) - Math.min(...xs) < 200,
+                `Lv${level}: steady rhythm unnecessarily traverses the field`,
+            );
+        }
     }
 });
 
@@ -218,7 +216,7 @@ test("Lv16 and Lv100 retain increasing movement demand after final layout, not a
     assert.ok(!levels[0].some((n) => n.hyperDashTarget));
 });
 
-test("slider tails keep a chosen flow direction, including outward tails, and serialize it unchanged", () => {
+test("slider tails follow phrase gestures while path length independently preserves sustain duration", () => {
     const stable = {
         ...analysis,
         onsets: analysis.onsets.map((o) => ({ ...o, strength: 0.2 })),
@@ -243,12 +241,18 @@ test("slider tails keep a chosen flow direction, including outward tails, and se
     assert.equal(raw.length, sliders.length);
     for (let i = 0; i < raw.length; i++) {
         assert.equal(raw[i].curvePoints.at(-1).x, sliders[i].endX);
-        assert.ok(
-            Math.abs(
-                Math.abs(sliders[i].endX - sliders[i].x) - sliders[i].length,
-            ) <= 1,
-        );
+        const points = [{ x: sliders[i].x, y: 192 }, ...raw[i].curvePoints];
+        const distance = points
+            .slice(1)
+            .reduce(
+                (sum, p, index) =>
+                    sum +
+                    Math.hypot(p.x - points[index].x, p.y - points[index].y),
+                0,
+            );
+        assert.ok(Math.abs(distance - sliders[i].length) < 0.01);
     }
+    assert.ok(sliders.some((n) => Math.abs(n.endX - n.x) < n.length * 0.5));
 });
 
 test("high levels can include weaker local transients, but never pad a silent or flat spectral passage", () => {
@@ -283,12 +287,18 @@ test("high levels can include weaker local transients, but never pad a silent or
         ...options,
         difficulty: 100,
     });
+    const rhythm = (notes) =>
+        notes.map(({ time, strength, brightness }) => ({
+            time,
+            strength,
+            brightness,
+        }));
     assert.deepEqual(
-        createGeneratorNotes(flat, { ...options, difficulty: 100 }),
-        baseline,
+        rhythm(createGeneratorNotes(flat, { ...options, difficulty: 100 })),
+        rhythm(baseline),
     );
     assert.deepEqual(
-        createGeneratorNotes(silent, { ...options, difficulty: 100 }),
-        baseline,
+        rhythm(createGeneratorNotes(silent, { ...options, difficulty: 100 })),
+        rhythm(baseline),
     );
 });

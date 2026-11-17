@@ -270,9 +270,7 @@ export function createGeneratorObjects(
                 returnToCenter = true;
                 continue;
             }
-            object.x = returnToCenter
-                ? 256
-                : path.place(object.time, object.strength, object.brightness);
+            object.x = returnToCenter ? 256 : path.place(object.time);
             if (returnToCenter) path.afterShower(object.time);
             returnToCenter = false;
             if (object.kind === "slider")
@@ -327,7 +325,11 @@ export function serializeGeneratorObjects(
             const sets = Array(object.slides + 1)
                 .fill("0:0")
                 .join("|");
-            return `${prefix},${2 | combo},0,L|${endX}:192,${object.slides},${object.length},${sounds},${sets},0:0:0:0:`;
+            const dx = endX - object.x;
+            const height =
+                Math.sqrt(Math.max(0, object.length ** 2 - dx ** 2)) / 2;
+            const middle = `${((object.x + endX) / 2).toFixed(3)}:${(192 + height).toFixed(3)}`;
+            return `${prefix},${2 | combo},0,L|${middle}|${endX}:192,${object.slides},${object.length},${sounds},${sets},0:0:0:0:`;
         }
         return `${prefix},${1 | combo},0,0:0:0:0:`;
     });
