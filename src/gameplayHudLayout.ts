@@ -8,7 +8,7 @@ export function getGameplayHudLayout(width: number, height: number) {
         inset,
         right: width - inset,
         bottom: height - inset,
-        metadataWidth: Math.min(width * 0.45, 440 * scale),
+        metadataWidth: Math.min(width * 0.4, 360 * scale),
         progress: {
             x: inset,
             y: 6 * scale,

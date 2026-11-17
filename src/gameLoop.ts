@@ -1,5 +1,6 @@
 import { CATCH_WINDOW_MS, circlePool } from "./circlePool.ts";
 import { animateComboScale, resetStats, updateComboPosition } from "./stats.ts";
+import { calculateAccuracy } from "./accuracy.ts";
 import * as ui from "./ui.ts";
 import { getCurrentChart, initSongSelect } from "./songSelect.ts";
 import { i18n } from "./i18n/index.ts";
@@ -451,8 +452,12 @@ function endGame() {
     resetBreakOverlay();
     ui.hideHud();
 
-    const total = window.hitCount + window.missCount;
-    const accuracy = total > 0 ? window.hitCount / total : 1;
+    const total = window.hitCount + window.bananaCount + window.missCount;
+    const accuracy = calculateAccuracy(
+        window.hitCount,
+        window.missCount,
+        window.bananaCount,
+    );
 
     playResultsSound(accuracy);
     ui.showResults(window.currentChart, {

@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from "./vendor/pixi.js";
 import { MD3_COLORS, THEME_CHANGE_EVENT } from "./theme.ts";
 import { i18n, onLanguageChange } from "./i18n/index.ts";
 import { isAutoPlayEnabled } from "./autoplay.ts";
+import { calculateAccuracy } from "./accuracy.ts";
 import {
     getGameplayHudLayout,
     getHudProgressFillWidth,
@@ -25,9 +26,9 @@ class GameplayHud {
     private accuracy = this.text(28, "700");
     private accuracyLabel = this.text(12, "700");
     private auto = this.text(14, "700");
-    private title = this.text(14, "700");
-    private artist = this.text(12);
-    private details = this.text(11);
+    private title = this.text(11, "700");
+    private artist = this.text(9);
+    private details = this.text(8);
     private chart: GameChart | null = null;
     private progress = 0;
     private pointer: number | null = null;
@@ -116,8 +117,11 @@ class GameplayHud {
                 this.drawProgressFill();
             }
         }
-        const total = window.hitCount + window.missCount;
-        const accuracy = total > 0 ? window.hitCount / total : 1;
+        const accuracy = calculateAccuracy(
+            window.hitCount,
+            window.missCount,
+            window.bananaCount,
+        );
         this.accuracy.text = `${(accuracy * 100).toFixed(2)}%`;
         this.syncAccessibility();
     }
@@ -141,12 +145,12 @@ class GameplayHud {
         ]
             .filter(Boolean)
             .join("  ·  ");
-        this.title.position.set(inset + 8 * scale, bottom - 50 * scale);
-        this.artist.position.set(inset + 8 * scale, bottom - 31 * scale);
-        this.details.position.set(inset + 8 * scale, bottom - 15 * scale);
+        this.title.position.set(inset + 6 * scale, bottom - 38 * scale);
+        this.artist.position.set(inset + 6 * scale, bottom - 23 * scale);
+        this.details.position.set(inset + 6 * scale, bottom - 10 * scale);
         for (const text of [this.title, this.artist, this.details]) {
             text.style.fill = MD3_COLORS.onSurface;
-            this.fit(text, metadataWidth - 16 * scale);
+            this.fit(text, metadataWidth - 12 * scale);
         }
         this.artist.alpha = 0.8;
         this.details.alpha = 0.65;
@@ -167,14 +171,14 @@ class GameplayHud {
             .clear()
             .roundRect(
                 inset,
-                bottom - 58 * scale,
+                bottom - 44 * scale,
                 Math.max(
                     this.title.width,
                     this.artist.width,
                     this.details.width,
                 ) +
-                    16 * scale,
-                58 * scale,
+                    12 * scale,
+                44 * scale,
                 6 * scale,
             )
             .fill({ color: MD3_COLORS.surface, alpha: 0.55 })
