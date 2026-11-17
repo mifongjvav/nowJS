@@ -17,6 +17,7 @@ import {
 } from "./generatorTypes.ts";
 import type { GeneratorOptions, GeneratorProgress } from "./generatorTypes.ts";
 import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
+import { validateMovementOptions } from "./generatorLearnedMovement.ts";
 
 async function decodeGeneratorAudio(bytes: Uint8Array, signal?: AbortSignal) {
     checkGeneratorAbort(signal);
@@ -138,6 +139,7 @@ export async function generateBeatmapPack(
 ) {
     checkGeneratorAbort(signal);
     getGeneratorDifficulty(options);
+    validateMovementOptions(options);
     const extension = audio?.name.split(".").at(-1)?.toLowerCase();
     if (!audio || !extension || !["mp3", "ogg", "wav"].includes(extension))
         throw new GeneratorError("audio");

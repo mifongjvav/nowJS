@@ -17,6 +17,7 @@ import type {
 } from "./generatorTypes.ts";
 import { createGeneratorNotes } from "./generatorPatterns.ts";
 import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
+import { validateMovementOptions } from "./generatorLearnedMovement.ts";
 export { createGeneratorNotes } from "./generatorPatterns.ts";
 
 // Opaque 1x1 RGB PNG, not a transparent placeholder.
@@ -43,6 +44,7 @@ export function buildGeneratedBeatmap(
     background = GENERATOR_BLACK_PNG,
     colors: readonly number[] = GENERATOR_DEFAULT_COLORS,
 ): GeneratedBeatmapPack {
+    validateMovementOptions(options);
     if (!["mp3", "ogg", "wav"].includes(audio.extension))
         throw new GeneratorError("audio");
     const title = cleanGeneratorText(options.title, "Generated track");
@@ -53,7 +55,11 @@ export function buildGeneratedBeatmap(
     const comboColors = normalizeGeneratorComboColors(colors);
     const beat = 60000 / analysis.bpm;
     const difficulty = getGeneratorDifficulty(options);
-    const version = `${difficulty.name} Lv.${difficulty.level} - Review v4`;
+    const version = `${difficulty.name} Lv.${difficulty.level} - ${
+        options.mode === "catch" && options.movementModel === "learned"
+            ? `Neural v1 seed ${options.modelSeed ?? 1}`
+            : "Review v4"
+    }`;
     const osu = [
         "osu file format v14",
         "",

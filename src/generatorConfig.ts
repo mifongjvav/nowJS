@@ -23,6 +23,8 @@ export interface GeneratorConfigInputs {
     mode: PlayMode;
     density: GeneratorDensity;
     difficulty: number;
+    movementModel?: "phrases" | "learned";
+    modelSeed?: number;
 }
 interface ConfigMedia {
     name: string;
@@ -92,6 +94,19 @@ function validateInputs(value: unknown, legacy = false): GeneratorConfigInputs {
         difficulty < 1
     )
         throw new GeneratorError("config");
+    if (
+        input.movementModel !== undefined &&
+        input.movementModel !== "phrases" &&
+        input.movementModel !== "learned"
+    )
+        throw new GeneratorError("config");
+    if (
+        input.modelSeed !== undefined &&
+        (!Number.isInteger(input.modelSeed) ||
+            (input.modelSeed as number) < 0 ||
+            (input.modelSeed as number) > 0xffffffff)
+    )
+        throw new GeneratorError("config");
     return {
         title: input.title as string,
         artist: input.artist as string,
@@ -99,6 +114,12 @@ function validateInputs(value: unknown, legacy = false): GeneratorConfigInputs {
         mode: input.mode,
         density: input.density,
         difficulty,
+        ...(input.movementModel === undefined
+            ? {}
+            : { movementModel: input.movementModel as "phrases" | "learned" }),
+        ...(input.modelSeed === undefined
+            ? {}
+            : { modelSeed: input.modelSeed as number }),
     };
 }
 

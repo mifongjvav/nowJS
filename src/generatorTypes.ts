@@ -49,6 +49,8 @@ export interface GeneratorAnalysis {
 }
 export interface GeneratorOptions {
     mode: PlayMode;
+    movementModel?: "phrases" | "learned";
+    modelSeed?: number;
     density?: GeneratorDensity;
     difficulty?: number;
     title: string;

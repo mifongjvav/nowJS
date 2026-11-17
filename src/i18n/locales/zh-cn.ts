@@ -120,6 +120,12 @@ export default {
         languageAria: "切换语言",
     },
     generator: {
+        movementModel: "Catch 动作生成",
+        phraseModel: "乐句规则（原版）",
+        learnedModel: "本地神经网络（实验）",
+        modelSeed: "随机种子（相同配置可复现）",
+        learnedHint:
+            "实验模型从本地 84 张 standard 转 Catch 谱学习动作分布，仅辅助 Catch 横向布局；不识别人声，不改变 4K。样本有限，不代表 Ranked 品质。",
         title: "谱面生成器",
         difficulty: "难度等级（1 = Easy）",
         difficultyHint:

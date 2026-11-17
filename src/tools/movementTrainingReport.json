@@ -1,0 +1,664 @@
+{
+    "architecture": [14, 32, 32, 11],
+    "scope": "Conditional horizontal-motion MLP; standard-to-Catch projection, not native Catch or audio transcription",
+    "corpus": {
+        "nativeCatch": 0,
+        "convertedStandard": 84,
+        "excluded": {
+            "generated": 11,
+            "mode": 71,
+            "duplicate": 0,
+            "short": 1
+        }
+    },
+    "splits": {
+        "test": [
+            {
+                "id": "241e41d15abaa269",
+                "song": "exsy|re:drawers feat. kasane teto & kafu",
+                "maps": [
+                    {
+                        "archive": "2415230 Exsy - Re_drawers feat. Kasane Teto & KAFU.osz",
+                        "name": "Exsy - Redrawers feat. Kasane Teto & KAFU (Okoayu) [Easy].osu",
+                        "hash": "a58ffd046db02739f02e50674bd11dc9546b58499797b75e63aecfb5da78cf8a",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2415230 Exsy - Re_drawers feat. Kasane Teto & KAFU.osz",
+                        "name": "Exsy - Redrawers feat. Kasane Teto & KAFU (Okoayu) [Extra].osu",
+                        "hash": "95e2e305517b1e46ba2b3e6ca256f1f5bc9056440b08989bdb1b6697145499a0",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2415230 Exsy - Re_drawers feat. Kasane Teto & KAFU.osz",
+                        "name": "Exsy - Redrawers feat. Kasane Teto & KAFU (Okoayu) [Hard].osu",
+                        "hash": "03ea1c7ca7d4f865a90f401ea9d6d927f9364ef836533c38ab1043f45588e332",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2415230 Exsy - Re_drawers feat. Kasane Teto & KAFU.osz",
+                        "name": "Exsy - Redrawers feat. Kasane Teto & KAFU (Okoayu) [Lunexia's Expert].osu",
+                        "hash": "32a3eaa6bfc3790c6dc87e02969d2140356fc032d1050f761235149aeb6cfa83",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2415230 Exsy - Re_drawers feat. Kasane Teto & KAFU.osz",
+                        "name": "Exsy - Redrawers feat. Kasane Teto & KAFU (Okoayu) [Normal].osu",
+                        "hash": "e50ee4f14b67da859162084a96f7df87ab3d969589668142e2c071c8f86ac0b4",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2415230 Exsy - Re_drawers feat. Kasane Teto & KAFU.osz",
+                        "name": "Exsy - Redrawers feat. Kasane Teto & KAFU (Okoayu) [Very Hard].osu",
+                        "hash": "d53df934e0fdfaa091af45d5bc6f5328609000825048cc02c464fa3c5d40a2b1",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2415230 Exsy - Re_drawers feat. Kasane Teto & KAFU.osz",
+                        "name": "Exsy - Redrawers feat. Kasane Teto & KAFU (Okoayu) [nuclei's Extra].osu",
+                        "hash": "e36fc0cf7323b6124603d160a0fa1536770ec601ffd7b8f68432e69fcd2b8f5e",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "a53da59439c699d6",
+                "song": "mrs. green apple|inferno (tv size)",
+                "maps": [
+                    {
+                        "archive": "999645 Mrs. GREEN APPLE - Inferno (TV Size).osz",
+                        "name": "Mrs. GREEN APPLE - Inferno (TV Size) (Amandia) [Easy].osu",
+                        "hash": "af84ffd371d02ec9b0a6308c247ff731d4b313f7b33f3aeecc08a9a9a091906d",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "999645 Mrs. GREEN APPLE - Inferno (TV Size).osz",
+                        "name": "Mrs. GREEN APPLE - Inferno (TV Size) (Amandia) [Fire Force].osu",
+                        "hash": "191b4d1433f5cc31af6a1fa255318d43b82e585a46d7752f7c572010215a65d0",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "999645 Mrs. GREEN APPLE - Inferno (TV Size).osz",
+                        "name": "Mrs. GREEN APPLE - Inferno (TV Size) (Amandia) [Hard].osu",
+                        "hash": "2fb0a87fe6113c9d3234f7733981a388789387cbeaa27f2c7c89043fb1bbf4ab",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "999645 Mrs. GREEN APPLE - Inferno (TV Size).osz",
+                        "name": "Mrs. GREEN APPLE - Inferno (TV Size) (Amandia) [Insane].osu",
+                        "hash": "6e6ccabc6f36d4af77e9ffcacd5dce1a459189f2a640bb4db190899a04dbaf37",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "999645 Mrs. GREEN APPLE - Inferno (TV Size).osz",
+                        "name": "Mrs. GREEN APPLE - Inferno (TV Size) (Amandia) [Monstrata's Insane].osu",
+                        "hash": "b5630d081989240ed52dd0b35041479d4bfae6a59c6b4dff84cb0d28128ada79",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "999645 Mrs. GREEN APPLE - Inferno (TV Size).osz",
+                        "name": "Mrs. GREEN APPLE - Inferno (TV Size) (Amandia) [Normal].osu",
+                        "hash": "5a20b4ef8a66f3d0a37ae8ac9a6022a16b884e3d5785c3634d0eb696758b11f7",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "3fd2881d7b1eaf0a",
+                "song": "cysmix|triangles",
+                "maps": [
+                    {
+                        "archive": "1841885 cYsmix - triangles.osz",
+                        "name": "cYsmix - triangles (yf_bmp) [Chaoz's Expert].osu",
+                        "hash": "448638022148c5b7edf5f48903233c7a5860828353c0bd1060ed8f4c8cbfaed3",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1841885 cYsmix - triangles.osz",
+                        "name": "cYsmix - triangles (yf_bmp) [Easy].osu",
+                        "hash": "c87954e54302c3525d3115c12435d35ef2562909315e43eecc03342c12716871",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1841885 cYsmix - triangles.osz",
+                        "name": "cYsmix - triangles (yf_bmp) [Hard].osu",
+                        "hash": "bf6ba926f458030024e739fc5cb1bdf6aaa3f530784ac4a9dce5b30e1b517fbe",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1841885 cYsmix - triangles.osz",
+                        "name": "cYsmix - triangles (yf_bmp) [Tt's Normal].osu",
+                        "hash": "3caeb9e884a810a851889279b0df927e24127bf71929a631be3c0700dd918eaf",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1841885 cYsmix - triangles.osz",
+                        "name": "cYsmix - triangles (yf_bmp) [Yugu's Insane].osu",
+                        "hash": "7baa35bb8c64b0d53bce42a966eaf17211203e175c3b3f74c302d32b673939a9",
+                        "mode": 0
+                    }
+                ]
+            }
+        ],
+        "validation": [
+            {
+                "id": "515e3d5e647aa5d1",
+                "song": "toby fox|megalovania",
+                "maps": [
+                    {
+                        "archive": "387700 toby fox - MEGALOVANIA.osz",
+                        "name": "toby fox - MEGALOVANIA (Kyshiro) [Burn].osu",
+                        "hash": "15b85cd76938c64566e8d0b3e2520d7f6bf4cbe32b4f9047630d172c229a7ab0",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "387700 toby fox - MEGALOVANIA.osz",
+                        "name": "toby fox - MEGALOVANIA (Kyshiro) [Easy].osu",
+                        "hash": "8d05c36d20af1aa60c35238f8af8b1346f2e67bdd098dbc16d4bfb264b5e2bbd",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "387700 toby fox - MEGALOVANIA.osz",
+                        "name": "toby fox - MEGALOVANIA (Kyshiro) [Extra].osu",
+                        "hash": "d2d9f6fcc7be1f78d8953d384b751ac291119c731671b687955673ac9f8c47a0",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "387700 toby fox - MEGALOVANIA.osz",
+                        "name": "toby fox - MEGALOVANIA (Kyshiro) [Hard].osu",
+                        "hash": "cde992c045299614b07bc8bc104844272521ee999d3c21a2f4790dcf3b03a8d6",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "387700 toby fox - MEGALOVANIA.osz",
+                        "name": "toby fox - MEGALOVANIA (Kyshiro) [Insane].osu",
+                        "hash": "8257386ab32d264d4caf3cc406e1570b69f1e917d1e53e9cfad870a46da7cc3e",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "387700 toby fox - MEGALOVANIA.osz",
+                        "name": "toby fox - MEGALOVANIA (Kyshiro) [Irre's Light Hard].osu",
+                        "hash": "2c68691715120458fb5897addc8aecbfd02b82d3a56c4eef08430203c57c57db",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "387700 toby fox - MEGALOVANIA.osz",
+                        "name": "toby fox - MEGALOVANIA (Kyshiro) [Normal].osu",
+                        "hash": "e88533e22534ac3ef5138e52993119cd3c520285a88a0fdbf38ab6548f47a76f",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "de30a6cf07c9277e",
+                "song": "hiiragi magnetite|zako",
+                "maps": [
+                    {
+                        "archive": "2571361 Hiiragi Magnetite - Zako.osz",
+                        "name": "Hiiragi Magnetite - Zako (Nathan) [Extra].osu",
+                        "hash": "ab2b83e356974786e1abacb7290b69992b0fff55692161e02bfba9528d109971",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2571361 Hiiragi Magnetite - Zako.osz",
+                        "name": "Hiiragi Magnetite - Zako (Nathan) [Insane].osu",
+                        "hash": "a29077ec85a83c690c23286e1073180539e4bb04e864d4459286e5be127a3121",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2571361 Hiiragi Magnetite - Zako.osz",
+                        "name": "Hiiragi Magnetite - Zako (Nathan) [Satellite's Hard].osu",
+                        "hash": "328bcae5b46bf4fcca48cbd4b8090b9773c68c3b31e1401aaa98f9263dbaacf8",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2571361 Hiiragi Magnetite - Zako.osz",
+                        "name": "Hiiragi Magnetite - Zako (Nathan) [Satellite's Zako Normal].osu",
+                        "hash": "8194d616130dd7188c550d60fb43d03efdae4e440f33e15213169a01468db023",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2571361 Hiiragi Magnetite - Zako.osz",
+                        "name": "Hiiragi Magnetite - Zako (Nathan) [h].osu",
+                        "hash": "1abe24d5f16101d8ea9dab3fc124ebc5488a7dff41140121a1ec061c29e2de6e",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "de3af76b31ee7561",
+                "song": "undead corporation|everything will freeze",
+                "maps": [
+                    {
+                        "archive": "158023 UNDEAD CORPORATION - Everything will freeze.osz",
+                        "name": "UNDEAD CORPORATION - Everything will freeze (Ekoro) [Extra].osu",
+                        "hash": "0b5377a86d8666a0ec78a9eda840be38aa0333d59b07b7a1d07bf3d7f04f62ad",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "158023 UNDEAD CORPORATION - Everything will freeze.osz",
+                        "name": "UNDEAD CORPORATION - Everything will freeze (Ekoro) [Hard].osu",
+                        "hash": "7f636eff7a99e3f4494b4c833fc4f6b57d65d8fd0d4878b91f02d640e1c572d2",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "158023 UNDEAD CORPORATION - Everything will freeze.osz",
+                        "name": "UNDEAD CORPORATION - Everything will freeze (Ekoro) [Insane].osu",
+                        "hash": "3f93151bbbb32a70861218798961d42d037dd47aff1ee3413108bc170a0b0e24",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "158023 UNDEAD CORPORATION - Everything will freeze.osz",
+                        "name": "UNDEAD CORPORATION - Everything will freeze (Ekoro) [Lunatic].osu",
+                        "hash": "e6175d9a9afc09eebd096abe4fef6b2a2c4bcaec175a2f36eef5da029d2ea634",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "158023 UNDEAD CORPORATION - Everything will freeze.osz",
+                        "name": "UNDEAD CORPORATION - Everything will freeze (Ekoro) [Normal].osu",
+                        "hash": "c6f7bae964640771ab8e6c194a8df92f02cb1833d5184a3f12482c02f1c5dc45",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "158023 UNDEAD CORPORATION - Everything will freeze.osz",
+                        "name": "UNDEAD CORPORATION - Everything will freeze (Ekoro) [Time Freeze].osu",
+                        "hash": "29b8c8c0a413e237788013fc8c460f9601d1f61d41ee17c21035527cf7cdc43f",
+                        "mode": 0
+                    }
+                ]
+            }
+        ],
+        "train": [
+            {
+                "id": "b3b35dc5d26e7217",
+                "song": "nekodex|circles!",
+                "maps": [
+                    {
+                        "archive": "355322 nekodex - circles!.osz",
+                        "name": "nekodex - circles! (pishifat) [easy!].osu",
+                        "hash": "97192123118adbffa79d40f1f0a1fdf331ea4775b9da8a7ee82db9ac3a4a7dd6",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "355322 nekodex - circles!.osz",
+                        "name": "nekodex - circles! (pishifat) [hard!].osu",
+                        "hash": "5f72e7290598143638a1debe300a264d4d3c3c6a5ced2fd7ca25a94a1f92f1e8",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "355322 nekodex - circles!.osz",
+                        "name": "nekodex - circles! (pishifat) [insane!].osu",
+                        "hash": "2f46b89b682ad47fa30373aa7efec70b1df0d970fae17425e8d886210973f30d",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "355322 nekodex - circles!.osz",
+                        "name": "nekodex - circles! (pishifat) [normal!].osu",
+                        "hash": "9436c19faf4d36c027f4c2667a499a17d57b95409ce6259040542cdc58d80b04",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "52ae49b7e01929f3",
+                "song": "teens in times|lemon",
+                "maps": [
+                    {
+                        "archive": "2384203 Teens in Times - Lemon.osz",
+                        "name": "Teens in Times - Lemon (MeAqua tete) [Mappers in Times' Hard].osu",
+                        "hash": "efa45b0b94b9c9bade0fa26073a94fe92d9edd2fa8fd91487ab7317e73f39264",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2384203 Teens in Times - Lemon.osz",
+                        "name": "Teens in Times - Lemon (MeAqua tete) [Mappers in Times' M+7].osu",
+                        "hash": "714cf23cbb7dd304ed34538c5b159a4cec4ded68bb741ce4a3e08bfc32a8743d",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2384203 Teens in Times - Lemon.osz",
+                        "name": "Teens in Times - Lemon (MeAqua tete) [Mappers in Times' Normal].osu",
+                        "hash": "b938ecc45bcad97d87bf6b87df1111edc2c67fc392010c025c784617cfb18ece",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "284a5f73966c3810",
+                "song": "nekodex|new beginnings",
+                "maps": [
+                    {
+                        "archive": "1011011 nekodex - new beginnings.osz",
+                        "name": "nekodex - new beginnings (pishifat) [tutorial].osu",
+                        "hash": "d028f4ba3c22ecb7d412e31db7bd87c5d7717dbf7b2a32917f9a9e854b69c6dc",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "57ce78f390391fcc",
+                "song": "yunosuke feat. ui|autonomous love",
+                "maps": [
+                    {
+                        "archive": "2539549 Yunosuke feat. UI - Autonomous Love.osz",
+                        "name": "Yunosuke feat. UI - Autonomous Love (Yuwha) [Tech].osu",
+                        "hash": "949c96c8921145a20da633fe3ffcc96f47921eb983e5ce8b7eec50cf7fbf1436",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "1ddc0cbf9b2dda60",
+                "song": "emocosine|magenta potion (short ver.)",
+                "maps": [
+                    {
+                        "archive": "1079970 EmoCosine - MAGENTA POTION (Short Ver.).osz",
+                        "name": "EmoCosine - MAGENTA POTION (short ver.) (Starfy) [Another].osu",
+                        "hash": "f91dad054b457a982d64ff3217f5f18034ce1c7de1042d85d2a140b695d17be4",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1079970 EmoCosine - MAGENTA POTION (Short Ver.).osz",
+                        "name": "EmoCosine - MAGENTA POTION (short ver.) (Starfy) [Chaoz's Extra].osu",
+                        "hash": "1b7f2eb3ac73ba1f79b0236944f0a2d330023b015eb39b729a8f95c11e01747f",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1079970 EmoCosine - MAGENTA POTION (Short Ver.).osz",
+                        "name": "EmoCosine - MAGENTA POTION (short ver.) (Starfy) [Hallucination].osu",
+                        "hash": "0086a4a896a8210b47ea06e39eef37f3df3ceda5f97700de88178026c5553aa7",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1079970 EmoCosine - MAGENTA POTION (Short Ver.).osz",
+                        "name": "EmoCosine - MAGENTA POTION (short ver.) (Starfy) [Hyper].osu",
+                        "hash": "23f6fe433b21817f3c2d46f04bebea1d78f12b0d37b6a02f52104a9e8c574ab1",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1079970 EmoCosine - MAGENTA POTION (Short Ver.).osz",
+                        "name": "EmoCosine - MAGENTA POTION (short ver.) (Starfy) [Ming's Beginner].osu",
+                        "hash": "2e6d6c0b235f75cdda152953fb261f3174229aa0894e143c7061218607152ca6",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1079970 EmoCosine - MAGENTA POTION (Short Ver.).osz",
+                        "name": "EmoCosine - MAGENTA POTION (short ver.) (Starfy) [Normal].osu",
+                        "hash": "a82c9aa909ecdda94095008d79e1523e0da2a70ededcaee46f32c1735455f4ba",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "1079970 EmoCosine - MAGENTA POTION (Short Ver.).osz",
+                        "name": "EmoCosine - MAGENTA POTION (short ver.) (Starfy) [iRedi's Extra].osu",
+                        "hash": "0468598f5fc41ab9bcf6d00cf3b0a1069b3ed0fa73e850c59a7bd459adac20d7",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "c260ceaac94202de",
+                "song": "linked horizon|shinzou o sasageyo! [tv size]",
+                "maps": [
+                    {
+                        "archive": "593620 Linked Horizon - Shinzou o Sasageyo! [TV Size].osz",
+                        "name": "Linked Horizon - Shinzou o Sasageyo! [TV Size] (Monstrata) [Easy].osu",
+                        "hash": "733d81c07a3a4d432c5b2e158ce78687f8e66ef29e4f3362a1f7da76d1bf8a08",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "593620 Linked Horizon - Shinzou o Sasageyo! [TV Size].osz",
+                        "name": "Linked Horizon - Shinzou o Sasageyo! [TV Size] (Monstrata) [Hard].osu",
+                        "hash": "e905774c91a0266d54d9a41fc6cb5ce1d5eb7cc01c58456fc7b1b0e19ca45b5e",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "593620 Linked Horizon - Shinzou o Sasageyo! [TV Size].osz",
+                        "name": "Linked Horizon - Shinzou o Sasageyo! [TV Size] (Monstrata) [Haruto's Insane].osu",
+                        "hash": "5934135a70c9fd6f11c87e9fc53e531153fe1997d41e980de46e62b5243cc762",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "593620 Linked Horizon - Shinzou o Sasageyo! [TV Size].osz",
+                        "name": "Linked Horizon - Shinzou o Sasageyo! [TV Size] (Monstrata) [Insane].osu",
+                        "hash": "7d57ed8820a870ab0e23b5ab0745ede17fb1ee1798c786f35af8d0a27e7a5863",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "593620 Linked Horizon - Shinzou o Sasageyo! [TV Size].osz",
+                        "name": "Linked Horizon - Shinzou o Sasageyo! [TV Size] (Monstrata) [Light Insane].osu",
+                        "hash": "4bf27234d724c169c96931bb6e25e3c51874759286e03e79950956ea67f314bb",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "593620 Linked Horizon - Shinzou o Sasageyo! [TV Size].osz",
+                        "name": "Linked Horizon - Shinzou o Sasageyo! [TV Size] (Monstrata) [Normal].osu",
+                        "hash": "59d52fc22f61274622fc073e5cc71e6302a74824737414df43463104588b165e",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "593620 Linked Horizon - Shinzou o Sasageyo! [TV Size].osz",
+                        "name": "Linked Horizon - Shinzou o Sasageyo! [TV Size] (Monstrata) [Titan].osu",
+                        "hash": "c08eb8a3789ec95bb8c309128a5637648bf1ad4b14e867b8671a7a5bdc307bec",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "737434afa81ac7a1",
+                "song": "anythingbecomemoe|displayholic feat. hatsune miku",
+                "maps": [
+                    {
+                        "archive": "2635467 AnythingBecomeMoe - Displayholic feat. Hatsune Miku 有视频.osz",
+                        "name": "AnythingBecomeMoe - Displayholic feat. Hatsune Miku (Andrea) [Addicted].osu",
+                        "hash": "500567892d27aaa9e02a73d8407a02a981a3f4c4f39e6726434cc7702540d205",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2635467 AnythingBecomeMoe - Displayholic feat. Hatsune Miku 有视频.osz",
+                        "name": "AnythingBecomeMoe - Displayholic feat. Hatsune Miku (Andrea) [Fumajoshy's Hard].osu",
+                        "hash": "1e9a72d47c27428216cda629bf1a5a5a32e810d9df619387c68ec5143a15eb40",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2635467 AnythingBecomeMoe - Displayholic feat. Hatsune Miku 有视频.osz",
+                        "name": "AnythingBecomeMoe - Displayholic feat. Hatsune Miku (Andrea) [Harumi's Easy].osu",
+                        "hash": "a56f53e87fbacba03c5746ed79b2eb8ce277586602d0c1bfde143152c7212b58",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2635467 AnythingBecomeMoe - Displayholic feat. Hatsune Miku 有视频.osz",
+                        "name": "AnythingBecomeMoe - Displayholic feat. Hatsune Miku (Andrea) [MrTerror's Extra].osu",
+                        "hash": "c1a37d80a58c658c4adbbf0e2ca878e516b62bbd34f3da7e4945143f356e6801",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2635467 AnythingBecomeMoe - Displayholic feat. Hatsune Miku 有视频.osz",
+                        "name": "AnythingBecomeMoe - Displayholic feat. Hatsune Miku (Andrea) [Take's Normal].osu",
+                        "hash": "da1d9c59b9ff59088c613d2e3c8a8635ca3b4ba3d7d938d8e4f6b7aa185cf593",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2635467 AnythingBecomeMoe - Displayholic feat. Hatsune Miku 有视频.osz",
+                        "name": "AnythingBecomeMoe - Displayholic feat. Hatsune Miku (Andrea) [Wezdrea's Insane].osu",
+                        "hash": "dc671ca022fbee0863025226f56c6ec2f42c5b9170e6a69c0e081d0fcf6b5bb7",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "8138970798247c16",
+                "song": "deco*27|cherry pop feat. hatsune miku",
+                "maps": [
+                    {
+                        "archive": "2411013 DECO_27 - Cherry Pop feat. Hatsune Miku.osz",
+                        "name": "DECO27 - Cherry Pop feat. Hatsune Miku (Andrea) [Amats' Hard].osu",
+                        "hash": "05cdb4cbc6bde6bf45308eaaf413d118615706b4027a752991017982fef77348",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2411013 DECO_27 - Cherry Pop feat. Hatsune Miku.osz",
+                        "name": "DECO27 - Cherry Pop feat. Hatsune Miku (Andrea) [Explosive].osu",
+                        "hash": "d2d153430cb1aa8d0c53187065d683054b8bf348e989f2630c4683213065fed6",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2411013 DECO_27 - Cherry Pop feat. Hatsune Miku.osz",
+                        "name": "DECO27 - Cherry Pop feat. Hatsune Miku (Andrea) [Fuxi's Extra].osu",
+                        "hash": "b97b039d56f4fb6d6ff1989f329b85faa6ce2efdd72c1aa3db5f0ad68465bb79",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2411013 DECO_27 - Cherry Pop feat. Hatsune Miku.osz",
+                        "name": "DECO27 - Cherry Pop feat. Hatsune Miku (Andrea) [Harumi's Normal].osu",
+                        "hash": "4b1ce5c02eed4ad7970a410ea86057307ed990a9c36a3aa31b3bfb0b376bfc87",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "2411013 DECO_27 - Cherry Pop feat. Hatsune Miku.osz",
+                        "name": "DECO27 - Cherry Pop feat. Hatsune Miku (Andrea) [Laurier's Insane].osu",
+                        "hash": "2eba8b3e5d5532696c13b4402e05c3fa6d16905bc7bb9f483ecd4128b1700b5c",
+                        "mode": 0
+                    }
+                ]
+            },
+            {
+                "id": "c16716145e95aa27",
+                "song": "reol|no title",
+                "maps": [
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Celsius' Easy].osu",
+                        "hash": "49267da2c6f2c7f48fe92988b20b370de079dd30e100dcc97122de1a4bc9de56",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Celsius' Extra].osu",
+                        "hash": "8397a805a33e27845bcc1fc40d44fcba4559acf6de8ac6bfc29cfbcd600fe352",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Fast's Expert].osu",
+                        "hash": "66504c7f0c2b9113af94c82849b33b408f28401eaead4c044b76713d500e22eb",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Insane].osu",
+                        "hash": "95ece3886c8c019d60b1ea54dcab824522ce0800824f5faf31615cdadfc85e93",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Irre's Beginner].osu",
+                        "hash": "a60619a837a72dc946b3626ee35d76dd039de415c021e37b90fdf863f4cc86d2",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Leader's Light Extra].osu",
+                        "hash": "4a9cd246a9369fd80074034b8053d8d03e790523e96e7e8b5a139f1feeb011cd",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Light Insane].osu",
+                        "hash": "5e558999e912c3b4dfcafd47e86f7eab1340eb6ff431ed3569ecf121742e4064",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Lust's Insane].osu",
+                        "hash": "ebdd86559995a9cd04ab58186a963a7be3ae1d15746c244b3d4aec0c29e51529",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Misuzu's Normal].osu",
+                        "hash": "f6840086338e88eead2cbb20a558aca7b8018cbef8003fd2f0e6da19928ef80f",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [Nathan's Extra].osu",
+                        "hash": "12fede5498a720106c7b086d408ad766eafb6a9c8a80d488234bbf5106470b25",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [byfaR's Hard].osu",
+                        "hash": "e1f857d037ac82eb37f46ef22aa8d996ea0601f33c4b2fb49393998715f31293",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [deetz' Expert].osu",
+                        "hash": "eabdcee487a4360941ec42a56ea94edd272dcda2e032541ae58a44001276a42b",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [jieusieu's Lemur].osu",
+                        "hash": "30a01aba04fe1e2636b020edc0e2104eaab34cbb86a2af58a6a79a2c22a440df",
+                        "mode": 0
+                    },
+                    {
+                        "archive": "320118 Reol - No title.osz",
+                        "name": "Reol - No title (VINXIS) [toybot's Insane].osu",
+                        "hash": "08756227cd1373298e9e6ef558c079006a327b2ea55611d7b815129e3e5a33ff",
+                        "mode": 0
+                    }
+                ]
+            }
+        ]
+    },
+    "metrics": {
+        "test": {
+            "nll": 1.92408287525177,
+            "accuracy": 0.2834487275449102,
+            "unconditionalNll": 2.124880862316733,
+            "examplesIncludingMirrors": 21376
+        },
+        "validation": {
+            "nll": 1.866868257522583,
+            "accuracy": 0.3001427976438389,
+            "unconditionalNll": 2.1436747373769447,
+            "examplesIncludingMirrors": 33614
+        },
+        "train": {
+            "nll": 1.9114990234375,
+            "accuracy": 0.2914156626506024,
+            "unconditionalNll": 2.1759398139277377,
+            "examplesIncludingMirrors": 53120
+        }
+    },
+    "validationTrace": [
+        2.082561492919922, 2.038482904434204, 2.021085262298584,
+        2.004946708679199, 1.992140531539917, 1.9694305658340454,
+        1.9477977752685547, 1.9324216842651367, 1.9266884326934814,
+        1.9192051887512207, 1.915397047996521, 1.9157596826553345,
+        1.9076628684997559, 1.907776117324829, 1.89957857131958,
+        1.9015330076217651, 1.9001235961914062, 1.8929502964019775,
+        1.8913333415985107, 1.8889352083206177, 1.8923728466033936,
+        1.8824176788330078, 1.8836512565612793, 1.888382077217102,
+        1.879607915878296, 1.8719977140426636, 1.8682857751846313,
+        1.8716933727264404, 1.866868257522583, 1.8681279420852661
+    ],
+    "seed": 20261117,
+    "inferenceFixture": {
+        "features": [
+            0.575478196144104, 0.33355769515037537, 0.3333333432674408,
+            0.0018849545158445835, -0.9999982118606567, 0.16646738350391388,
+            0.18984240293502808, 0.19498750567436218, 0.56640625,
+            0.5280856490135193, 0.36328125, 0.3334455192089081,
+            0.09500941634178162, 0.3333333432674408
+        ],
+        "probabilities": [
+            0.002115447074174881, 0.021146312355995178, 0.07757490873336792,
+            0.20162826776504517, 0.09788889437913895, 0.33007752895355225,
+            0.09258345514535904, 0.15125857293605804, 0.024080868810415268,
+            0.0016287529142573476, 1.693916601652745e-5
+        ]
+    }
+}

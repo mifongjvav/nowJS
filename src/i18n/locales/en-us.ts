@@ -122,6 +122,12 @@ export default {
         languageAria: "Change language",
     },
     generator: {
+        movementModel: "Catch movement",
+        phraseModel: "Phrase rules (original)",
+        learnedModel: "Local neural network (experimental)",
+        modelSeed: "Random seed (reproducible)",
+        learnedHint:
+            "Experimental motion model trained on 84 local standard-to-Catch maps. Assists horizontal Catch layout only; no vocal recognition or 4K changes. Limited corpus, not a Ranked quality claim.",
         title: "Beatmap generator",
         difficulty: "Difficulty level (1 = Easy)",
         difficultyHint:

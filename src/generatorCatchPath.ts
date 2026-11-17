@@ -1,5 +1,9 @@
 import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
 import { planGeneratorPhrases } from "./generatorPhrases.ts";
+import {
+    createLearnedCatchPath,
+    validateMovementOptions,
+} from "./generatorLearnedMovement.ts";
 import type { GeneratorAnalysis, GeneratorOptions } from "./generatorTypes.ts";
 
 const LEFT = 32;
@@ -11,6 +15,9 @@ export function createGeneratorCatchPath(
     analysis: GeneratorAnalysis,
     options: Partial<GeneratorOptions>,
 ) {
+    validateMovementOptions(options);
+    if (options.movementModel === "learned")
+        return createLearnedCatchPath(analysis, options);
     const profile = getGeneratorDifficulty(options);
     const beat = 60000 / analysis.bpm;
     const growth = Math.log2(profile.level);

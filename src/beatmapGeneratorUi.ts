@@ -83,7 +83,17 @@ export function initBeatmapGenerator(
                 <label><span data-i18n="generator.difficulty">${i18n.generator.difficulty}</span>
                     <input id="now-generator-difficulty" type="number" min="1" step="any" value="1" required />
                 </label>
+                <label><span data-i18n="generator.movementModel">${i18n.generator.movementModel}</span>
+                    <select id="now-generator-movement-model">
+                        <option value="phrases" data-i18n="generator.phraseModel">${i18n.generator.phraseModel}</option>
+                        <option value="learned" data-i18n="generator.learnedModel">${i18n.generator.learnedModel}</option>
+                    </select>
+                </label>
+                <label><span data-i18n="generator.modelSeed">${i18n.generator.modelSeed}</span>
+                    <input id="now-generator-model-seed" type="number" min="0" max="4294967295" step="1" value="1" required />
+                </label>
             </div>
+            <p class="now-generator-hint" data-i18n="generator.learnedHint">${i18n.generator.learnedHint}</p>
             <p class="now-generator-hint" data-i18n="generator.difficultyHint">${i18n.generator.difficultyHint}</p>
             <p class="now-generator-hint" data-i18n="generator.limits">${i18n.generator.limits}</p>
             <mdui-linear-progress id="now-generator-progress" class="now-hidden" max="1" value="0"></mdui-linear-progress>
@@ -147,6 +157,12 @@ export function initBeatmapGenerator(
     const difficulty = dialog.querySelector<HTMLInputElement>(
         "#now-generator-difficulty",
     )!;
+    const movementModel = dialog.querySelector<HTMLSelectElement>(
+        "#now-generator-movement-model",
+    )!;
+    const modelSeed = dialog.querySelector<HTMLInputElement>(
+        "#now-generator-model-seed",
+    )!;
     const run = dialog.querySelector<HTMLElement & { disabled: boolean }>(
         "#now-generator-run",
     )!;
@@ -190,6 +206,8 @@ export function initBeatmapGenerator(
         mode: mode.value as PlayMode,
         density: density.value as GeneratorDensity,
         difficulty: Number(difficulty.value),
+        movementModel: movementModel.value as "phrases" | "learned",
+        modelSeed: Number(modelSeed.value),
     });
 
     const render = () => {
@@ -210,6 +228,8 @@ export function initBeatmapGenerator(
             mode,
             density,
             difficulty,
+            movementModel,
+            modelSeed,
         ])
             input.disabled = busy;
         form.setAttribute("aria-busy", String(busy));
@@ -400,6 +420,8 @@ export function initBeatmapGenerator(
             mode.value = loaded.inputs.mode;
             density.value = loaded.inputs.density;
             difficulty.value = String(loaded.inputs.difficulty);
+            movementModel.value = loaded.inputs.movementModel ?? "phrases";
+            modelSeed.value = String(loaded.inputs.modelSeed ?? 1);
             const base = loaded.audio.name.replace(/\.[^.]+$/, "");
             autoTitle = title.value === base ? base : "";
             notice = "configImported";
@@ -422,6 +444,8 @@ export function initBeatmapGenerator(
                     mode: mode.value as PlayMode,
                     density: density.value as GeneratorDensity,
                     difficulty: Number(difficulty.value),
+                    movementModel: movementModel.value as "phrases" | "learned",
+                    modelSeed: Number(modelSeed.value),
                     title: title.value,
                     artist: artist.value,
                     ...(bpm.value.trim() ? { bpm: Number(bpm.value) } : {}),

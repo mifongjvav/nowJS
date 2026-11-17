@@ -1,0 +1,63 @@
+# 本地 Catch 动作模型（实验）
+
+这是一个**真正经过梯度训练的小型神经网络**，不是把手写模板改名为 AI。
+但它也不是端到端音频制谱模型，更没有足够证据声称它能生成 Ranked 谱。
+
+## 数据与边界
+
+- 扫描本机下载目录，选入 15 首歌的 84 张 osu!standard 谱。
+- 使用本项目 `compileChart(..., "catch")` 的实际转换结果，包括滑条水果。
+- 原生人工 Catch 样本 **0 张**。standard 的横坐标投影会丢失二维构图意图，
+  所以这个原型只能测试“学习动作条件分布是否值得继续”，不是 Catch 专家。
+- 排除 nowJS 自生成谱、Mania、Taiko、过短谱；按完整谱文件 SHA-256 去重。
+- 所有同名歌手／歌曲的难度都在同一分组，固定划分 9 首训练、3 首验证、3 首测试，
+  **不是把同一首歌的片段随机拆开**。分组依赖元数据，任意改名的重复歌曲仍需人工排查。
+- 共 54,055 个原始动作样本，加镜像共 108,110 条；镜像不是独立歌曲。
+- 没有上传数据；仓库只保存模型权重、训练代码和数据来源／划分报告，
+  不保存原谱、音频或背景。请勿未经授权分发原始训练素材。
+
+## 网络和推理
+
+14 → 32 → 32 → 11 MLP，1,899 个参数，两层 tanh 隐藏层，分类交叉熵、Adam、30 epochs、
+固定初始化；只按验证集选择 checkpoint，测试集不参与选择。
+输出为 11 档横向位移的概率分布，不是挑最近的一条参考谱照搬。
+
+输入为当前位置、当前／后继事件拍间隔、小节相位、动作速度概况，以及前四次
+位移／拍间隔。训练速度概况来自原谱 P75，推理来自请求难度；二者并不等价。
+音乐分析仍由原生成器负责，神经网络**没学到人声、旋律、声部分离、段落语义**，
+也没学习哪些音该省略或应该生成什么物件。
+
+浏览器用普通 JS 做小矩阵推理，temperature = 0.85，固定种子概率采样。
+落点边界、当前难度可达距离、滑条长度是硬约束；高速反向恢复为人工软惩罚。
+相同音频分析、配置、种子可复现；改种子可生成不同动作。
+模型不使用网络服务、不加载 TensorFlow/PyTorch、不占后台训练进程。
+规则版默认保留；仅选择“本地神经网络（实验）”时使用此模型，4K 不变。
+
+## 验证：不是好玩程度评分
+
+完整来源、split、逐轮验证损失和 NumPy 推理对照在 `movementTrainingReport.json`。
+
+- 留出歌曲动作分类 NLL：约 **1.924**；训练集边际分布随机抽样基线约 **2.125**。
+- 留出分类准确率约 **28.3%**，说明远未能确定预测制谱者下一步。
+- 这里只说明节奏／历史条件对分布预测有帮助，**不说明比规则版更贴音乐或更好玩**。
+- teacher-forcing 分类评测也不能代表自回归采样长时间不漂移；需玩家盲测。
+- 样本少、歌曲长度和难度数量不平衡；未做按歌曲等权训练。
+- 回归测试覆盖 NumPy/JS 数值一致、种子复现、可达距离、配置 round-trip、
+  原规则回退和 4K 不变。Auto Play／构建通过也不是质量评级。
+
+## 本地复现
+
+需要项目 Node 环境、Python + NumPy。仅训练时需要 NumPy。
+输出 corpus 放在临时目录，不要提交原始训练数据：
+
+```bash
+node --experimental-strip-types src/tools/extractMovementCorpus.mjs /tmp/opencode/movement-corpus.json /home/argon/下载 /home/argon/Downloads
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 nice -n 10 python src/tools/trainMovementModel.py /tmp/opencode/movement-corpus.json src/generatorMovementWeights.ts src/tools/movementTrainingReport.json
+npx prettier --write src/generatorMovementWeights.ts src/tools/movementTrainingReport.json
+```
+
+训练单线程、低调度优先级，结束即退出。不启动 Chrome，不需要 GPU。
+训练数据变化、NumPy/BLAS 版本差异可能导致参数变化；固定 seed 不保证跨平台逐位相同。
+
+下一步更有价值的是补充玩家认可的**原生 Catch 训练谱和失败标注**，以及对齐音频
+声部，而不是仅扩大网络或把更多模式混到同一个位移模型里。
