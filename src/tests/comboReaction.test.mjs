@@ -2,43 +2,78 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ComboReaction } from "../comboReaction.ts";
 
-test("normal movement follows the plate; fast movement freezes at the old position", () => {
-    const reaction = new ComboReaction();
-    reaction.update(200, 400, 0);
-    assert.deepEqual(reaction.update(210, 400, 16), {
-        x: 210,
+function trigger(reaction) {
+    reaction.update(100, 400, 0);
+    for (let time = 100; time <= 400; time += 100) {
+        reaction.update(time % 200 ? 900 : 100, 400, time);
+    }
+}
+
+test("one fast teleport does not trigger the reaction", () => {
+    const reaction = new ComboReaction(640, 360);
+    reaction.update(100, 400, 0);
+    assert.deepEqual(reaction.update(1100, 400, 1), {
+        x: 1100,
         y: 400,
         frozen: false,
         shocked: false,
     });
-    assert.deepEqual(reaction.update(800, 400, 32), {
-        x: 210,
-        y: 400,
+});
+
+test("normal movement does not accumulate travel beyond the one-second window", () => {
+    const reaction = new ComboReaction(640, 360);
+    for (let time = 0; time <= 10000; time += 100) {
+        assert.equal(
+            reaction.update(time % 200 ? 160 : 100, 400, time).frozen,
+            false,
+        );
+    }
+});
+
+test("rapid backtracking adds up and freezes the indicator at canvas center", () => {
+    const reaction = new ComboReaction(640, 360);
+    trigger(reaction);
+    assert.deepEqual(reaction.pause(100, 400, 400), {
+        x: 640,
+        y: 360,
         frozen: true,
         shocked: true,
     });
 });
 
-test("emoji becomes a stationary normal combo while the plate remains fast", () => {
-    const reaction = new ComboReaction();
+test("old travel expires smoothly rather than contributing to a later burst", () => {
+    const reaction = new ComboReaction(640, 360);
     reaction.update(100, 400, 0);
-    reaction.update(900, 400, 16);
-    for (let time = 32; time <= 800; time += 16) {
-        const state = reaction.update(time % 32 ? 900 : 100, 400, time);
-        assert.equal(state.frozen, true);
-        assert.equal(state.x, 100);
-    }
-    assert.equal(reaction.shocked, false);
+    reaction.update(1000, 400, 100);
+    assert.equal(reaction.update(100, 400, 1200).shocked, false);
+    assert.equal(reaction.update(1000, 400, 1300).shocked, false);
 });
 
-test("brief slowdowns do not recover; sustained slow movement resumes following", () => {
-    const reaction = new ComboReaction();
-    reaction.update(100, 400, 0);
-    reaction.update(900, 400, 16);
-    assert.equal(reaction.update(900, 400, 316).frozen, true);
-    reaction.update(100, 400, 332);
-    assert.equal(reaction.update(100, 400, 732).frozen, true);
-    assert.deepEqual(reaction.update(105, 400, 832), {
+test("emoji jumps once, lands, and becomes a stationary normal combo", () => {
+    const reaction = new ComboReaction(640, 360);
+    trigger(reaction);
+    const peak = reaction.update(100, 400, 580);
+    assert.equal(peak.x, 640);
+    assert.equal(peak.y, 328);
+    assert.equal(peak.shocked, true);
+    const landed = reaction.update(100, 400, 760);
+    assert.equal(landed.y, 360);
+    assert.equal(landed.shocked, true);
+    assert.deepEqual(reaction.update(100, 400, 1100), {
+        x: 640,
+        y: 360,
+        frozen: true,
+        shocked: false,
+    });
+});
+
+test("normal combo remains centered until recent travel stays low long enough", () => {
+    const reaction = new ComboReaction(640, 360);
+    trigger(reaction);
+    for (let time = 500; time <= 1700; time += 100) {
+        assert.equal(reaction.update(100, 400, time).frozen, true);
+    }
+    assert.deepEqual(reaction.update(105, 400, 1800), {
         x: 105,
         y: 400,
         frozen: false,
@@ -46,39 +81,40 @@ test("brief slowdowns do not recover; sustained slow movement resumes following"
     });
 });
 
-test("shock remains visible after a single teleport and can trigger again later", () => {
-    const reaction = new ComboReaction();
-    reaction.update(100, 400, 0);
-    reaction.update(900, 400, 16);
-    assert.equal(reaction.update(900, 400, 516).shocked, true);
-    assert.equal(reaction.update(900, 400, 716).frozen, false);
-    assert.equal(reaction.update(100, 400, 732).shocked, true);
+test("sustained fast movement keeps the normal combo at center", () => {
+    const reaction = new ComboReaction(640, 360);
+    trigger(reaction);
+    for (let time = 500; time <= 2000; time += 100) {
+        const state = reaction.update(time % 200 ? 900 : 100, 400, time);
+        assert.equal(state.frozen, true);
+        assert.equal(state.x, 640);
+        if (time >= 1100) assert.equal(state.shocked, false);
+    }
 });
 
-test("speed thresholds scale with resolution and elapsed time", () => {
+test("rolling travel thresholds are consistent across resolutions and frame rates", () => {
     for (const scale of [1, 1.5, 2]) {
         for (const elapsed of [1000 / 60, 1000 / 144, 100]) {
-            const reaction = new ComboReaction();
-            reaction.update(100 * scale, 400 * scale, 0);
-            assert.equal(
+            const reaction = new ComboReaction(640 * scale, 360 * scale);
+            for (let step = 0; step * elapsed <= 600; step++) {
                 reaction.update(
-                    (100 + (3000 * elapsed) / 1000) * scale,
+                    (100 + ((step % 2) * 6000 * elapsed) / 1000) * scale,
                     400 * scale,
-                    elapsed,
+                    step * elapsed,
                     scale,
-                ).shocked,
-                true,
-            );
+                );
+            }
+            assert.equal(reaction.shocked, true);
         }
     }
 });
 
-test("pause does not advance the reaction and reset clears stale motion", () => {
-    const reaction = new ComboReaction();
-    reaction.update(100, 400, 0);
-    reaction.update(900, 400, 16);
-    assert.equal(reaction.pause(900, 400, 10000).shocked, true);
-    assert.equal(reaction.update(900, 400, 10016).shocked, true);
+test("pause freezes the jump, and reset discards old travel and reactions", () => {
+    const reaction = new ComboReaction(640, 360);
+    trigger(reaction);
+    const jumping = reaction.update(100, 400, 500);
+    assert.deepEqual(reaction.pause(100, 400, 10000), jumping);
+    assert.equal(reaction.update(100, 400, 10016).shocked, true);
     reaction.reset();
     assert.deepEqual(reaction.update(100, 400, 10032), {
         x: 100,
@@ -86,4 +122,5 @@ test("pause does not advance the reaction and reset clears stale motion", () => 
         frozen: false,
         shocked: false,
     });
+    assert.equal(reaction.update(900, 400, 10048).shocked, false);
 });

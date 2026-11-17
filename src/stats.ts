@@ -5,7 +5,10 @@ import { ComboReaction } from "./comboReaction.ts";
 
 const layer = window.statsLayer || window.gameplayLayer || window.app.stage;
 const SCALE = window.gameScale;
-const comboReaction = new ComboReaction();
+const comboReaction = new ComboReaction(
+    window.gameWidth / 2,
+    window.gameHeight / 2,
+);
 
 window.combo = 0;
 window.maxCombo = 0;
