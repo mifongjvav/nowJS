@@ -167,6 +167,14 @@ export function applyI18n(root: ParentNode = document): void {
     )) {
         element.setAttribute("content", t(element.dataset.i18nContent || ""));
     }
+    for (const element of root.querySelectorAll<HTMLElement>(
+        "[data-i18n-placeholder]",
+    )) {
+        element.setAttribute(
+            "placeholder",
+            t(element.dataset.i18nPlaceholder || ""),
+        );
+    }
 }
 
 export async function setLanguage(language: string): Promise<void> {

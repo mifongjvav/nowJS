@@ -1,6 +1,7 @@
 import { snackbar } from "./vendor/mdui.js";
 import { injectBaseStyles } from "./styles.ts";
 import { initSettingsMenu } from "./settingsMenu.ts";
+import { initBeatmapGenerator } from "./beatmapGeneratorUi.ts";
 import { readStorage } from "./storage.ts";
 import { RESOLUTIONS, showResolutionSelector } from "./resolution.ts";
 import {
@@ -254,6 +255,10 @@ root.innerHTML = `
                                 <mdui-icon-folder-open slot="icon" aria-hidden="true"></mdui-icon-folder-open>
                                 <span id="now-import-label">${i18n.menu.import}</span>
                             </mdui-button>
+                            <mdui-button variant="outlined" id="now-generator-btn">
+                                <mdui-icon-music-note slot="icon" aria-hidden="true"></mdui-icon-music-note>
+                                <span data-i18n="generator.title">${i18n.generator.title}</span>
+                            </mdui-button>
                         </div>
                     </div>
                 </div>
@@ -431,6 +436,7 @@ root.innerHTML = `
 
 document.body.appendChild(root);
 initSettingsMenu(root);
+initBeatmapGenerator(root, (files) => callbacks.importFiles(files));
 
 const menu = root.querySelector("#now-menu");
 const songCover = root.querySelector("#now-song-cover");

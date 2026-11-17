@@ -27,6 +27,20 @@ const BASE_CSS = `
     .now-thread-status small { flex-basis: 100%; overflow-wrap: anywhere; opacity: .7; }
     .now-thread-status [data-state="fallback"] > span:last-of-type { color: rgb(var(--mdui-color-error)); }
     .now-settings-dialog { --mdui-dialog-max-width: 560px; }
+    .now-generator-dialog { --mdui-dialog-max-width: 680px; }
+    .now-generator-form { display: grid; gap: 12px; min-width: 0; max-height: 62vh; overflow-y: auto; padding: 2px 6px 2px 0; }
+    .now-generator-form label { display: grid; gap: 6px; min-width: 0; font-size: 13px; }
+    .now-generator-form input, .now-generator-form select { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; color: rgb(var(--mdui-color-on-surface)); }
+    .now-generator-form input:not([type=file]), .now-generator-form select { min-height: 40px; padding: 8px 10px; border: 1px solid rgb(var(--mdui-color-outline)); border-radius: 8px; background: rgb(var(--mdui-color-surface-container-high)); }
+    .now-generator-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .now-generator-hint { margin: 0; font-size: 12px; line-height: 1.6; opacity: .75; }
+    #now-generator-status { margin: 0; font-size: 13px; line-height: 1.6; }
+    #now-generator-status[data-error=true] { color: rgb(var(--mdui-color-error)); }
+    #now-generator-result { border-top: 1px solid rgb(var(--mdui-color-outline-variant)); padding-top: 12px; }
+    #now-generator-summary { margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+    .now-generator-result-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+    #now-generator-download { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 999px; background: rgb(var(--mdui-color-primary)); color: rgb(var(--mdui-color-on-primary)); text-decoration: none; font-size: 14px; }
+    @media (max-width: 500px) { .now-generator-grid { grid-template-columns: 1fr; } }
     .now-settings-content { display: grid; gap: 24px; min-width: 0; padding: 4px 6px 4px 0; }
     .now-settings-group { display: grid; gap: 14px; }
     .now-settings-group + .now-settings-group { padding-top: 22px; border-top: 1px solid rgb(var(--mdui-color-outline-variant)); }
