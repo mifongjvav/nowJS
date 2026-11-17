@@ -9,6 +9,8 @@ import {
     hudProgressAtPoint,
 } from "./gameplayHudLayout.ts";
 import type { GameChart } from "./domain.ts";
+import { setBackdropBlur } from "./backdropBlur.ts";
+import { onSettingsChange } from "./settings.ts";
 
 interface SeekCallbacks {
     seekStart: () => boolean;
@@ -21,6 +23,7 @@ interface SeekCallbacks {
 class GameplayHud {
     private root = new Container();
     private panels = new Graphics();
+    private accent = new Graphics();
     private track = new Graphics();
     private fill = new Graphics();
     private accuracy = this.text(28, "700");
@@ -43,6 +46,7 @@ class GameplayHud {
         this.root.visible = false;
         this.root.addChild(
             this.panels,
+            this.accent,
             this.track,
             this.fill,
             this.accuracy,
@@ -77,6 +81,7 @@ class GameplayHud {
         });
         window.addEventListener(THEME_CHANGE_EVENT, () => this.refresh());
         onLanguageChange(() => this.refresh());
+        onSettingsChange(() => this.refresh());
     }
 
     private text(size: number, weight: "400" | "700" = "400") {
@@ -181,7 +186,10 @@ class GameplayHud {
                 44 * scale,
                 6 * scale,
             )
-            .fill({ color: MD3_COLORS.surface, alpha: 0.55 })
+            .fill({ color: MD3_COLORS.surface, alpha: 0.55 });
+        // Keep distant decoration separate so the panel filter stays local.
+        this.accent
+            .clear()
             .roundRect(
                 right - scale,
                 22 * scale,
@@ -190,6 +198,8 @@ class GameplayHud {
                 2 * scale,
             )
             .fill({ color: MD3_COLORS.primary, alpha: 0.8 });
+        setBackdropBlur(this.panels);
+        setBackdropBlur(this.track);
         this.drawProgress();
     }
 

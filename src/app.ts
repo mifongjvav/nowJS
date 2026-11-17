@@ -98,6 +98,8 @@ export class NowApplication {
     render() {
         if (!this.renderer) return;
         if (renderInWorker(this)) return;
+        if (this.renderer.backBuffer)
+            this.renderer.backBuffer.useBackBuffer = getSettings().blur;
         this.renderer.render({ container: this.stage });
     }
 

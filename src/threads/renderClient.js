@@ -207,7 +207,10 @@ async function snapshot(node) {
         blendMode: node.blendMode || "normal",
         blur: (node.filters || [])
             .filter((f) => "strength" in f)
-            .map((f) => f.strength),
+            .map((f) => ({
+                kind: f.backdropBlur ? "backdrop" : "blur",
+                strength: f.strength,
+            })),
         children: [],
     };
     if (node.catchMotion) data.motionX = node.catchMotion;

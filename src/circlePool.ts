@@ -14,6 +14,8 @@ import { setCatcherColor, judgeCatchNote } from "./player.ts";
 import { CATCH_HYPER_COLOR } from "./catchMovement.ts";
 import { getCatchSizeScale } from "./catchDifficulty.ts";
 import { CATCH_WINDOW_MS } from "./judgement.ts";
+import { setBackdropBlur } from "./backdropBlur.ts";
+import { onSettingsChange } from "./settings.ts";
 
 const SCALE = window.gameScale;
 const RADIUS = 20 * SCALE;
@@ -42,6 +44,12 @@ function clampColor(value) {
 
 function drawNoteGraphics(circle, holdHeight, color) {
     circle.clear();
+    setBackdropBlur(
+        circle,
+        Boolean(window.currentChart?.mania) &&
+            isManiaRectangleEnabled() &&
+            holdHeight > 0.5,
+    );
     const outline = getOutlineColor(color);
     const outlineWidth = 2.5 * SCALE;
 
@@ -505,6 +513,16 @@ class CirclePool {
 }
 
 export const circlePool = new CirclePool(90);
+onSettingsChange(() => {
+    for (const circle of circlePool.activeCircles) {
+        setBackdropBlur(
+            circle,
+            Boolean(window.currentChart?.mania) &&
+                isManiaRectangleEnabled() &&
+                circle.note?.holdEndTime > circle.noteTime,
+        );
+    }
+});
 onManiaRectangleChange(() => {
     if (!window.currentChart?.mania) return;
     for (const circle of circlePool.activeCircles) {

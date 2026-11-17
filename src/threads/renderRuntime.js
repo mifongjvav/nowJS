@@ -12,6 +12,7 @@ import {
 } from "../vendor/pixi-worker.js";
 import { createWorkerFrameScheduler } from "./workerRuntime.js";
 import { projectHorizontalMotion } from "../catchPresentation.ts";
+import { BackdropBlurFilter } from "../backdropBlurFilter.js";
 export function installRenderWorker(reportFailure) {
     DOMAdapter.set(WebWorkerAdapter);
     const scheduleFrame = createWorkerFrameScheduler(self);
@@ -108,12 +109,16 @@ export function installRenderWorker(reportFailure) {
             }
         }
         const filters = JSON.stringify(data.blur);
+        if (data.blur.some((filter) => filter.kind === "backdrop"))
+            renderer.backBuffer.useBackBuffer = true;
         if (record.filters !== filters) {
             record.filters = filters;
             for (const filter of node.filters || []) filter.destroy();
             node.filters = data.blur.length
-                ? data.blur.map(
-                      (strength) => new BlurFilter({ strength, quality: 5 }),
+                ? data.blur.map(({ kind, strength }) =>
+                      kind === "backdrop"
+                          ? new BackdropBlurFilter(strength)
+                          : new BlurFilter({ strength, quality: 5 }),
                   )
                 : null;
         }
@@ -196,6 +201,7 @@ export function installRenderWorker(reportFailure) {
                 bitmap?.close?.();
             }
         } else if (data.type === "scene") {
+            renderer.backBuffer.useBackBuffer = false;
             const children = data.nodes.map(update);
             if (
                 children.length !== stage.children.length ||
