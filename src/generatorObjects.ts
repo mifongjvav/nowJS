@@ -266,6 +266,12 @@ export function createGeneratorObjects(
     if (options.mode === "catch") {
         const path = createGeneratorCatchPath(analysis, options);
         const comboStarts = getGeneratorComboStarts(objects, analysis);
+        const comboEnds = objects.map((o) =>
+            "endTime" in o ? o.endTime : o.time,
+        );
+        for (let i = objects.length - 2; i >= 0; i--)
+            if (!comboStarts[i + 1] && objects[i + 1].kind !== "bananaShower")
+                comboEnds[i] = Math.max(comboEnds[i], comboEnds[i + 1]);
         let returnToCenter = false;
         for (const [index, object] of objects.entries()) {
             if (object.kind === "bananaShower") {
@@ -275,8 +281,24 @@ export function createGeneratorObjects(
             }
             if (returnToCenter) path.afterShower(object.time);
             returnToCenter = false;
-            if (comboStarts[index] && "beginCombo" in path)
-                path.beginCombo(object.time);
+            if (comboStarts[index] && "beginCombo" in path) {
+                const signature = [];
+                for (let j = index; j < objects.length; j++) {
+                    if (
+                        (j > index && comboStarts[j]) ||
+                        objects[j].kind === "bananaShower"
+                    )
+                        break;
+                    signature.push(
+                        `${objects[j].kind}:${Math.round(((objects[j].time - object.time) / beat) * 4)}`,
+                    );
+                }
+                path.beginCombo(
+                    object.time,
+                    comboEnds[index],
+                    signature.join(","),
+                );
+            }
             object.x = path.place(object.time);
             if (object.kind === "slider")
                 object.endX = path.extend(object.length, object.endTime);

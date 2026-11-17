@@ -4,6 +4,7 @@ import type { MovementHistory } from "./generatorLearnedFeatures.ts";
 import { getGeneratorDifficulty } from "./generatorDifficulty.ts";
 import { GeneratorError } from "./generatorTypes.ts";
 import type { GeneratorAnalysis, GeneratorOptions } from "./generatorTypes.ts";
+import { createGeneratorTrigGesture } from "./generatorTrigGestures.ts";
 
 export function validateMovementOptions(options: Partial<GeneratorOptions>) {
     if (
@@ -64,6 +65,18 @@ export function createLearnedCatchPath(
     let comboSum = 0,
         comboCount = 0;
     let localVelocity = 0;
+    let gesture: ReturnType<typeof createGeneratorTrigGesture> | null = null;
+    let gestureDirection = 1;
+    const orientGesture = () => {
+        if (!gesture || regionCenter === null) return;
+        gestureDirection = gesture.direction;
+        // Prefer the available side near edges; this is not a fixed L/R cycle.
+        if (
+            regionCenter + gestureDirection * regionRadius < 32 ||
+            regionCenter + gestureDirection * regionRadius > 480
+        )
+            gestureDirection *= -1;
+    };
     const record = () => {
         comboSum += x;
         comboCount++;
@@ -73,12 +86,16 @@ export function createLearnedCatchPath(
             time = at;
             regionCenter = pendingCenter === null ? null : x;
             pendingCenter = null;
+            orientGesture();
             record();
             return x;
         }
         if (at <= time) return x;
         const elapsed = at - time;
-        if (elapsed > beat * 8) history.length = 0;
+        if (elapsed > beat * 8) {
+            history.length = 0;
+            localVelocity = 0;
+        }
         while (
             onsetIndex < analysis.onsets.length &&
             analysis.onsets[onsetIndex].timeMs <= at + beat * 0.08
@@ -152,6 +169,27 @@ export function createLearnedCatchPath(
             }
         const before = x;
         x = Math.max(32, Math.min(480, x + displacements[chosen]));
+        if (roundGesture && gesture && regionCenter !== null) {
+            const guide = regionCenter + gestureDirection * gesture.sample(at);
+            // The network supplies a little local variation, while most of
+            // the geometry follows a continuous arc rather than noisy steps.
+            const target = Math.round(guide * 0.85 + x * 0.15);
+            x = Math.max(
+                Math.max(
+                    32,
+                    Math.ceil(before - reach),
+                    Math.ceil(regionCenter - regionRadius),
+                ),
+                Math.min(
+                    Math.min(
+                        480,
+                        Math.floor(before + reach),
+                        Math.floor(regionCenter + regionRadius),
+                    ),
+                    target,
+                ),
+            );
+        }
         history.push({ dx: x - before, beats: elapsed / beat });
         if (history.length > 4) history.shift();
         time = at;
@@ -159,6 +197,7 @@ export function createLearnedCatchPath(
             regionCenter = x;
             pendingCenter = null;
             localVelocity = 0;
+            orientGesture();
         } else {
             localVelocity = (x - before) / elapsed;
         }
@@ -167,32 +206,55 @@ export function createLearnedCatchPath(
     };
     return {
         place,
-        beginCombo(at: number) {
+        beginCombo(at: number, endTime = at + beat * 4, signature = "") {
             localVelocity = 0;
+            gesture = createGeneratorTrigGesture(
+                at,
+                endTime,
+                regionRadius,
+                profile.spacing,
+                signature || String(Math.round(((endTime - at) / beat) * 4)),
+                options.modelSeed ?? 1,
+            );
             if (!Number.isFinite(time)) {
                 pendingCenter = x;
             } else if (at <= time) {
                 regionCenter = x;
                 pendingCenter = null;
+                orientGesture();
             } else {
                 const mean = comboCount ? comboSum / comboCount : x;
                 const heading = Math.sign(history.at(-1)?.dx ?? 0) || 1;
-                let direction =
+                const direction =
                     Math.abs(x - mean) > 8 ? Math.sign(x - mean) : heading;
                 const separation = Math.min(
                     170,
                     70 + Math.log2(profile.level) * 30,
-                    Math.max(0, at - time) * profile.spacing * 0.9,
                 );
+                const reach = Math.max(0, at - time) * profile.spacing * 0.9;
                 const margin = 32 + regionRadius * 0.35;
                 const left = margin,
                     right = 512 - margin;
-                const room = direction > 0 ? right - x : x - left;
-                if (room < separation * 0.6) direction *= -1;
-                pendingCenter = Math.max(
-                    left,
-                    Math.min(right, x + direction * separation),
-                );
+                const goal = (sign: number) =>
+                    Math.max(
+                        x - reach,
+                        Math.min(
+                            x + reach,
+                            Math.max(
+                                left,
+                                Math.min(right, mean + sign * separation),
+                            ),
+                        ),
+                    );
+                const preferred = goal(direction),
+                    alternative = goal(-direction);
+                // Separate from the previous group's *centre*, not merely its
+                // last note: a round gesture can finish back near its entrance.
+                pendingCenter =
+                    Math.abs(preferred - mean) >=
+                    Math.abs(alternative - mean) * 0.8
+                        ? preferred
+                        : alternative;
             }
             comboSum = 0;
             comboCount = 0;
@@ -205,6 +267,7 @@ export function createLearnedCatchPath(
             regionCenter = pendingCenter = null;
             comboSum = comboCount = 0;
             localVelocity = 0;
+            gesture = null;
         },
     };
 }

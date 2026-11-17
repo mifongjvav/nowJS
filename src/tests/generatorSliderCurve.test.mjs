@@ -88,3 +88,16 @@ test("multi-arc Bezier joins have continuous tangent direction instead of sharp 
         assert.ok(a.x * b.x + a.y * b.y > 0);
     }
 });
+
+test("circle-length sliders approximate an actual semicircle, not a thin S wave", () => {
+    const object = map(100, 200, Math.PI * 50).hitObjects[0];
+    const points = sampleBezierSlider(object);
+    assert.ok(points.some((p) => p.y > 241.9));
+    for (const point of points) {
+        const radius = Math.hypot(point.x - 150, point.y - 192);
+        assert.ok(
+            Math.abs(radius - 50) < 0.05,
+            `non-circular radius ${radius}`,
+        );
+    }
+});
