@@ -4,6 +4,21 @@ interface Point {
 }
 // Cubic approximation of a quarter circle, derived from its tangent at π/8.
 const KAPPA = (4 / 3) * Math.tan(Math.PI / 8);
+// All ellipse quarters share the same cubic basis. Precompute its edge
+// coefficients once; fitting then needs only scaled distances, not new
+// control points and de Casteljau/polynomial work for every arc and iteration.
+const quarterEdges = Array.from({ length: 54 }, (_, i) => {
+    const point = (t: number) => {
+        const s = 1 - t;
+        return {
+            x: 3 * s * t * t * (1 - KAPPA) + t ** 3,
+            y: 3 * s * s * t * KAPPA + 3 * s * t * t + t ** 3,
+        };
+    };
+    const a = point(i / 54),
+        b = point((i + 1) / 54);
+    return { x: b.x - a.x, y: b.y - a.y };
+});
 
 // Half-ellipses replace the thin cubic S wiggles. Alternate above/below at
 // joins so both halves and neighbouring arches share a tangent. Keep x
@@ -44,32 +59,10 @@ export function createGeneratorSliderCurve(
     };
     const arcLength = (height: number) => {
         let distance = 0;
-        for (const points of halves(height)) {
-            let previous = points[0];
-            // Match the importer's cubic sampling, not the control polygon.
-            for (let i = 1; i <= 54; i++) {
-                const t = i / 54,
-                    s = 1 - t;
-                const point = {
-                    x:
-                        s ** 3 * points[0].x +
-                        3 * s * s * t * points[1].x +
-                        3 * s * t * t * points[2].x +
-                        t ** 3 * points[3].x,
-                    y:
-                        s ** 3 * points[0].y +
-                        3 * s * s * t * points[1].y +
-                        3 * s * t * t * points[2].y +
-                        t ** 3 * points[3].y,
-                };
-                distance += Math.hypot(
-                    point.x - previous.x,
-                    point.y - previous.y,
-                );
-                previous = point;
-            }
-        }
-        return distance;
+        for (const edge of quarterEdges)
+            distance += Math.hypot(radiusX * edge.x, height * edge.y);
+        // Symmetry makes the second quarter and all subsequent arches equal.
+        return distance * 2 * count;
     };
     let low = 0,
         high = length;

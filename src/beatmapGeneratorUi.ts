@@ -14,6 +14,7 @@ import type {
     GeneratorProgress,
 } from "./generatorTypes.ts";
 import type { PlayMode } from "./domain.ts";
+import { getGeneratorFormMovement } from "./generatorFormDefaults.ts";
 
 function restoreGeneratorFileInput(input: HTMLInputElement, file: File | null) {
     input.value = "";
@@ -85,8 +86,8 @@ export function initBeatmapGenerator(
                 </label>
                 <label><span data-i18n="generator.movementModel">${i18n.generator.movementModel}</span>
                     <select id="now-generator-movement-model">
-                        <option value="phrases" data-i18n="generator.phraseModel">${i18n.generator.phraseModel}</option>
                         <option value="learned" data-i18n="generator.learnedModel">${i18n.generator.learnedModel}</option>
+                        <option value="phrases" data-i18n="generator.phraseModel">${i18n.generator.phraseModel}</option>
                     </select>
                 </label>
                 <label><span data-i18n="generator.modelSeed">${i18n.generator.modelSeed}</span>
@@ -163,6 +164,9 @@ export function initBeatmapGenerator(
     const modelSeed = dialog.querySelector<HTMLInputElement>(
         "#now-generator-model-seed",
     )!;
+    const initialMovement = getGeneratorFormMovement();
+    movementModel.value = initialMovement.movementModel;
+    modelSeed.value = String(initialMovement.modelSeed);
     const run = dialog.querySelector<HTMLElement & { disabled: boolean }>(
         "#now-generator-run",
     )!;
@@ -420,8 +424,9 @@ export function initBeatmapGenerator(
             mode.value = loaded.inputs.mode;
             density.value = loaded.inputs.density;
             difficulty.value = String(loaded.inputs.difficulty);
-            movementModel.value = loaded.inputs.movementModel ?? "phrases";
-            modelSeed.value = String(loaded.inputs.modelSeed ?? 1);
+            const restoredMovement = getGeneratorFormMovement(loaded.inputs);
+            movementModel.value = restoredMovement.movementModel;
+            modelSeed.value = String(restoredMovement.modelSeed);
             const base = loaded.audio.name.replace(/\.[^.]+$/, "");
             autoTitle = title.value === base ? base : "";
             notice = "configImported";

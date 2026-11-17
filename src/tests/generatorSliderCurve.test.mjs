@@ -101,3 +101,33 @@ test("circle-length sliders approximate an actual semicircle, not a thin S wave"
         );
     }
 });
+
+test("symmetric arc-length fitting stays accurate for varied spans, translations and multi-arch lengths", () => {
+    for (let i = 0; i < 60; i++) {
+        const x = 32 + ((i * 37) % 448),
+            endX = i % 7 === 0 ? x : 32 + ((i * 83) % 448);
+        const length = Math.abs(endX - x) + 5 + (i % 9) * 114;
+        const object = map(x, endX, length).hitObjects[0];
+        const points = sampleBezierSlider(object);
+        const actual = points
+            .slice(1)
+            .reduce(
+                (sum, p, j) =>
+                    sum + Math.hypot(p.x - points[j].x, p.y - points[j].y),
+                0,
+            );
+        assert.ok(
+            Math.abs(actual - length) < 0.01,
+            `${x}->${endX} ${actual} != ${length}`,
+        );
+        assert.ok(
+            points.every(
+                (p) =>
+                    p.x >= Math.min(x, endX) - 0.001 &&
+                    p.x <= Math.max(x, endX) + 0.001 &&
+                    p.y >= 32 &&
+                    p.y <= 352,
+            ),
+        );
+    }
+});

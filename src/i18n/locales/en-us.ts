@@ -123,11 +123,11 @@ export default {
     },
     generator: {
         movementModel: "Catch movement",
-        phraseModel: "Phrase rules (original)",
-        learnedModel: "Local neural network (experimental)",
+        phraseModel: "Legacy phrase rules (fallback)",
+        learnedModel: "Neural sampling and arcs (recommended)",
         modelSeed: "Random seed (reproducible)",
         learnedHint:
-            "Experimental motion model trained on 84 local standard-to-Catch maps. Assists horizontal Catch layout only; no vocal recognition or 4K changes. Limited corpus, not a Ranked quality claim.",
+            "Catch now defaults to local neural sampling, combo regions and curved gestures. Legacy rules remain available. Fully offline; 4K is unchanged. The reference corpus is limited, so playtest the result.",
         title: "Beatmap generator",
         difficulty: "Difficulty level (1 = Easy)",
         difficultyHint:

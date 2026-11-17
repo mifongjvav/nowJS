@@ -49,7 +49,11 @@ export function buildGeneratedBeatmap(
         throw new GeneratorError("audio");
     const title = cleanGeneratorText(options.title, "Generated track");
     const artist = cleanGeneratorText(options.artist, "Unknown Artist");
-    const notes = createGeneratorNotes(analysis, options);
+    // Catch positions are finalized after sliders/showers and colour groups
+    // are known. Do not run a second, discarded neural/phrase layout first.
+    const notes = createGeneratorNotes(analysis, options, {
+        deferCatchLayout: true,
+    });
     const objects = createGeneratorObjects(analysis, options, notes);
     const objectCounts = countGeneratorObjects(objects);
     const comboColors = normalizeGeneratorComboColors(colors);

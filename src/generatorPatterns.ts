@@ -25,6 +25,7 @@ const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 export function createGeneratorNotes(
     analysis: GeneratorAnalysis,
     options: GeneratorOptions,
+    { deferCatchLayout = false }: { deferCatchLayout?: boolean } = {},
 ): GeneratorNote[] {
     if (
         !["catch", "mania"].includes(options.mode) ||
@@ -170,7 +171,7 @@ export function createGeneratorNotes(
         pattern = 0;
     const notes: GeneratorNote[] = [];
     const catchPath =
-        options.mode === "catch"
+        options.mode === "catch" && !deferCatchLayout
             ? createGeneratorCatchPath(analysis, options)
             : null;
     for (const candidate of candidates) {
@@ -196,7 +197,7 @@ export function createGeneratorNotes(
             previousLane = lane;
             x = 64 + lane * 128;
         } else {
-            x = catchPath!.place(time);
+            x = catchPath?.place(time) ?? 256;
         }
         notes.push({
             x: Math.round(x),
